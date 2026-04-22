@@ -97,6 +97,7 @@ const handleTabChange = (tab: string) => {
 }
 
 provide('navigate', navigate)
+provide('previousRoute', previousRoute)
 
 // Генерируем звёздный фон
 const spawnStars = () => {
@@ -152,10 +153,12 @@ onMounted(async () => {
   inset: 0;
 }
 
-/* All content sits above the background */
-.app-shell > *:not(.bg-atmosphere) {
+/* Screens need position:relative for absolutely-positioned children.
+   No z-index here so modal-overlay (z-index:100, position:fixed) stays in root
+   stacking context and renders above the nav (z-index:50). Screen appears above
+   bg-atmosphere via DOM order (later sibling wins at same z-index:auto level). */
+.app-shell > *:not(.bg-atmosphere):not(nav) {
   position: relative;
-  z-index: 1;
 }
 
 /* ── Transitions ── */

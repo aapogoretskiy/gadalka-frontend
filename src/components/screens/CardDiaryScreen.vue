@@ -69,10 +69,8 @@
       </div>
 
     </div>
-  </div>
 
-  <!-- Detail modal -->
-  <Teleport to="body">
+    <!-- Detail modal (inline, no Teleport — keeps single root for <Transition>) -->
     <div v-if="selected" class="modal-overlay" @click.self="selected = null">
       <div class="modal-sheet">
         <div class="modal-handle"></div>
@@ -150,7 +148,7 @@
         </template>
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">

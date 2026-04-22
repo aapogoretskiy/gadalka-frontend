@@ -69,7 +69,7 @@
           >
             <div class="spread-icon-wrap">
               <div v-for="i in s.count" :key="i" class="mini-card-spread"
-                :style="`left:${(i-1)*10}px;transform:rotate(${(i - Math.ceil(s.count/2))*8}deg)`"></div>
+                :style="`left:${(i-1)*Math.min(10,36/Math.max(s.count-1,1))}px;transform:rotate(${(i-Math.ceil(s.count/2))*(s.count>5?5:8)}deg)`"></div>
             </div>
             <div class="spread-info">
               <div class="spread-title serif">{{ s.count }} {{ s.count === 1 ? 'карта' : s.count < 5 ? 'карты' : 'карт' }}</div>
@@ -396,6 +396,7 @@ const resetFortune = () => {
 .spread-icon-wrap {
   width: 54px; height: 44px;
   position: relative; flex-shrink: 0;
+  overflow: hidden;
 }
 .mini-card-spread {
   position: absolute;
@@ -471,6 +472,13 @@ const resetFortune = () => {
   box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,200,87,0.2);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+
+/* 7-card spread: smaller cards so they fit in 2 rows without icon/text overlap */
+.cards-7 { gap: 6px 8px; margin-bottom: 16px; }
+.cards-7 .result-card { width: 78px; height: 116px; }
+.cards-7 .res-emoji { font-size: 22px; }
+.cards-7 .res-name  { font-size: 8px; }
+.cards-7 .position-label { font-size: 8px; }
 .result-card:active { transform: scale(0.96); }
 .res-face {
   position: absolute; inset: 0; border-radius: 12px; opacity: 0;

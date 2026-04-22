@@ -3,7 +3,7 @@
     <div class="content">
 
       <div class="header-bar">
-        <button class="back-btn haptic" @click="navigate('home')">
+        <button class="back-btn haptic" @click="navigate(previousRoute || 'home')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div class="header-title serif">Магазин колод</div>
@@ -113,6 +113,7 @@ import { ref, computed, inject } from 'vue'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
+const previousRoute = inject<string>('previousRoute')
 
 interface Deck {
   id: string
