@@ -76,7 +76,7 @@
               <div class="spread-desc">{{ s.desc }}</div>
             </div>
             <div class="spread-price" :style="s.count === 3 ? 'color:#70e0a8' : 'color:#ffc857'">
-              {{ s.count === 3 ? 'Бесплатно' : s.count === 5 ? '299 ⭐' : '499 ⭐' }}
+              {{ s.count === 3 ? 'Бесплатно' : s.count === 5 ? '299 ₽' : '499 ₽' }}
             </div>
           </div>
         </div>

@@ -14,6 +14,21 @@
         </div>
       </div>
 
+      <!-- Beta banner -->
+      <div v-if="betaVisible" class="beta-banner">
+        <div class="beta-left">
+          <span class="beta-badge haptic" @click="onBetaTap">BETA</span>
+          <div class="beta-text">
+            <div class="beta-title">Бета-тестирование</div>
+            <div class="beta-sub">Текущая версия не отражает конечного результата</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span v-if="isDev" class="dev-badge">DEV</span>
+          <button class="beta-close" @click="betaVisible = false">✕</button>
+        </div>
+      </div>
+
       <!-- Card of the Day -->
       <div class="tarot-day-card gradient-card haptic" @click="navigate('tarot-day')">
         <div class="tarot-hero-label">
@@ -96,12 +111,28 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { useDailyCard } from '@/composables/useDailyCard'
+import { useDevMode } from '@/composables/useDevMode'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
+const { isDev, toggleDevMode } = useDevMode()
 
 const cardFlipped = ref(false)
+const betaVisible = ref(true)
+
+// Секретный триггер: 5 тапов по BETA-бейджу за 3 секунды → включить/выключить DEV MODE
+const betaTapCount = ref(0)
+let betaTapTimer: ReturnType<typeof setTimeout> | null = null
+function onBetaTap() {
+  betaTapCount.value++
+  if (betaTapTimer) clearTimeout(betaTapTimer)
+  betaTapTimer = setTimeout(() => { betaTapCount.value = 0 }, 3000)
+  if (betaTapCount.value >= 5) {
+    betaTapCount.value = 0
+    toggleDevMode()
+  }
+}
 
 const userName    = computed(() => telegramUser.value?.first_name || 'Мистик')
 const userInitial = computed(() => userName.value.charAt(0).toUpperCase())
@@ -139,6 +170,74 @@ onMounted(() => {
   overflow-y: auto;
 }
 .content { padding: 60px 20px 0; }
+
+/* Beta banner */
+.beta-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(255,200,87,0.12), rgba(255,160,50,0.07));
+  border: 1px solid rgba(255,200,87,0.3);
+  border-radius: 14px;
+}
+.beta-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.beta-badge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255,200,87,0.9);
+  color: #1a0529;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.beta-text { min-width: 0; }
+.beta-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffc857;
+  margin-bottom: 2px;
+}
+.beta-sub {
+  font-size: 11px;
+  color: rgba(255,200,87,0.65);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dev-badge {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(112,224,168,0.9);
+  color: #0a3a2a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.beta-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255,200,87,0.12);
+  border: none;
+  color: rgba(255,200,87,0.6);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
 
 /* Greeting */
 .greeting {

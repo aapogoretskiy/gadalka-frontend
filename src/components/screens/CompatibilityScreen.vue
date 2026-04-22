@@ -136,18 +136,31 @@
           <div class="name-chip">{{ name2 }}</div>
         </div>
 
-        <div class="result-desc glass">
-          <p>{{ result.interpretation }}</p>
-        </div>
-
-        <!-- Category bars -->
-        <div v-if="result.categories.length" class="aspects glass">
-          <div class="aspect-row" v-for="cat in result.categories" :key="cat.name">
-            <div class="aspect-label">{{ cat.name }}</div>
-            <div class="aspect-bar-wrap">
-              <div class="aspect-bar" :style="{ width: cat.score + '%' }"></div>
+        <!-- PAYWALL: interpretation + categories -->
+        <div class="paywall-wrap" :class="{ locked: !isPremiumUnlocked }">
+          <div class="paywall-content">
+            <div class="result-desc glass">
+              <p>{{ result.interpretation }}</p>
             </div>
-            <div class="aspect-pct">{{ cat.score }}%</div>
+            <div v-if="result.categories.length" class="aspects glass">
+              <div class="aspect-row" v-for="cat in result.categories" :key="cat.name">
+                <div class="aspect-label">{{ cat.name }}</div>
+                <div class="aspect-bar-wrap">
+                  <div class="aspect-bar" :style="{ width: cat.score + '%' }"></div>
+                </div>
+                <div class="aspect-pct">{{ cat.score }}%</div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="!isPremiumUnlocked" class="paywall-overlay">
+            <div class="paywall-lock">🔒</div>
+            <div class="paywall-title serif">Полный анализ</div>
+            <div class="paywall-sub">Интерпретация и разбор по категориям</div>
+            <button class="paywall-btn haptic" @click="unlockPremium">
+              Открыть за 99 ₽
+            </button>
+            <div v-if="isDev" class="paywall-dev-hint">DEV: кнопка эмулирует оплату</div>
           </div>
         </div>
 
@@ -174,10 +187,12 @@
 import { ref, computed, inject } from 'vue'
 import { api, type CompatibilityResponse } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
+import { useDevMode } from '@/composables/useDevMode'
 import { hapticFeedback } from '@/utils/telegram'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
+const { isDev } = useDevMode()
 
 const name1 = ref('')
 const birthDate1 = ref('')
@@ -188,6 +203,8 @@ const errorMsg = ref('')
 const result = ref<CompatibilityResponse | null>(null)
 const isSaving = ref(false)
 const savedToDiary = ref(false)
+const paidUnlocked = ref(false)
+const isPremiumUnlocked = computed(() => isDev.value || paidUnlocked.value)
 
 const isValid = computed(() =>
   name1.value.trim().length >= 2 &&
@@ -230,6 +247,11 @@ async function calculate() {
   }
 }
 
+function unlockPremium() {
+  // TODO: интегрировать платёж (Telegram Stars / эквайринг)
+  paidUnlocked.value = true
+}
+
 async function saveToDiary() {
   if (!result.value?.id || isSaving.value || savedToDiary.value) return
   isSaving.value = true
@@ -252,6 +274,7 @@ function reset() {
   birthDate2.value = ''
   errorMsg.value = ''
   savedToDiary.value = false
+  paidUnlocked.value = false
 }
 </script>
 
@@ -393,5 +416,54 @@ function reset() {
 .action-btn.primary:disabled { opacity: .6; cursor: not-allowed; }
 .action-btn.secondary {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #F5ECFF;
+}
+
+/* Paywall */
+.paywall-wrap { position: relative; width: 100%; display: flex; flex-direction: column; gap: 18px; }
+.paywall-wrap.locked .paywall-content {
+  filter: blur(7px);
+  pointer-events: none;
+  user-select: none;
+}
+.paywall-content { display: flex; flex-direction: column; gap: 18px; width: 100%; }
+.paywall-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(10,5,20,0.55);
+  backdrop-filter: blur(2px);
+  border-radius: 18px;
+  padding: 24px 20px;
+}
+.paywall-lock { font-size: 32px; margin-bottom: 4px; }
+.paywall-title { font-size: 20px; color: #F5ECFF; text-align: center; }
+.paywall-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,.55);
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.paywall-btn {
+  padding: 13px 28px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(182,84,255,.45);
+}
+.paywall-dev-hint {
+  font-size: 10px;
+  color: rgba(112,224,168,.7);
+  margin-top: 4px;
+  letter-spacing: .04em;
 }
 </style>

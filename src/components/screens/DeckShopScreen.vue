@@ -62,7 +62,7 @@
                 <span v-if="deck.active" class="owned-active">Активна</span>
                 <span v-else class="owned-label">Куплена</span>
               </div>
-              <div v-else class="deck-price">{{ deck.price === 0 ? 'Бесплатно' : deck.price + ' ⭐' }}</div>
+              <div v-else class="deck-price">{{ deck.price === 0 ? 'Бесплатно' : deck.price + ' ₽' }}</div>
             </div>
           </div>
         </div>
@@ -98,7 +98,7 @@
         </div>
         <div v-else style="display:flex;flex-direction:column;gap:10px">
           <button class="sheet-btn primary haptic" @click="purchaseDeck(selected)">
-            {{ selected.price === 0 ? 'Получить бесплатно' : 'Купить за ' + selected.price + ' ⭐' }}
+            {{ selected.price === 0 ? 'Получить бесплатно' : 'Купить за ' + selected.price + ' ₽' }}
           </button>
           <button class="sheet-btn secondary haptic" @click="selected = null">Отмена</button>
         </div>
