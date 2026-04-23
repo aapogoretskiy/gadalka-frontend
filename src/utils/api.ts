@@ -5,7 +5,10 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 // ── Axios instance ──────────────────────────────────────────────────────────
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true'
+  },
 })
 
 // Перехватчик: автоматически добавляет JWT-токен к каждому запросу
@@ -155,7 +158,7 @@ export const api = {
   // Бэкенд ожидает строку initData в теле запроса
   authTelegram: (initData: string) =>
     apiClient.post<TelegramAuthResponse>('/api/auth/telegram', initData, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
     }),
 
   // Получить текущего пользователя по JWT-токену
