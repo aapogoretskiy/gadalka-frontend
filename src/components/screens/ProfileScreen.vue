@@ -84,7 +84,14 @@
            чтобы компонент оставался single-root и Transition в App.vue работал корректно -->
       <Teleport to="body">
         <div v-if="editOpen" class="sheet-overlay" @click.self="editOpen = false">
-          <div class="bottom-sheet">
+          <div
+            ref="sheetEl"
+            class="bottom-sheet"
+            :style="sheetDragY > 0 ? { transform: `translateY(${sheetDragY}px)`, transition: 'none' } : {}"
+            @touchstart="onSheetTouchStart"
+            @touchmove="onSheetTouchMove"
+            @touchend="onSheetTouchEnd"
+          >
             <div class="sheet-handle"></div>
             <div class="sheet-title serif">Изменить данные</div>
 
@@ -175,6 +182,31 @@ const handleReset = async () => {
 const editOpen = ref(false)
 const isSaving = ref(false)
 
+// Свайп вниз для закрытия шита
+const sheetDragY = ref(0)
+let swipeStartY = 0
+let swipeStartScrollTop = 0
+const sheetEl = ref<HTMLElement | null>(null)
+
+function onSheetTouchStart(e: TouchEvent) {
+  swipeStartY = e.touches[0].clientY
+  swipeStartScrollTop = sheetEl.value?.scrollTop ?? 0
+  sheetDragY.value = 0
+}
+function onSheetTouchMove(e: TouchEvent) {
+  const dy = e.touches[0].clientY - swipeStartY
+  // Тянем вниз только если контент уже проскроллен в начало
+  if (dy > 0 && swipeStartScrollTop === 0) {
+    sheetDragY.value = dy
+  }
+}
+function onSheetTouchEnd() {
+  if (sheetDragY.value > 90) {
+    editOpen.value = false
+  }
+  sheetDragY.value = 0
+}
+
 const editForm = ref({
   birthDate: '',
   birthTime: '',
@@ -195,11 +227,20 @@ watch(editOpen, (open) => {
   setBackOverride?.(open ? () => { editOpen.value = false } : null)
 })
 
+function parseBirthTime(bt: any): string {
+  if (!bt) return ''
+  // Строка "HH:MM:SS" или "HH:MM"
+  if (typeof bt === 'string') return bt.substring(0, 5)
+  // Объект { hour, minute, ... } (альтернативная сериализация)
+  if (typeof bt === 'object' && bt.hour !== undefined)
+    return `${String(bt.hour).padStart(2,'0')}:${String(bt.minute).padStart(2,'0')}`
+  return ''
+}
+
 function openEdit() {
-  const bt = profile.value?.birthTime
   editForm.value = {
     birthDate: profile.value?.birthDate || '',
-    birthTime: bt ? `${String(bt.hour).padStart(2,'0')}:${String(bt.minute).padStart(2,'0')}` : '',
+    birthTime: parseBirthTime(profile.value?.birthTime),
     birthCity: profile.value?.birthCity || '',
     goals: [...(profile.value?.goals || [])],
   }
@@ -315,6 +356,8 @@ async function saveEdit() {
   border-radius: 24px 24px 0 0;
   padding: 16px 20px 40px;
   border-top: 1px solid rgba(255,255,255,.1);
+  transition: transform 0.25s ease;
+  will-change: transform;
 }
 .sheet-handle {
   width: 36px; height: 4px; border-radius: 2px;
