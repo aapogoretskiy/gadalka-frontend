@@ -12,6 +12,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 // ── Axios instance ──────────────────────────────────────────────────────────
 const apiClient = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true'
@@ -39,9 +40,10 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       const hadToken = !!localStorage.getItem('jwt_token')
       localStorage.removeItem('jwt_token')
-      // Перезагружаем только если токен был — чтобы не зациклиться
+      // Перезагружаем только если токен был — чтобы не зациклиться.
+      // Используем location.href вместо reload() для надёжности в Telegram WebView.
       if (hadToken) {
-        window.location.reload()
+        window.location.href = window.location.href
       }
     } else if (!skip && error.response) {
       // 4xx / 5xx (кроме 401)

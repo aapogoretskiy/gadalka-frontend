@@ -167,6 +167,12 @@ onMounted(async () => {
   try { WebApp.ready() } catch {}
   try { WebApp.expand() } catch {}
 
+  // Страховочный таймаут: если авторизация зависнет (нет сети в Telegram WebView),
+  // гарантированно убираем splash-лоадер через 12 секунд
+  const safetyTimer = setTimeout(() => {
+    isInitializing.value = false
+  }, 12000)
+
   const authed = await authWithTelegram()
   if (authed) {
     try { await fetchProfile() } catch {}
@@ -176,6 +182,7 @@ onMounted(async () => {
     }
   }
 
+  clearTimeout(safetyTimer)
   isInitializing.value = false
 })
 </script>
