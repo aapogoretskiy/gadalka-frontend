@@ -2,19 +2,15 @@
 import WebApp from '@twa-dev/sdk'
 
 export const initTelegramApp = () => {
-  // Инициализация Telegram Web App
-  WebApp.ready()
-  WebApp.expand()
+  try { WebApp.ready() } catch {}
+  try { WebApp.expand() } catch {}
 
-  // Включаем подтверждение закрытия (доступно с версии 6.2+)
   try {
     const version = parseFloat(WebApp.version || '6.0')
     if (version >= 6.2 && WebApp.enableClosingConfirmation) {
       WebApp.enableClosingConfirmation()
     }
-  } catch (e) {
-    // Игнорируем ошибки версии
-  }
+  } catch {}
 
   return WebApp
 }

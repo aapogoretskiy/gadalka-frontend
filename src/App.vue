@@ -162,6 +162,11 @@ const spawnStars = () => {
 onMounted(async () => {
   spawnStars()
 
+  // Сообщаем Telegram что приложение готово — до любых await,
+  // иначе Telegram покажет серый экран и закроет WebView по таймауту
+  try { WebApp.ready() } catch {}
+  try { WebApp.expand() } catch {}
+
   const authed = await authWithTelegram()
   if (authed) {
     try { await fetchProfile() } catch {}
