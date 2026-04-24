@@ -176,7 +176,7 @@ onMounted(async () => {
    No z-index here so modal-overlay (z-index:100, position:fixed) stays in root
    stacking context and renders above the nav (z-index:50). Screen appears above
    bg-atmosphere via DOM order (later sibling wins at same z-index:auto level). */
-.app-shell > *:not(.bg-atmosphere):not(nav) {
+.app-shell > *:not(.bg-atmosphere):not(nav):not(.splash-loader) {
   position: relative;
 }
 
