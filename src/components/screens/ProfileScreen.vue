@@ -82,7 +82,8 @@
     </div>
   </div>
 
-  <!-- Edit profile bottom sheet -->
+  <!-- Edit profile bottom sheet (Teleport — рендерится в body, вне scroll-контейнера) -->
+  <Teleport to="body">
   <div v-if="editOpen" class="sheet-overlay" @click.self="editOpen = false">
     <div class="bottom-sheet">
       <div class="sheet-handle"></div>
@@ -121,16 +122,18 @@
       </button>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { useUser } from '@/composables/useUser'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
 import type { Goal } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
+const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { telegramUser, profile, updateProfile, resetProfile } = useUser()
 
 const userName    = computed(() => telegramUser.value?.first_name || 'Мистик')
@@ -185,6 +188,11 @@ const goalOptions: { value: Goal; label: string; emoji: string }[] = [
   { value: 'HEALTH',          label: 'Энергия',    emoji: '✨' },
   { value: 'SELF_CONFIDENCE', label: 'Самооценка', emoji: '🌟' },
 ]
+
+// Когда шит открыт — кнопка «Назад» закрывает его, не уходя с экрана
+watch(editOpen, (open) => {
+  setBackOverride?.(open ? () => { editOpen.value = false } : null)
+})
 
 function openEdit() {
   const bt = profile.value?.birthTime

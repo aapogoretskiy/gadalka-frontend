@@ -117,20 +117,25 @@ const handleTabChange = (tab: string) => {
 provide('navigate', navigate)
 provide('previousRoute', previousRoute)
 
-// Telegram нативная кнопка «Назад» — появляется в шапке TG вместо кастомных back-кнопок,
-// устраняя визуальное пересечение с кнопкой «Закрыть»
-let tgBackHandler: (() => void) | null = null
-watch(currentRoute, (route) => {
-  if (tgBackHandler) {
-    try { WebApp.BackButton.offClick(tgBackHandler) } catch {}
-    tgBackHandler = null
+// ── Telegram BackButton ──────────────────────────────────────────────────────
+// Единый master-handler: компоненты могут переопределить действие через
+// setBackOverride (например, закрыть открытый bottom-sheet вместо навигации).
+const backOverride = ref<(() => void) | null>(null)
+provide('setBackOverride', (fn: (() => void) | null) => { backOverride.value = fn })
+
+const masterBackHandler = () => {
+  if (backOverride.value) {
+    backOverride.value()
+  } else {
+    navigate(previousRoute.value || 'home')
   }
+}
+try { WebApp.BackButton.onClick(masterBackHandler) } catch {}
+
+watch(currentRoute, (route) => {
+  backOverride.value = null  // сбрасываем override при смене экрана
   if (route !== 'home' && route !== 'onboarding') {
-    tgBackHandler = () => navigate(previousRoute.value || 'home')
-    try {
-      WebApp.BackButton.onClick(tgBackHandler)
-      WebApp.BackButton.show()
-    } catch {}
+    try { WebApp.BackButton.show() } catch {}
   } else {
     try { WebApp.BackButton.hide() } catch {}
   }
