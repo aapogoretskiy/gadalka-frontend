@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { api, type TelegramUserDto, type ProfileResponse, type CreateProfileRequest } from '@/utils/api'
+import { api, type TelegramUserDto, type ProfileResponse, type CreateProfileRequest, type UpdateProfileRequest } from '@/utils/api'
 import WebApp from '@twa-dev/sdk'
 
 // Состояние живёт вне функции — это синглтон, общий для всего приложения
@@ -63,6 +63,19 @@ export function useUser() {
     return response.data
   }
 
+  // Обновить данные профиля
+  const updateProfile = async (data: UpdateProfileRequest): Promise<ProfileResponse> => {
+    const response = await api.updateProfile(data)
+    profile.value = response.data
+    return response.data
+  }
+
+  // Сбросить профиль: удаляем данные рождения/целей, остаёмся авторизованными
+  const resetProfile = async (): Promise<void> => {
+    await api.deleteProfile()
+    profile.value = null
+  }
+
   // Выход: удаляем токен
   const logout = () => {
     localStorage.removeItem('jwt_token')
@@ -79,6 +92,8 @@ export function useUser() {
     authWithTelegram,
     fetchProfile,
     createProfile,
+    updateProfile,
+    resetProfile,
     logout,
   }
 }

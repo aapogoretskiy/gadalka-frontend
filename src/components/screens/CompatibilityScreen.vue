@@ -157,8 +157,9 @@
             <div class="paywall-lock">🔒</div>
             <div class="paywall-title serif">Полный анализ</div>
             <div class="paywall-sub">Интерпретация и разбор по категориям</div>
-            <button class="paywall-btn haptic" @click="unlockPremium">
-              Открыть за 99 ₽
+            <button class="paywall-btn haptic" @click="unlockPremium" style="display:flex;align-items:center;justify-content:center;gap:8px">
+              <span>Открыть за 99 ₽</span>
+              <ComingSoonBadge v-if="!isDev" />
             </button>
             <div v-if="isDev" class="paywall-dev-hint">DEV: кнопка эмулирует оплату</div>
           </div>
@@ -189,6 +190,7 @@ import { api, type CompatibilityResponse } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
 import { useDevMode } from '@/composables/useDevMode'
 import { hapticFeedback } from '@/utils/telegram'
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()

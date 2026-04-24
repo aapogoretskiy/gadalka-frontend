@@ -35,7 +35,7 @@
             v-for="c in categories" :key="c.value"
             class="chip haptic"
             :class="{ selected: selectedCategory === c.value }"
-            @click="selectedCategory = c.value"
+            @click="selectedCategory = selectedCategory === c.value ? '' : c.value"
           >{{ c.emoji }} {{ c.label }}</button>
         </div>
 
@@ -63,9 +63,9 @@
         <div class="spread-options">
           <div
             v-for="s in spreads" :key="s.count"
-            class="spread-card haptic"
-            :class="{ selected: selectedSpread === s.count }"
-            @click="selectedSpread = s.count"
+            class="spread-card"
+            :class="{ selected: selectedSpread === s.count, 'spread-card--locked': s.count !== 3, haptic: s.count === 3 }"
+            @click="s.count === 3 ? selectedSpread = s.count : null"
           >
             <div class="spread-icon-wrap">
               <div v-for="i in s.count" :key="i" class="mini-card-spread"
@@ -75,8 +75,11 @@
               <div class="spread-title serif">{{ s.count }} {{ s.count === 1 ? 'карта' : s.count < 5 ? 'карты' : 'карт' }}</div>
               <div class="spread-desc">{{ s.desc }}</div>
             </div>
-            <div class="spread-price" :style="s.count === 3 ? 'color:#70e0a8' : 'color:#ffc857'">
-              {{ s.count === 3 ? 'Бесплатно' : s.count === 5 ? '299 ₽' : '499 ₽' }}
+            <div class="spread-right">
+              <ComingSoonBadge v-if="s.count !== 3" />
+              <div class="spread-price" :style="s.count === 3 ? 'color:#70e0a8' : 'color:#ffc857'">
+                {{ s.count === 3 ? 'Бесплатно' : s.count === 5 ? '299 ₽' : '499 ₽' }}
+              </div>
             </div>
           </div>
         </div>
@@ -222,6 +225,7 @@ import { ref, inject } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -409,7 +413,9 @@ const resetFortune = () => {
 .spread-info { flex: 1; }
 .spread-title { font-size: 17px; margin-bottom: 2px; }
 .spread-desc  { font-size: 12px; color: rgba(255,255,255,.55); }
-.spread-price { font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.spread-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.spread-price { font-size: 14px; font-weight: 700; }
+.spread-card--locked { opacity: 0.6; cursor: default; }
 
 /* Fortune button */
 .fortune-btn {

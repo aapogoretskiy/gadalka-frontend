@@ -34,7 +34,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, provide, watch } from 'vue'
+import WebApp from '@twa-dev/sdk'
 import { useTelegram } from './composables/useTelegram'
 import { useUser } from './composables/useUser'
 
@@ -115,6 +116,25 @@ const handleTabChange = (tab: string) => {
 
 provide('navigate', navigate)
 provide('previousRoute', previousRoute)
+
+// Telegram нативная кнопка «Назад» — появляется в шапке TG вместо кастомных back-кнопок,
+// устраняя визуальное пересечение с кнопкой «Закрыть»
+let tgBackHandler: (() => void) | null = null
+watch(currentRoute, (route) => {
+  if (tgBackHandler) {
+    try { WebApp.BackButton.offClick(tgBackHandler) } catch {}
+    tgBackHandler = null
+  }
+  if (route !== 'home' && route !== 'onboarding') {
+    tgBackHandler = () => navigate(previousRoute.value || 'home')
+    try {
+      WebApp.BackButton.onClick(tgBackHandler)
+      WebApp.BackButton.show()
+    } catch {}
+  } else {
+    try { WebApp.BackButton.hide() } catch {}
+  }
+}, { immediate: true })
 
 // Генерируем звёздный фон
 const spawnStars = () => {
