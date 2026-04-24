@@ -287,7 +287,7 @@ const startFortune = async () => {
   }, 900)
 
   try {
-    const res = await api.getFortune(question.value)
+    const res = await api.getFortune(question.value, selectedCategory.value || undefined)
     result.value = res.data
     progress.value = 100
     setTimeout(() => { step.value = 4 }, 400)

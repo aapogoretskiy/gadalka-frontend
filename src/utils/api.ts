@@ -203,8 +203,8 @@ export const api = {
     apiClient.get<DailyCardResponse>('/api/daily-card'),
 
   // Гадание "3 карты"
-  getFortune: (question: string) =>
-    apiClient.post<FortuneResponse>('/api/fortune', { question }),
+  getFortune: (question: string, category?: string) =>
+    apiClient.post<FortuneResponse>('/api/fortune', { question, category: category || null }),
 
   // Совместимость
   getCompatibility: (data: CompatibilityRequest) =>
