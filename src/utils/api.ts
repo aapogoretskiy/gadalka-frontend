@@ -1,4 +1,11 @@
 import axios from 'axios'
+import { useToast } from '@/composables/useToast'
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    skipGlobalError?: boolean
+  }
+}
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
@@ -22,9 +29,13 @@ apiClient.interceptors.request.use((config) => {
 
 // Перехватчик ответов: при 401 (токен истёк/невалиден) очищаем токен
 // и перезагружаем страницу — App.vue снова вызовет authWithTelegram()
+const { addToast } = useToast()
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const skip = error.config?.skipGlobalError
+
     if (error.response?.status === 401) {
       const hadToken = !!localStorage.getItem('jwt_token')
       localStorage.removeItem('jwt_token')
@@ -32,7 +43,16 @@ apiClient.interceptors.response.use(
       if (hadToken) {
         window.location.reload()
       }
+    } else if (!skip && error.response) {
+      // 4xx / 5xx (кроме 401)
+      const message: string =
+        error.response.data?.message || 'Что-то пошло не так, попробуйте позже'
+      addToast(message)
+    } else if (!skip && error.request) {
+      // Сетевая ошибка: нет соединения или таймаут
+      addToast('Нет соединения с сервером')
     }
+
     return Promise.reject(error)
   }
 )
@@ -167,7 +187,7 @@ export const api = {
 
   // Профиль пользователя
   getProfile: () =>
-    apiClient.get<ProfileResponse>('/api/user-profiles'),
+    apiClient.get<ProfileResponse>('/api/user-profiles', { skipGlobalError: true }),
 
   createProfile: (data: CreateProfileRequest) =>
     apiClient.post<ProfileResponse>('/api/user-profiles', data),

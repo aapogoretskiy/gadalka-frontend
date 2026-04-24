@@ -14,19 +14,34 @@
       </div>
 
       <div class="onb-form">
+        <!-- Объяснение зачем нужны данные -->
+        <div class="data-reason-card">
+          <div class="data-reason-header">
+            <span class="data-reason-icon">✦</span>
+            <span class="data-reason-title">Зачем нам эти данные?</span>
+          </div>
+          <p class="data-reason-body">
+            Дата, время и город рождения — основа ваших персональных расчётов. На их основе мы строим расклады Таро, нумерологический профиль и расчёт совместимости. Без точных данных предсказания будут неточными.
+          </p>
+        </div>
+
         <div class="form-row">
           <label class="input-label">Дата рождения <span class="req">*</span></label>
           <input v-model="form.birthDate" type="date" class="onb-input input-date" />
         </div>
         <div class="form-row">
-          <label class="input-label">Время рождения <span class="opt">(необязательно)</span></label>
+          <label class="input-label">Время рождения <span class="req">*</span></label>
           <input v-model="form.birthTime" type="time" class="onb-input input-date" />
         </div>
         <div class="form-row">
-          <label class="input-label">Город рождения <span class="opt">(необязательно)</span></label>
+          <label class="input-label">Город рождения <span class="req">*</span></label>
           <input v-model="form.birthCity" type="text" placeholder="Например: Москва" class="onb-input" />
         </div>
-        <button class="onb-btn haptic" :disabled="!form.birthDate" @click="step = 2">
+        <button
+          class="onb-btn haptic"
+          :disabled="!form.birthDate || !form.birthTime || !form.birthCity.trim()"
+          @click="step = 2"
+        >
           Далее →
         </button>
       </div>
@@ -244,7 +259,40 @@ const handleFinish = async () => {
   letter-spacing: .08em;
 }
 .req  { color: #e94aa8; }
-.opt  { color: rgba(255,255,255,.4); font-weight:400; text-transform:none; letter-spacing:0; }
+
+/* Блок с объяснением данных */
+.data-reason-card {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(182,84,255,0.1), rgba(233,74,168,0.06));
+  border: 1px solid rgba(182,84,255,0.25);
+}
+.data-reason-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.data-reason-icon {
+  font-size: 13px;
+  color: #b654ff;
+  flex-shrink: 0;
+}
+.data-reason-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #d89fff;
+}
+.data-reason-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.6);
+  margin: 0;
+}
+
 .onb-input {
   width: 100%;
   padding: 14px 16px;

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vue-tsc *)",
+      "Bash(git -C \"D:/gadalka/gadalka-frontend\" diff --stat HEAD)"
+    ]
+  }
+}

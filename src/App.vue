@@ -8,13 +8,28 @@
       <div ref="starsRef" class="stars-layer"></div>
     </div>
 
+    <!-- Splash-лоадер при инициализации -->
+    <Transition name="fade">
+      <div v-if="isInitializing" class="splash-loader">
+        <div class="splash-orb">
+          <div class="splash-orb-core"></div>
+          <div class="splash-orb-ring r1"></div>
+          <div class="splash-orb-ring r2"></div>
+        </div>
+        <p class="splash-text">Загружаем...</p>
+      </div>
+    </Transition>
+
     <!-- Screens -->
     <Transition :name="transitionName" mode="out-in">
-      <component :is="currentScreen" :key="currentRoute" />
+      <component v-if="!isInitializing" :is="currentScreen" :key="currentRoute" />
     </Transition>
 
     <!-- Bottom Navigation -->
-    <BottomNav v-if="showNav" :active-tab="activeTab" @change="handleTabChange" />
+    <BottomNav v-if="!isInitializing && showNav" :active-tab="activeTab" @change="handleTabChange" />
+
+    <!-- Global error toasts -->
+    <ToastContainer />
   </div>
 </template>
 
@@ -37,15 +52,17 @@ import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
 import FortuneScreen       from './components/screens/FortuneScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
+import ToastContainer from './components/ui/ToastContainer.vue'
 
 const { hapticFeedback } = useTelegram()
 const { authWithTelegram, fetchProfile, hasProfile } = useUser()
 
-const currentRoute  = ref<string>('onboarding')
-const previousRoute = ref<string>('')
+const currentRoute   = ref<string>('onboarding')
+const previousRoute  = ref<string>('')
 const transitionName = ref<string>('fade')
-const activeTab     = ref<string>('home')
-const starsRef      = ref<HTMLElement | null>(null)
+const activeTab      = ref<string>('home')
+const starsRef       = ref<HTMLElement | null>(null)
+const isInitializing = ref<boolean>(true)
 
 // Скрины без нижней навигации
 const showNav = computed(() =>
@@ -128,6 +145,8 @@ onMounted(async () => {
       activeTab.value = 'home'
     }
   }
+
+  isInitializing.value = false
 })
 </script>
 
@@ -159,6 +178,49 @@ onMounted(async () => {
    bg-atmosphere via DOM order (later sibling wins at same z-index:auto level). */
 .app-shell > *:not(.bg-atmosphere):not(nav) {
   position: relative;
+}
+
+/* ── Splash loader ── */
+.splash-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: #0a0514;
+}
+.splash-orb {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+.splash-orb-core {
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #b654ff, #e94aa8);
+  box-shadow: 0 0 40px rgba(182,84,255,0.6);
+}
+.splash-orb-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(182,84,255,0.35);
+  animation: center-ring 2.5s ease-out infinite;
+}
+.splash-orb-ring.r1 { inset: 10px; animation-delay: 0s; }
+.splash-orb-ring.r2 { inset: 0;    animation-delay: 0.8s; }
+@keyframes center-ring {
+  0%   { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.6); }
+}
+.splash-text {
+  font-size: 14px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: .06em;
+  margin: 0;
 }
 
 /* ── Transitions ── */

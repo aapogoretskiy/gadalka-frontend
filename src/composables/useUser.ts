@@ -33,8 +33,7 @@ export function useUser() {
       localStorage.setItem('jwt_token', jwtToken)
       telegramUser.value = user
       return true
-    } catch (err) {
-      console.error('[useUser] Ошибка авторизации:', err)
+    } catch {
       return false
     } finally {
       isAuthLoading.value = false

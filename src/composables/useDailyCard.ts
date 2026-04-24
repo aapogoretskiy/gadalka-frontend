@@ -22,10 +22,8 @@ export function useDailyCard() {
       const res      = await api.getDailyCard()
       dailyCard.value = res.data
       fetched         = true
-    } catch (e: any) {
-      // 401 обрабатывается глобальным interceptor'ом в api.ts
+    } catch {
       error.value = 'Не удалось загрузить карту дня'
-      console.error('[useDailyCard]', e)
     } finally {
       isLoading.value = false
     }
