@@ -120,8 +120,6 @@
         {{ isSaving ? 'Сохраняем...' : 'Сохранить' }}
       </button>
     </div>
-
-    </div>
   </div>
 </template>
 
