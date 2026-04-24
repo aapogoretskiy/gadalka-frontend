@@ -79,50 +79,51 @@
       <button class="reset-btn haptic" @click="handleReset">
         Сбросить профиль
       </button>
+
+      <!-- Edit profile bottom sheet: Teleport внутри root-div,
+           чтобы компонент оставался single-root и Transition в App.vue работал корректно -->
+      <Teleport to="body">
+        <div v-if="editOpen" class="sheet-overlay" @click.self="editOpen = false">
+          <div class="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title serif">Изменить данные</div>
+
+            <div class="edit-form">
+              <div class="edit-row">
+                <label class="edit-label">Дата рождения</label>
+                <input v-model="editForm.birthDate" type="date" class="edit-input" />
+              </div>
+              <div class="edit-row">
+                <label class="edit-label">Время рождения</label>
+                <input v-model="editForm.birthTime" type="time" class="edit-input" />
+              </div>
+              <div class="edit-row">
+                <label class="edit-label">Город рождения</label>
+                <input v-model="editForm.birthCity" type="text" placeholder="Например: Москва" class="edit-input" />
+              </div>
+
+              <div class="edit-label" style="margin-bottom:10px">Интересы</div>
+              <div class="goal-grid">
+                <button
+                  v-for="g in goalOptions" :key="g.value"
+                  class="goal-card haptic"
+                  :class="{ selected: editForm.goals.includes(g.value) }"
+                  @click="toggleEditGoal(g.value)"
+                >
+                  <span class="goal-icon">{{ g.emoji }}</span>
+                  <span class="goal-label">{{ g.label }}</span>
+                </button>
+              </div>
+            </div>
+
+            <button class="sheet-save-btn haptic" :disabled="isSaving" @click="saveEdit">
+              {{ isSaving ? 'Сохраняем...' : 'Сохранить' }}
+            </button>
+          </div>
+        </div>
+      </Teleport>
     </div>
   </div>
-
-  <!-- Edit profile bottom sheet (Teleport — рендерится в body, вне scroll-контейнера) -->
-  <Teleport to="body">
-  <div v-if="editOpen" class="sheet-overlay" @click.self="editOpen = false">
-    <div class="bottom-sheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-title serif">Изменить данные</div>
-
-      <div class="edit-form">
-        <div class="edit-row">
-          <label class="edit-label">Дата рождения</label>
-          <input v-model="editForm.birthDate" type="date" class="edit-input" />
-        </div>
-        <div class="edit-row">
-          <label class="edit-label">Время рождения</label>
-          <input v-model="editForm.birthTime" type="time" class="edit-input" />
-        </div>
-        <div class="edit-row">
-          <label class="edit-label">Город рождения</label>
-          <input v-model="editForm.birthCity" type="text" placeholder="Например: Москва" class="edit-input" />
-        </div>
-
-        <div class="edit-label" style="margin-bottom:10px">Интересы</div>
-        <div class="goal-grid">
-          <button
-            v-for="g in goalOptions" :key="g.value"
-            class="goal-card haptic"
-            :class="{ selected: editForm.goals.includes(g.value) }"
-            @click="toggleEditGoal(g.value)"
-          >
-            <span class="goal-icon">{{ g.emoji }}</span>
-            <span class="goal-label">{{ g.label }}</span>
-          </button>
-        </div>
-      </div>
-
-      <button class="sheet-save-btn haptic" :disabled="isSaving" @click="saveEdit">
-        {{ isSaving ? 'Сохраняем...' : 'Сохранить' }}
-      </button>
-    </div>
-  </div>
-  </Teleport>
 </template>
 
 <script setup lang="ts">
