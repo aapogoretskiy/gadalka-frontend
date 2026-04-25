@@ -90,7 +90,7 @@
           </div>
         </div>
 
-        <button class="fortune-btn haptic" style="margin-top:20px" @click="startFortune">
+        <button class="fortune-btn haptic" style="margin-top:20px" :disabled="fortuneUsed && !isDev" @click="startFortune">
           Перейти к раскладу →
         </button>
       </template>
