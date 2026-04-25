@@ -4,7 +4,8 @@
       "Bash(npx vue-tsc *)",
       "Bash(git -C \"D:/gadalka/gadalka-frontend\" diff --stat HEAD)",
       "Bash(grep -E \"\\\\.\\(java|properties|yml\\)$\")",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(xargs ls *)"
     ]
   }
 }

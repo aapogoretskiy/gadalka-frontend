@@ -68,10 +68,7 @@
         <button class="retry-btn haptic" @click="fetchDailyCard(true)">Попробовать снова</button>
       </div>
 
-      <div v-if="isFlipped" style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-        <button class="action-btn primary haptic" :disabled="isSaving || saveSuccess" @click="addToDiary">
-          {{ saveSuccess ? '✓ Сохранено' : isSaving ? 'Сохраняем...' : 'Добавить в дневник' }}
-        </button>
+      <div v-if="isFlipped" style="margin-top:16px">
         <button class="action-btn secondary haptic" @click="navigate('tarot')">
           Открыть колоду
         </button>
@@ -84,15 +81,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, inject } from 'vue'
 import { useDailyCard } from '@/composables/useDailyCard'
-import { hapticFeedback } from '@/utils/telegram'
-import { api } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { dailyCard, isLoading: cardLoading, error: cardError, fetchDailyCard } = useDailyCard()
 
 const isFlipped = ref(false)
-const isSaving = ref(false)
-const saveSuccess = ref(false)
 
 const formattedDate = computed(() => {
   if (!dailyCard.value?.date) return ''
@@ -100,22 +93,6 @@ const formattedDate = computed(() => {
     day: 'numeric', month: 'long',
   })
 })
-
-const addToDiary = async () => {
-  if (!dailyCard.value?.cardId || isSaving.value || saveSuccess.value) return
-  isSaving.value = true
-  try {
-    await api.saveDiaryEntry({ featureType: 'DAILY_CARD', referenceId: dailyCard.value.cardId })
-    hapticFeedback.success()
-    saveSuccess.value = true
-    setTimeout(() => navigate?.('diary'), 800)
-  } catch {
-    hapticFeedback.error?.()
-    navigate?.('diary')
-  } finally {
-    isSaving.value = false
-  }
-}
 
 onMounted(() => {
   fetchDailyCard()

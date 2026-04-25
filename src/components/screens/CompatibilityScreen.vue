@@ -20,6 +20,18 @@
       <!-- Form -->
       <div v-if="!result" class="form-section">
 
+        <!-- Tip banner (dismissible) -->
+        <div v-if="!tipDismissed" class="tip-banner glass">
+          <div class="tip-banner-header">
+            <span class="tip-banner-title">💡 Совет для точного результата</span>
+            <button class="tip-close haptic" @click="dismissTip">✕</button>
+          </div>
+          <div class="tip-banner-body">
+            Совместимость рассчитывается по нумерологическим значениям имён и дат рождения.<br>
+            <strong>Рекомендуем вводить полное имя</strong> (например, «Александр», а не «Саша»).
+          </div>
+        </div>
+
         <!-- Person 1 -->
         <div class="person-block glass">
           <div class="person-block-header">
@@ -92,11 +104,7 @@
           {{ errorMsg }}
         </div>
 
-        <!-- Tips -->
-        <div class="tip-card glass">
-          <div class="tip-title">💡 Как работает?</div>
-          <div class="tip-body">Совместимость рассчитывается по нумерологическим значениям имён и дат рождения. Используйте полные официальные имена для точного результата (например, «Александр», а не «Саша»).</div>
-        </div>
+        <div class="tip-mini">💡 Используйте полные имена для точного расчёта</div>
       </div>
 
       <!-- Result -->
@@ -189,12 +197,19 @@ import { ref, computed, inject } from 'vue'
 import { api, type CompatibilityResponse } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
 import { useDevMode } from '@/composables/useDevMode'
+import { useToast } from '@/composables/useToast'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
 const { isDev } = useDevMode()
+const { addToast } = useToast()
+const tipDismissed = ref(localStorage.getItem('compatTipDismissed') === 'true')
+function dismissTip() {
+  tipDismissed.value = true
+  localStorage.setItem('compatTipDismissed', 'true')
+}
 
 const name1 = ref('')
 const birthDate1 = ref('')
@@ -250,8 +265,11 @@ async function calculate() {
 }
 
 function unlockPremium() {
-  // TODO: интегрировать платёж (Telegram Stars / эквайринг)
-  paidUnlocked.value = true
+  if (isDev.value) {
+    paidUnlocked.value = true
+    return
+  }
+  addToast('Оплата скоро будет доступна 🔮', 'info')
 }
 
 async function saveToDiary() {
@@ -361,9 +379,17 @@ function reset() {
   border: 1px solid rgba(255,80,80,.2);
 }
 
-.tip-card { padding: 18px; margin-top: 6px; }
-.tip-title { font-size: 13px; font-weight: 600; color: #ffc857; margin-bottom: 8px; }
-.tip-body  { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.65); }
+.tip-banner { padding: 14px 16px; }
+.tip-banner-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tip-banner-title { font-size: 13px; font-weight: 700; color: #ffc857; }
+.tip-close {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255,200,87,0.12); border: none;
+  color: rgba(255,200,87,0.6); font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tip-banner-body { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.65); }
+.tip-mini { font-size: 11px; color: rgba(255,255,255,.3); text-align: center; padding: 4px 0 2px; }
 
 /* Result */
 .result-section { display: flex; flex-direction: column; align-items: center; gap: 18px; }

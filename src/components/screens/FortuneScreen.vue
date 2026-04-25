@@ -64,8 +64,8 @@
           <div
             v-for="s in spreads" :key="s.count"
             class="spread-card"
-            :class="{ selected: selectedSpread === s.count, 'spread-card--locked': s.count !== 3, haptic: s.count === 3 }"
-            @click="s.count === 3 ? selectedSpread = s.count : null"
+            :class="{ selected: selectedSpread === s.count, 'spread-card--locked': s.count !== 3 || (s.count === 3 && fortuneUsed && !isDev), haptic: s.count === 3 && (!fortuneUsed || isDev) }"
+            @click="handleSpreadSelect(s.count)"
           >
             <div class="spread-icon-wrap">
               <div v-for="i in s.count" :key="i" class="mini-card-spread"
@@ -77,8 +77,14 @@
             </div>
             <div class="spread-right">
               <ComingSoonBadge v-if="s.count !== 3" />
-              <div class="spread-price" :style="s.count === 3 ? 'color:#70e0a8' : 'color:#ffc857'">
-                {{ s.count === 3 ? 'Бесплатно' : s.count === 5 ? '299 ₽' : '499 ₽' }}
+              <template v-if="s.count === 3">
+                <div v-if="!fortuneUsed || isDev" class="spread-price" style="color:#70e0a8">
+                  <span style="text-decoration:line-through;color:rgba(255,200,87,0.55);font-size:11px;margin-right:3px">199 ₽</span>Бесплатно
+                </div>
+                <div v-else class="spread-price" style="color:#ffc857">199 ₽</div>
+              </template>
+              <div v-else class="spread-price" style="color:#ffc857">
+                {{ s.count === 5 ? '299 ₽' : '499 ₽' }}
               </div>
             </div>
           </div>
@@ -226,8 +232,14 @@ import { api } from '@/utils/api'
 import type { FortuneResponse } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
+import { useDevMode } from '@/composables/useDevMode'
+import { useFortuneState } from '@/composables/useFortuneState'
+import { useToast } from '@/composables/useToast'
 
 const navigate = inject<(r: string) => void>('navigate')
+const { isDev } = useDevMode()
+const { fortuneUsed, markFortuneUsed } = useFortuneState()
+const { addToast } = useToast()
 
 const step = ref(1)
 const question = ref('')
@@ -289,6 +301,7 @@ const startFortune = async () => {
   try {
     const res = await api.getFortune(question.value, selectedCategory.value || undefined)
     result.value = res.data
+    markFortuneUsed()
     progress.value = 100
     setTimeout(() => { step.value = 4 }, 400)
   } catch (e: any) {
@@ -313,6 +326,15 @@ const saveToDiary = async () => {
   }
 }
 
+function handleSpreadSelect(count: number) {
+  if (count !== 3) return
+  if (fortuneUsed.value && !isDev.value) {
+    addToast('Оплата скоро будет доступна 🔮', 'info')
+    return
+  }
+  selectedSpread.value = count
+}
+
 const resetFortune = () => {
   step.value = 1
   question.value = ''
@@ -325,7 +347,7 @@ const resetFortune = () => {
 </script>
 
 <style scoped>
-.screen-wrap { min-height: 100vh; padding-bottom: 20px; overflow-y: auto; }
+.screen-wrap { min-height: 100vh; padding-bottom: 100px; overflow-y: auto; }
 .content { padding: 56px 20px 20px; }
 
 .header-bar {

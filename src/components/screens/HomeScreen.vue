@@ -10,7 +10,6 @@
         </div>
         <div class="avatar" @click="navigate('profile')">
           {{ userInitial }}
-          <div class="streak-mini">🔥 7</div>
         </div>
       </div>
 
@@ -81,7 +80,7 @@
         <h3>Задать вопрос Оракулу</h3>
         <p>Получите ответ через расклад карт Таро</p>
         <div class="cta-btn-inner">Начать <span>→</span></div>
-        <div class="free-badge">Первый бесплатно</div>
+        <div class="free-badge">{{ fortuneUsed ? '199 ₽' : 'Первый бесплатно' }}</div>
       </div>
 
       <!-- Actions grid -->
@@ -112,11 +111,13 @@ import { ref, computed, onMounted, inject } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { useDailyCard } from '@/composables/useDailyCard'
 import { useDevMode } from '@/composables/useDevMode'
+import { useFortuneState } from '@/composables/useFortuneState'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { isDev, toggleDevMode } = useDevMode()
+const { fortuneUsed } = useFortuneState()
 
 const cardFlipped = ref(false)
 const betaVisible = ref(true)
@@ -265,15 +266,6 @@ onMounted(() => {
   background: linear-gradient(135deg, #ffc857, #e94aa8, #b654ff);
   z-index: -1; opacity: 0.5;
   animation: avatar-rotate 6s linear infinite;
-}
-.streak-mini {
-  position: absolute;
-  bottom: -6px; right: -8px;
-  background: linear-gradient(135deg, #ff7043, #e94aa8);
-  border: 2px solid #0a0514;
-  border-radius: 100px;
-  padding: 2px 6px;
-  font-size: 9px; font-weight: 700; color: #fff;
 }
 
 /* Tarot day card */
