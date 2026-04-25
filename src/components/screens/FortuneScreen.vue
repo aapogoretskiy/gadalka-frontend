@@ -238,7 +238,7 @@ import { useToast } from '@/composables/useToast'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { isDev } = useDevMode()
-const { fortuneUsed, markFortuneUsed } = useFortuneState()
+const { fortuneUsed, setFortuneUsed } = useFortuneState()
 const { addToast } = useToast()
 
 const step = ref(1)
@@ -301,7 +301,7 @@ const startFortune = async () => {
   try {
     const res = await api.getFortune(question.value, selectedCategory.value || undefined)
     result.value = res.data
-    markFortuneUsed()
+    setFortuneUsed(true)
     progress.value = 100
     setTimeout(() => { step.value = 4 }, 400)
   } catch (e: any) {

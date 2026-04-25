@@ -72,6 +72,7 @@ export interface TelegramUserDto {
 export interface TelegramAuthResponse {
   user: TelegramUserDto
   jwtToken: string
+  fortuneUsed: boolean
 }
 
 // GET/POST/PUT /api/user-profiles

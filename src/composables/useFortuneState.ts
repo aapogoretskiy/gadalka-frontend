@@ -1,11 +1,10 @@
 import { ref } from 'vue'
 
-const fortuneUsed = ref(localStorage.getItem('fortuneUsed') === 'true')
+const fortuneUsed = ref(false)
 
 export function useFortuneState() {
-  const markFortuneUsed = () => {
-    fortuneUsed.value = true
-    localStorage.setItem('fortuneUsed', 'true')
+  const setFortuneUsed = (value: boolean) => {
+    fortuneUsed.value = value
   }
-  return { fortuneUsed, markFortuneUsed }
+  return { fortuneUsed, setFortuneUsed }
 }
