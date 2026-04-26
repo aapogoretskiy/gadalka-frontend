@@ -130,7 +130,7 @@ const affirmation = computed(() => {
 const selectedPeriod = ref('Месяц')
 const periods = [
   { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней', price: '149 ₽', popular: false },
-  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ', price: '349 ₽', popular: true  },
+  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ', price: '349 ₽', popular: false },
   { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', price: '1290 ₽', popular: false },
 ]
 </script>
