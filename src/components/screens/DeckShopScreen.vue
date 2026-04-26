@@ -140,7 +140,7 @@ const decks = ref<Deck[]>([
   {
     id: 'cosmic', name: 'Космическая', description: 'Звёздная магия и вселенная',
     icon: '🌌', bg: 'linear-gradient(135deg, #0a1a4e, #1a2b8e)',
-    price: 349, owned: false, active: false, popular: true, disabled: true, category: 'Мистика',
+    price: 349, owned: false, active: false, disabled: true, category: 'Мистика',
     features: ['78 карт', 'Звёздные фоны', 'Небесные архетипы'],
   },
   {
@@ -158,7 +158,7 @@ const decks = ref<Deck[]>([
   {
     id: 'crystal', name: 'Кристальная', description: 'Магия кристаллов',
     icon: '💎', bg: 'linear-gradient(135deg, #0a2a4e, #1a3a6e)',
-    price: 399, owned: false, active: false, popular: true, disabled: true, category: 'Мистика',
+    price: 399, owned: false, active: false, disabled: true, category: 'Мистика',
     features: ['78 карт', 'Кристаллические текстуры', 'Пастельные оттенки'],
   },
   {
