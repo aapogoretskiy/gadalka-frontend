@@ -10,128 +10,135 @@
         <div style="width:36px"></div>
       </div>
 
-      <!-- Number hero -->
-      <div class="num-hero gradient-card">
-        <div class="num-mega">{{ lifeNumber }}</div>
-        <div class="num-label">Код дня</div>
-        <div class="num-short serif">{{ lifeNumberTitle }}</div>
+      <!-- Loading -->
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Считаем ваше число дня…</div>
       </div>
 
-      <!-- Day strip -->
-      <div class="day-strip glass">
-        <div class="day-strip-item">
-          <div class="strip-icon">🌙</div>
-          <div class="strip-label">Луна</div>
-          <div class="strip-val">Убывающая</div>
+      <!-- Error: no birth date -->
+      <div v-else-if="noBirthDate" class="error-card glass">
+        <div class="error-icon">🔢</div>
+        <div class="error-title serif">Нужна дата рождения</div>
+        <div class="error-body">Укажите дату рождения в профиле — без неё личный код дня не рассчитать.</div>
+        <button class="action-btn" @click="navigate('profile')">Заполнить профиль</button>
+      </div>
+
+      <!-- Content -->
+      <template v-else-if="data">
+
+        <!-- Number hero -->
+        <div class="num-hero gradient-card">
+          <div class="num-mega">{{ data.dayCode }}</div>
+          <div class="num-label">Код дня</div>
+          <div class="num-short serif">{{ data.dayCodeTitle }}</div>
         </div>
-        <div class="strip-divider"></div>
-        <div class="day-strip-item">
-          <div class="strip-icon">♈</div>
-          <div class="strip-label">Знак</div>
-          <div class="strip-val">{{ zodiacSign }}</div>
+
+        <!-- Day strip -->
+        <div class="day-strip glass">
+          <div class="day-strip-item">
+            <div class="strip-icon">🌙</div>
+            <div class="strip-label">Луна</div>
+            <div class="strip-val">{{ data.moonPhase }}</div>
+          </div>
+          <div class="strip-divider"></div>
+          <div class="day-strip-item">
+            <div class="strip-icon">✨</div>
+            <div class="strip-label">Знак</div>
+            <div class="strip-val">{{ data.zodiacSign }}</div>
+          </div>
+          <div class="strip-divider"></div>
+          <div class="day-strip-item">
+            <div class="strip-icon">⏰</div>
+            <div class="strip-label">Лучшее время</div>
+            <div class="strip-val">{{ data.bestTime }}</div>
+          </div>
         </div>
-        <div class="strip-divider"></div>
-        <div class="day-strip-item">
-          <div class="strip-icon">⏰</div>
-          <div class="strip-label">Лучшее время</div>
-          <div class="strip-val">10:00–14:00</div>
+
+        <!-- Detail cards -->
+        <div class="detail-card glass">
+          <h4 class="serif detail-title">⚡ Энергия дня</h4>
+          <p class="detail-body">{{ data.energyOfDay }}</p>
         </div>
-      </div>
-
-      <!-- Detail cards -->
-      <div class="detail-card glass" v-for="d in details" :key="d.title">
-        <h4 class="serif detail-title">{{ d.title }}</h4>
-        <p class="detail-body">{{ d.text }}</p>
-      </div>
-
-      <!-- Affirmation -->
-      <div class="affirmation-card gradient-card">
-        <div class="aff-label">✦ Аффирмация дня</div>
-        <div class="aff-text serif">"{{ affirmation }}"</div>
-      </div>
-
-      <!-- Deep analysis section -->
-      <div class="section-header">
-        <div class="section-title serif">А теперь глубже</div>
-      </div>
-
-      <div class="period-grid">
-        <div
-          v-for="p in periods" :key="p.label"
-          class="period-card haptic"
-          :class="{ selected: selectedPeriod === p.label }"
-          @click="selectedPeriod = p.label"
-        >
-          <div v-if="p.popular" class="period-badge">ХИТ</div>
-          <div class="period-icon">{{ p.icon }}</div>
-          <div class="period-title serif">{{ p.label }}</div>
-          <div class="period-desc">{{ p.desc }}</div>
-          <div class="period-price">{{ p.price }}</div>
+        <div class="detail-card glass">
+          <h4 class="serif detail-title">✅ Что делать</h4>
+          <p class="detail-body">{{ data.whatToDo }}</p>
         </div>
-      </div>
+        <div class="detail-card glass">
+          <h4 class="serif detail-title">⚠️ Чего избегать</h4>
+          <p class="detail-body">{{ data.whatToAvoid }}</p>
+        </div>
+        <div class="detail-card glass">
+          <h4 class="serif detail-title">🌟 Астро-событие</h4>
+          <p class="detail-body">{{ data.astroEvent }}</p>
+        </div>
 
-      <button class="action-btn action-btn--disabled" disabled>
-        <span>Получить глубокий анализ</span>
-        <ComingSoonBadge />
-      </button>
+        <!-- Affirmation -->
+        <div class="affirmation-card gradient-card">
+          <div class="aff-label">✦ Аффирмация дня</div>
+          <div class="aff-text serif">"{{ data.affirmation }}"</div>
+        </div>
+
+        <!-- Deep analysis section -->
+        <div class="section-header">
+          <div class="section-title serif">А теперь глубже</div>
+        </div>
+
+        <div class="period-grid">
+          <div
+            v-for="p in periods" :key="p.label"
+            class="period-card haptic"
+            :class="{ selected: selectedPeriod === p.label }"
+            @click="selectedPeriod = p.label"
+          >
+            <div v-if="p.popular" class="period-badge">ХИТ</div>
+            <div class="period-icon">{{ p.icon }}</div>
+            <div class="period-title serif">{{ p.label }}</div>
+            <div class="period-desc">{{ p.desc }}</div>
+            <div class="period-price">{{ p.price }}</div>
+          </div>
+        </div>
+
+        <button class="action-btn action-btn--disabled" disabled>
+          <span>Получить глубокий анализ</span>
+          <ComingSoonBadge />
+        </button>
+
+      </template>
 
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
-import { useUser } from '@/composables/useUser'
+import { ref, inject, onMounted } from 'vue'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
+import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
-const { profile } = useUser()
 
-function calcLifeNumber(d: string) {
-  const digits = d.replace(/-/g, '').split('').map(Number)
-  let s = digits.reduce((a, b) => a + b, 0)
-  while (s > 9 && s !== 11 && s !== 22 && s !== 33)
-    s = String(s).split('').map(Number).reduce((a, b) => a + b, 0)
-  return s
-}
-const lifeNumber = computed(() => profile.value?.birthDate ? calcLifeNumber(profile.value.birthDate) : 7)
-const lifeNumberTitle = computed(() => {
-  const m: Record<number,string> = {
-    1:'Лидер', 2:'Дипломат', 3:'Творец', 4:'Строитель', 5:'Искатель',
-    6:'Хранитель', 7:'Мудрец', 8:'Властитель', 9:'Гуманист',
-    11:'Интуит', 22:'Созидатель', 33:'Учитель',
+const loading     = ref(true)
+const noBirthDate = ref(false)
+const data        = ref<NumerologyTodayResponse | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await api.getNumerologyToday()
+    data.value = res.data
+  } catch (err: any) {
+    if (err.response?.status === 422) {
+      noBirthDate.value = true
+    }
+  } finally {
+    loading.value = false
   }
-  return m[lifeNumber.value] || 'Мудрость'
-})
-
-const zodiacSigns = ['Козерог','Водолей','Рыбы','Овен','Телец','Близнецы','Рак','Лев','Дева','Весы','Скорпион','Стрелец']
-const zodiacSign = computed(() => {
-  const m = new Date().getMonth()
-  return zodiacSigns[m]
-})
-
-const details = computed(() => [
-  { title: '⚡ Энергия дня', text: `День числа ${lifeNumber.value} несёт энергию трансформации и внутреннего роста. Прислушайтесь к интуиции.` },
-  { title: '✅ Что делать', text: 'Планировать важные встречи, заниматься творчеством, общаться с близкими.' },
-  { title: '⚠️ Чего избегать', text: 'Конфликтов, непродуманных решений и чрезмерных трат.' },
-  { title: '🌟 Астро-событие', text: 'Меркурий входит в Близнецов — усиливается коммуникация и интеллект.' },
-])
-
-const affirmation = computed(() => {
-  const affs = [
-    'Я открыт к новым возможностям и принимаю изменения с радостью',
-    'Моя интуиция ведёт меня по верному пути',
-    'Я создаю свою реальность силой мысли и намерения',
-    'Успех и процветание — моё естественное состояние',
-  ]
-  return affs[lifeNumber.value % affs.length]
 })
 
 const selectedPeriod = ref('Месяц')
 const periods = [
-  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней', price: '149 ₽', popular: false },
-  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ', price: '349 ₽', popular: false },
-  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', price: '1290 ₽', popular: false },
+  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней',  price: '149 ₽',  popular: false },
+  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ',   price: '349 ₽',  popular: false },
+  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы',  price: '1290 ₽', popular: false },
 ]
 </script>
 
@@ -146,6 +153,23 @@ const periods = [
   display:flex; align-items:center; justify-content:center; cursor:pointer; color:#F5ECFF;
 }
 .header-title { font-size:18px; }
+
+/* Loading */
+.loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 60px 20px; gap: 16px; }
+.loading-spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.1);
+  border-top-color: #ffc857;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: rgba(255,255,255,.5); }
+
+/* Error */
+.error-card { padding: 32px 24px; text-align: center; margin-bottom: 16px; }
+.error-icon  { font-size: 40px; margin-bottom: 12px; }
+.error-title { font-size: 20px; margin-bottom: 8px; }
+.error-body  { font-size: 14px; color: rgba(255,255,255,.65); line-height: 1.6; margin-bottom: 20px; }
 
 /* Number hero */
 .num-hero { padding: 28px 22px; text-align: center; margin-bottom: 14px; }

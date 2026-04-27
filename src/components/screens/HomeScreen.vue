@@ -112,15 +112,17 @@ import { useUser } from '@/composables/useUser'
 import { useDailyCard } from '@/composables/useDailyCard'
 import { useDevMode } from '@/composables/useDevMode'
 import { useFortuneState } from '@/composables/useFortuneState'
+import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
-const { telegramUser, profile } = useUser()
+const { telegramUser } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { isDev, toggleDevMode } = useDevMode()
 const { fortuneUsed } = useFortuneState()
 
-const cardFlipped = ref(false)
-const betaVisible = ref(true)
+const cardFlipped    = ref(false)
+const betaVisible    = ref(true)
+const numerologyData = ref<NumerologyTodayResponse | null>(null)
 
 // Секретный триггер: 5 тапов по BETA-бейджу за 3 секунды → включить/выключить DEV MODE
 const betaTapCount = ref(0)
@@ -142,25 +144,17 @@ const dateStr = computed(() =>
   new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })
 )
 
-function calcLifeNumber(d: string) {
-  const digits = d.replace(/-/g, '').split('').map(Number)
-  let s = digits.reduce((a, b) => a + b, 0)
-  while (s > 9 && s !== 11 && s !== 22 && s !== 33)
-    s = String(s).split('').map(Number).reduce((a, b) => a + b, 0)
-  return s
-}
-const lifeNumber = computed(() => profile.value?.birthDate ? calcLifeNumber(profile.value.birthDate) : 7)
-const lifeNumberTitle = computed(() => {
-  const m: Record<number,string> = {
-    1:'Лидер', 2:'Дипломат', 3:'Творец', 4:'Строитель',
-    5:'Искатель', 6:'Хранитель', 7:'Мудрец', 8:'Властитель',
-    9:'Гуманист', 11:'Интуит', 22:'Созидатель', 33:'Учитель',
-  }
-  return m[lifeNumber.value] || 'Мудрость'
-})
+const lifeNumber      = computed(() => numerologyData.value?.dayCode ?? '—')
+const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle ?? '')
 
-onMounted(() => {
+onMounted(async () => {
   fetchDailyCard()
+  try {
+    const res = await api.getNumerologyToday()
+    numerologyData.value = res.data
+  } catch {
+    // Превью не критично — молча игнорируем если профиль не заполнен
+  }
 })
 </script>
 

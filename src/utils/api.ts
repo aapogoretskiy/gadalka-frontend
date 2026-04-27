@@ -154,8 +154,26 @@ export interface CompatibilityResponse {
   categories: CompatibilityCategoryScore[]
 }
 
+// GET /api/numerology/today
+export interface NumerologyTodayResponse {
+  id: number
+  date: string
+  dayCode: number
+  dayCodeTitle: string
+  moonPhase: string
+  zodiacSign: string
+  bestTime: string
+  energyOfDay: string
+  whatToDo: string
+  whatToAvoid: string
+  astroEvent: string
+  affirmation: string
+  personalYearNumber: number
+  personalMonthNumber: number
+}
+
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'COMPATIBILITY' | 'DAILY_CARD'
+export type FeatureType = 'THREE_CARD' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -218,6 +236,10 @@ export const api = {
 
   saveDiaryEntry: (data: DiarySaveRequest) =>
     apiClient.post<DiaryEntryDto>('/api/diary', data),
+
+  // Нумерология дня
+  getNumerologyToday: () =>
+    apiClient.get<NumerologyTodayResponse>('/api/numerology/today'),
 
   // Health check
   health: () =>
