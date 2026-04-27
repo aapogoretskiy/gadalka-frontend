@@ -134,11 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, watch } from 'vue'
+import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useUser } from '@/composables/useUser'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
-import type { Goal } from '@/utils/api'
+import { api, type Goal, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
@@ -151,21 +151,17 @@ const userBirthdate = computed(() => {
   return new Date(profile.value.birthDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 })
 
-function calcLifeNumber(d: string) {
-  const digits = d.replace(/-/g, '').split('').map(Number)
-  let s = digits.reduce((a, b) => a + b, 0)
-  while (s > 9 && s !== 11 && s !== 22 && s !== 33)
-    s = String(s).split('').map(Number).reduce((a, b) => a + b, 0)
-  return s
-}
-const lifeNumber = computed(() => profile.value?.birthDate ? calcLifeNumber(profile.value.birthDate) : 7)
-const lifeNumberTitle = computed(() => {
-  const m: Record<number, string> = {
-    1:'Лидер', 2:'Дипломат', 3:'Творец', 4:'Строитель', 5:'Искатель',
-    6:'Хранитель', 7:'Мудрец', 8:'Властитель', 9:'Гуманист',
-    11:'Интуит', 22:'Созидатель', 33:'Учитель',
+const numerologyData = ref<NumerologyTodayResponse | null>(null)
+const lifeNumber      = computed(() => numerologyData.value?.lifePathNumber ?? '—')
+const lifeNumberTitle = computed(() => numerologyData.value?.lifePathTitle ?? '')
+
+onMounted(async () => {
+  try {
+    const res = await api.getNumerologyToday()
+    numerologyData.value = res.data
+  } catch {
+    // Профиль может быть не заполнен — карточка покажет прочерк
   }
-  return m[lifeNumber.value] || 'Мудрость'
 })
 
 // ── Сброс профиля ──

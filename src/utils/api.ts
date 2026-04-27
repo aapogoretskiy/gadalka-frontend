@@ -160,6 +160,8 @@ export interface NumerologyTodayResponse {
   date: string
   dayCode: number
   dayCodeTitle: string
+  lifePathNumber: number
+  lifePathTitle: string
   moonPhase: string
   zodiacSign: string
   bestTime: string
