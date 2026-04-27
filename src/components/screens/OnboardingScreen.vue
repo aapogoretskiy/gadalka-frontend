@@ -323,6 +323,10 @@ const handleFinish = async () => {
   font-family: 'Manrope', sans-serif;
   outline: none;
   transition: border-color 0.2s;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 52px;
 }
 .onb-input:focus { border-color: rgba(182,84,255,0.5); }
 .onb-input::placeholder { color: rgba(255,255,255,0.4); }
