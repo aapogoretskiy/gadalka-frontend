@@ -27,11 +27,23 @@
 
         <div class="form-row">
           <label class="input-label">Дата рождения <span class="req">*</span></label>
-          <input v-model="form.birthDate" type="date" class="onb-input input-date" />
+          <input
+            type="date"
+            :value="form.birthDate"
+            @input="form.birthDate = ($event.target as HTMLInputElement).value"
+            @change="form.birthDate = ($event.target as HTMLInputElement).value"
+            class="onb-input input-date"
+          />
         </div>
         <div class="form-row">
           <label class="input-label">Время рождения <span class="req">*</span></label>
-          <input v-model="form.birthTime" type="time" class="onb-input input-date" />
+          <input
+            type="time"
+            :value="form.birthTime"
+            @input="form.birthTime = ($event.target as HTMLInputElement).value"
+            @change="form.birthTime = ($event.target as HTMLInputElement).value"
+            class="onb-input input-date"
+          />
         </div>
         <div class="form-row">
           <label class="input-label">Город рождения <span class="req">*</span></label>
@@ -119,7 +131,7 @@ import { useUser } from '@/composables/useUser'
 import type { Goal } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
-const { createProfile } = useUser()
+const { createProfile, authWithTelegram } = useUser()
 
 const step = ref(1)
 const isLoading = ref(false)
@@ -170,6 +182,13 @@ const handleFinish = async () => {
   isLoading.value = true
   errorMsg.value = ''
   try {
+    if (!localStorage.getItem('jwt_token')) {
+      const ok = await authWithTelegram()
+      if (!ok) {
+        errorMsg.value = 'Не удалось авторизоваться. Попробуйте перезапустить приложение.'
+        return
+      }
+    }
     await createProfile({
       birthDate: form.value.birthDate || undefined,
       birthTime: form.value.birthTime ? form.value.birthTime + ':00' : undefined,

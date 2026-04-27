@@ -15,7 +15,6 @@ const apiClient = axios.create({
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true'
   },
 })
 
@@ -193,7 +192,7 @@ export const api = {
     apiClient.get<ProfileResponse>('/api/user-profiles', { skipGlobalError: true }),
 
   createProfile: (data: CreateProfileRequest) =>
-    apiClient.post<ProfileResponse>('/api/user-profiles', data),
+    apiClient.post<ProfileResponse>('/api/user-profiles', data, { skipGlobalError: true }),
 
   updateProfile: (data: UpdateProfileRequest) =>
     apiClient.put<ProfileResponse>('/api/user-profiles', data),
