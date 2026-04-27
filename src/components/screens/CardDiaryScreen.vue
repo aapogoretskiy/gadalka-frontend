@@ -115,6 +115,37 @@
           </div>
         </template>
 
+        <!-- NUMEROLOGY_DAY -->
+        <template v-if="selected.featureType === 'NUMEROLOGY_DAY'">
+          <div class="modal-type-label">🔢 Число дня</div>
+          <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
+          <div class="modal-numerology-hero">
+            <div class="modal-day-code">{{ selected.data?.dayCode }}</div>
+            <div class="modal-day-title serif">{{ selected.data?.dayCodeTitle }}</div>
+          </div>
+          <div class="modal-numerology-strip">
+            <div class="modal-num-pill">🌙 {{ selected.data?.moonPhase }}</div>
+            <div class="modal-num-pill">✨ {{ selected.data?.zodiacSign }}</div>
+            <div class="modal-num-pill">⏰ {{ selected.data?.bestTime }}</div>
+          </div>
+          <div v-if="selected.data?.energyOfDay" class="modal-section">
+            <div class="modal-section-label">⚡ Энергия дня</div>
+            <div class="modal-section-body">{{ selected.data.energyOfDay }}</div>
+          </div>
+          <div v-if="selected.data?.whatToDo" class="modal-section">
+            <div class="modal-section-label">✅ Что делать</div>
+            <div class="modal-section-body">{{ selected.data.whatToDo }}</div>
+          </div>
+          <div v-if="selected.data?.whatToAvoid" class="modal-section">
+            <div class="modal-section-label">⚠️ Чего избегать</div>
+            <div class="modal-section-body">{{ selected.data.whatToAvoid }}</div>
+          </div>
+          <div v-if="selected.data?.affirmation" class="modal-section modal-section--affirmation">
+            <div class="modal-section-label">✦ Аффирмация</div>
+            <div class="modal-section-body modal-affirmation-text serif">"{{ selected.data.affirmation }}"</div>
+          </div>
+        </template>
+
         <!-- COMPATIBILITY -->
         <template v-if="selected.featureType === 'COMPATIBILITY'">
           <div class="modal-type-label">💕 Совместимость</div>
@@ -164,10 +195,11 @@ const activeTab = ref<FeatureType | 'ALL'>('ALL')
 const selected = ref<DiaryEntryDto | null>(null)
 
 const tabs = [
-  { value: 'ALL' as const,           label: 'Все' },
-  { value: 'DAILY_CARD' as const,    label: 'Карта дня' },
-  { value: 'THREE_CARD' as const,    label: '3 карты' },
-  { value: 'COMPATIBILITY' as const, label: 'Совместимость' },
+  { value: 'ALL' as const,            label: 'Все' },
+  { value: 'DAILY_CARD' as const,     label: 'Карта дня' },
+  { value: 'THREE_CARD' as const,     label: '3 карты' },
+  { value: 'COMPATIBILITY' as const,  label: 'Совместимость' },
+  { value: 'NUMEROLOGY_DAY' as const, label: 'Числа' },
 ]
 
 const filteredEntries = computed(() =>
@@ -188,13 +220,14 @@ async function loadAll() {
   error.value = ''
   const { from, to } = dateRange()
   try {
-    const [r1, r2, r3] = await Promise.allSettled([
+    const [r1, r2, r3, r4] = await Promise.allSettled([
       api.getDiaryHistory('THREE_CARD', from, to),
       api.getDiaryHistory('COMPATIBILITY', from, to),
       api.getDiaryHistory('DAILY_CARD', from, to),
+      api.getDiaryHistory('NUMEROLOGY_DAY', from, to),
     ])
     const entries: DiaryEntryDto[] = []
-    for (const r of [r1, r2, r3]) {
+    for (const r of [r1, r2, r3, r4]) {
       if (r.status === 'fulfilled') entries.push(...r.value.data.entries)
     }
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -209,14 +242,16 @@ async function loadAll() {
 const openEntry = (entry: DiaryEntryDto) => { selected.value = entry }
 
 function entryIcon(entry: DiaryEntryDto): string {
-  if (entry.featureType === 'DAILY_CARD') return '✨'
-  if (entry.featureType === 'COMPATIBILITY') return '💕'
+  if (entry.featureType === 'DAILY_CARD')     return '✨'
+  if (entry.featureType === 'COMPATIBILITY')  return '💕'
+  if (entry.featureType === 'NUMEROLOGY_DAY') return '🔢'
   return '🔮'
 }
 
 function entryBg(entry: DiaryEntryDto): string {
-  if (entry.featureType === 'DAILY_CARD') return 'linear-gradient(135deg, #0a1a4e, #1a2b6e)'
-  if (entry.featureType === 'COMPATIBILITY') return 'linear-gradient(135deg, #4e0a2e, #6e1a4a)'
+  if (entry.featureType === 'DAILY_CARD')     return 'linear-gradient(135deg, #0a1a4e, #1a2b6e)'
+  if (entry.featureType === 'COMPATIBILITY')  return 'linear-gradient(135deg, #4e0a2e, #6e1a4a)'
+  if (entry.featureType === 'NUMEROLOGY_DAY') return 'linear-gradient(135deg, #2a1a00, #4a3200)'
   return 'linear-gradient(135deg, #3a1b6e, #1a0b2e)'
 }
 
@@ -227,6 +262,9 @@ function entryTitle(entry: DiaryEntryDto): string {
   if (entry.featureType === 'COMPATIBILITY') {
     const persons = d.persons as Array<{ name: string }>
     return persons?.length === 2 ? `${persons[0].name} & ${persons[1].name}` : 'Совместимость'
+  }
+  if (entry.featureType === 'NUMEROLOGY_DAY') {
+    return d.dayCode != null ? `Код дня — ${d.dayCode}` : 'Число дня'
   }
   const cards = d.cards as Array<{ name: string }>
   return cards?.length ? cards.map((c: { name: string }) => c.name).join(' · ') : 'Расклад 3 карты'
@@ -240,14 +278,22 @@ function entryKeywords(entry: DiaryEntryDto): string[] {
     const cards = d.cards as Array<{ cardPosition: string }>
     return cards?.slice(0, 3).map((c: { cardPosition: string }) => posLabel(c.cardPosition)) ?? []
   }
+  if (entry.featureType === 'NUMEROLOGY_DAY') {
+    const kws: string[] = []
+    if (d.dayCodeTitle) kws.push(d.dayCodeTitle)
+    if (d.zodiacSign)   kws.push(d.zodiacSign)
+    if (d.moonPhase)    kws.push(d.moonPhase)
+    return kws
+  }
   return []
 }
 
 function entryNote(entry: DiaryEntryDto): string {
   const d = entry.data
   if (!d) return ''
-  if (entry.featureType === 'DAILY_CARD') return truncate(d.meaning || d.advice || '', 100)
-  if (entry.featureType === 'COMPATIBILITY') return truncate(d.label ? `${d.label}. ${d.interpretation || ''}` : (d.interpretation || ''), 100)
+  if (entry.featureType === 'DAILY_CARD')     return truncate(d.meaning || d.advice || '', 100)
+  if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label ? `${d.label}. ${d.interpretation || ''}` : (d.interpretation || ''), 100)
+  if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
   return truncate(d.interpretation || '', 100)
 }
 
@@ -442,4 +488,25 @@ onMounted(loadAll)
   transition:width 1s ease;
 }
 .modal-cat-pct { font-size:11px; font-weight:600; color:#ffc857; width:30px; text-align:right; flex-shrink:0; }
+
+/* NUMEROLOGY_DAY */
+.modal-numerology-hero { text-align:center; margin-bottom:16px; }
+.modal-day-code {
+  font-family:'Cormorant Garamond',serif;
+  font-size:72px; font-weight:500; line-height:1;
+  background:linear-gradient(135deg, #ffc857 0%, #e94aa8 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.modal-day-title { font-size:22px; margin-top:6px; font-style:italic; color:#F5ECFF; }
+.modal-numerology-strip { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:20px; }
+.modal-num-pill {
+  padding:5px 12px; border-radius:100px; font-size:12px; font-weight:500;
+  background:rgba(255,200,87,.1); border:1px solid rgba(255,200,87,.2); color:rgba(255,255,255,.8);
+}
+.modal-section--affirmation {
+  background:linear-gradient(135deg, rgba(255,200,87,.08), rgba(233,74,168,.04));
+  border:1px solid rgba(255,200,87,.2);
+  border-radius:14px; padding:14px 16px;
+}
+.modal-affirmation-text { font-size:16px; font-style:italic; color:rgba(255,255,255,.9); line-height:1.5; }
 </style>
