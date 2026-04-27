@@ -144,8 +144,8 @@ const dateStr = computed(() =>
   new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })
 )
 
-const lifeNumber      = computed(() => numerologyData.value?.dayCode ?? '—')
-const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle ?? '')
+const lifeNumber      = computed(() => numerologyData.value?.dayCode || '—')
+const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle || '')
 
 onMounted(async () => {
   fetchDailyCard()

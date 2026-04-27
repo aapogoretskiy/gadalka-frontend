@@ -162,6 +162,7 @@ export interface NumerologyTodayResponse {
   dayCodeTitle: string
   lifePathNumber: number
   lifePathTitle: string
+  lifePathDescription: string
   moonPhase: string
   zodiacSign: string
   bestTime: string

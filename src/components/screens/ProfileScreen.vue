@@ -15,7 +15,7 @@
       <!-- Stats row (временно скрыт — расчёт на бэке не реализован) -->
 
       <!-- Life number -->
-      <div class="life-card gradient-card">
+      <div class="life-card gradient-card haptic" @click="lifeCardExpanded = !lifeCardExpanded">
         <div class="life-inner">
           <div class="life-num">{{ lifeNumber }}</div>
           <div class="life-text">
@@ -23,7 +23,10 @@
             <div class="life-title serif">{{ lifeNumberTitle }}</div>
             <div class="life-sub">Ваш путь предназначения</div>
           </div>
-          <button class="life-arrow haptic" @click="navigate('numerology')">›</button>
+          <div class="life-arrow" :class="{ 'life-arrow--open': lifeCardExpanded }">›</div>
+        </div>
+        <div v-if="lifeCardExpanded && lifeNumberDescription" class="life-description">
+          {{ lifeNumberDescription }}
         </div>
       </div>
 
@@ -151,9 +154,11 @@ const userBirthdate = computed(() => {
   return new Date(profile.value.birthDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 })
 
-const numerologyData = ref<NumerologyTodayResponse | null>(null)
-const lifeNumber      = computed(() => numerologyData.value?.lifePathNumber ?? '—')
-const lifeNumberTitle = computed(() => numerologyData.value?.lifePathTitle ?? '')
+const numerologyData        = ref<NumerologyTodayResponse | null>(null)
+const lifeCardExpanded      = ref(false)
+const lifeNumber            = computed(() => numerologyData.value?.lifePathNumber || '—')
+const lifeNumberTitle       = computed(() => numerologyData.value?.lifePathTitle || '')
+const lifeNumberDescription = computed(() => numerologyData.value?.lifePathDescription || '')
 
 onMounted(async () => {
   try {
@@ -316,7 +321,16 @@ async function saveEdit() {
 .life-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; margin-bottom: 2px; }
 .life-title { font-size: 17px; margin-bottom: 2px; }
 .life-sub   { font-size: 11px; color: rgba(255,255,255,.45); }
-.life-arrow { font-size: 28px; color: rgba(255,255,255,.4); background: none; border: none; cursor: pointer; line-height: 1; }
+.life-arrow {
+  font-size: 22px; color: rgba(255,255,255,.4); line-height: 1; flex-shrink: 0;
+  transition: transform .25s ease;
+}
+.life-arrow--open { transform: rotate(90deg); }
+.life-description {
+  font-size: 13px; line-height: 1.65; color: rgba(255,255,255,.72);
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
 
 /* Menu */
 .menu-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
