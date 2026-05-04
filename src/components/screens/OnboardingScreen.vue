@@ -206,7 +206,7 @@ const handleFinish = async () => {
 
 <style scoped>
 .onb-wrap {
-  min-height: 100vh;
+  min-height: var(--tg-viewport-stable-height, 100vh);
   display: flex;
   align-items: stretch;
 }

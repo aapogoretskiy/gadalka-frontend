@@ -5,9 +5,7 @@
       <!-- Step 1: Вопрос -->
       <template v-if="step === 1">
         <div class="header-bar">
-          <button class="back-btn haptic" @click="navigate('home')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
+          <div style="width:36px"></div>
           <div class="header-title serif">Оракул</div>
           <div style="width:36px"></div>
         </div>
@@ -47,9 +45,7 @@
       <!-- Step 2: Выбор расклада -->
       <template v-if="step === 2">
         <div class="header-bar">
-          <button class="back-btn haptic" @click="step = 1">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
+          <div style="width:36px"></div>
           <div class="header-title serif">Выберите расклад</div>
           <div style="width:36px"></div>
         </div>
@@ -114,9 +110,7 @@
       <!-- Step 4: Результат -->
       <template v-if="step === 4 && result">
         <div class="header-bar">
-          <button class="back-btn haptic" @click="navigate('home')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
+          <div style="width:36px"></div>
           <div class="header-title serif">Ваш расклад</div>
           <div style="width:36px"></div>
         </div>
@@ -227,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject } from 'vue'
+import { ref, inject, watch } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
@@ -237,6 +231,7 @@ import { useFortuneState } from '@/composables/useFortuneState'
 import { useToast } from '@/composables/useToast'
 
 const navigate = inject<(r: string) => void>('navigate')
+const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { isDev } = useDevMode()
 const { fortuneUsed, setFortuneUsed } = useFortuneState()
 const { addToast } = useToast()
@@ -276,6 +271,15 @@ const loadingMessages = [
   'Читаем знаки...',
   'Формируем ответ...',
 ]
+
+// Когда мы на шаге 2 — Telegram BackButton должен идти на шаг 1, а не выходить из экрана
+watch(step, (s) => {
+  if (s === 2) {
+    setBackOverride?.(() => { step.value = 1 })
+  } else {
+    setBackOverride?.(null)
+  }
+})
 
 const flipCard = (i: number) => { flipped.value = new Set([...flipped.value, i]) }
 const toggleAccordion = (i: number) => {
@@ -347,8 +351,8 @@ const resetFortune = () => {
 </script>
 
 <style scoped>
-.screen-wrap { min-height: 100vh; padding-bottom: 100px; overflow-y: auto; }
-.content { padding: 56px 20px 20px; }
+.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(100px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
 
 .header-bar {
   display: flex;
@@ -356,15 +360,7 @@ const resetFortune = () => {
   justify-content: space-between;
   margin-bottom: 20px;
 }
-.back-btn {
-  width: 36px; height: 36px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.1);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: #F5ECFF;
-}
-.header-title { font-size: 18px; }
+.header-title { font-size: 18px; text-align: center; }
 
 .step-indicator {
   display: flex; gap: 6px; margin-bottom: 18px;

@@ -167,6 +167,10 @@ onMounted(async () => {
   try { WebApp.ready() } catch {}
   try { WebApp.expand() } catch {}
 
+  // Блокируем горизонтальную ориентацию
+  try { WebApp.lockOrientation() } catch {}
+  try { screen.orientation.lock('portrait') } catch {}
+
   // Страховочный таймаут: если авторизация зависнет (нет сети в Telegram WebView),
   // гарантированно убираем splash-лоадер через 12 секунд
   const safetyTimer = setTimeout(() => {
@@ -190,7 +194,7 @@ onMounted(async () => {
 <style>
 .app-shell {
   position: relative;
-  min-height: 100vh;
+  min-height: var(--tg-viewport-stable-height, 100vh);
   background: #0a0514;
   color: #F5ECFF;
   overflow-x: hidden;

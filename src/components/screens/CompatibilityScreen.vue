@@ -3,9 +3,7 @@
     <div class="content">
 
       <div class="header-bar">
-        <button class="back-btn haptic" @click="navigate('home')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
+        <div style="width:36px"></div>
         <div class="header-title serif">Совместимость</div>
         <div style="width:36px"></div>
       </div>
@@ -299,16 +297,11 @@ function reset() {
 </script>
 
 <style scoped>
-.screen-wrap { min-height: 100vh; padding-bottom: 90px; overflow-y: auto; }
-.content { padding: 56px 20px 20px; }
+.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
 
 .header-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
-.back-btn {
-  width:36px; height:36px; border-radius:12px;
-  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
-  display:flex; align-items:center; justify-content:center; cursor:pointer; color:#F5ECFF;
-}
-.header-title { font-size:18px; }
+.header-title { font-size:18px; text-align:center; }
 
 /* Hero orbs */
 .compat-hero {
@@ -328,9 +321,9 @@ function reset() {
 /* Form */
 .form-section { display: flex; flex-direction: column; gap: 14px; }
 
-.person-block { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
-.person-block-header { display: flex; align-items: center; justify-content: space-between; }
-.person-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.5); }
+.person-block { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.person-block-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.person-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.5); min-width: 0; }
 
 .fill-btn {
   padding: 6px 12px; border-radius: 20px;
@@ -338,21 +331,26 @@ function reset() {
   border: 1px solid rgba(182,84,255,.4);
   color: #d89fff; font-size: 11px; font-weight: 600;
   font-family: 'Manrope', sans-serif; cursor: pointer;
-  white-space: nowrap;
+  white-space: nowrap; flex-shrink: 0;
 }
 
-.input-group { display: flex; flex-direction: column; gap: 7px; }
+.input-group { display: flex; flex-direction: column; gap: 7px; width: 100%; min-width: 0; }
 .input-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.6); }
 .req { color: #e94aa8; }
 .compat-input {
-  width: 100%; padding: 14px 16px;
+  width: 100%; min-width: 0; max-width: 100%; padding: 14px 16px;
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
   border-radius: 14px; color: #F5ECFF; font-size: 15px;
   font-family: 'Manrope', sans-serif; outline: none;
   transition: border-color .2s; box-sizing: border-box;
+  -webkit-text-fill-color: #F5ECFF;
 }
 .compat-input:focus { border-color: rgba(182,84,255,.5); }
-.compat-input::placeholder { color: rgba(255,255,255,.35); }
+.compat-input::placeholder { color: rgba(255,255,255,.35); -webkit-text-fill-color: rgba(255,255,255,.35); }
+.date-input {
+  color: #F5ECFF;
+  -webkit-text-fill-color: #F5ECFF;
+}
 .date-input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); cursor: pointer; }
 
 .calc-btn {

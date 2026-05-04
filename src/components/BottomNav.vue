@@ -55,7 +55,7 @@ defineEmits<{ change: [tab: string] }>()
 .tabs {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 78px;
+  height: calc(78px + var(--tg-safe-area-inset-bottom, 0px));
   background: rgba(10, 5, 20, 0.92);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
@@ -63,7 +63,7 @@ defineEmits<{ change: [tab: string] }>()
   display: flex;
   justify-content: space-around;
   align-items: flex-start;
-  padding: 10px 4px 20px;
+  padding: 10px 4px calc(20px + var(--tg-safe-area-inset-bottom, 0px));
   z-index: 50;
 }
 

@@ -3,9 +3,7 @@
     <div class="content">
 
       <div class="header-bar">
-        <button class="back-btn haptic" @click="navigate('home')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
+        <div style="width:36px"></div>
         <div class="header-title serif">Нумерология</div>
         <div style="width:36px"></div>
       </div>
@@ -143,16 +141,11 @@ const periods = [
 </script>
 
 <style scoped>
-.screen-wrap { min-height: 100vh; padding-bottom: 90px; overflow-y: auto; }
-.content { padding: 56px 20px 20px; }
+.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
 
 .header-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
-.back-btn {
-  width:36px; height:36px; border-radius:12px;
-  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
-  display:flex; align-items:center; justify-content:center; cursor:pointer; color:#F5ECFF;
-}
-.header-title { font-size:18px; }
+.header-title { font-size:18px; text-align:center; }
 
 /* Loading */
 .loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 60px 20px; gap: 16px; }

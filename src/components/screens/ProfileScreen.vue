@@ -272,8 +272,8 @@ async function saveEdit() {
 </script>
 
 <style scoped>
-.screen-wrap { min-height: 100vh; padding-bottom: 90px; overflow-y: auto; }
-.content { padding: 56px 20px 20px; }
+.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
 
 /* Hero */
 .profile-hero {

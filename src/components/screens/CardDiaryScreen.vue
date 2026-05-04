@@ -3,9 +3,7 @@
     <div class="content">
 
       <div class="header-bar">
-        <button class="back-btn haptic" @click="navigate('profile')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
+        <div style="width:36px"></div>
         <div class="header-title serif">История</div>
         <div style="width:36px"></div>
       </div>
@@ -159,21 +157,32 @@
             <div class="modal-score-num">{{ selected.data?.compatibilityScore }}%</div>
             <div class="modal-score-label serif">{{ selected.data?.label }}</div>
           </div>
-          <div v-if="selected.data?.interpretation" class="modal-section">
-            <div class="modal-section-label">✦ Интерпретация</div>
-            <div class="modal-section-body">{{ selected.data.interpretation }}</div>
-          </div>
-          <div v-if="selected.data?.categories?.length" class="modal-categories">
-            <div
-              v-for="cat in selected.data.categories"
-              :key="cat.name"
-              class="modal-cat-row"
-            >
-              <div class="modal-cat-label">{{ cat.name }}</div>
-              <div class="modal-cat-bar-wrap">
-                <div class="modal-cat-bar" :style="{ width: cat.score + '%' }"></div>
+
+          <!-- Платный контент — закрыт paywall -->
+          <div class="modal-paywall-wrap">
+            <div class="modal-paywall-content">
+              <div v-if="selected.data?.interpretation" class="modal-section">
+                <div class="modal-section-label">✦ Интерпретация</div>
+                <div class="modal-section-body">{{ selected.data.interpretation }}</div>
               </div>
-              <div class="modal-cat-pct">{{ cat.score }}%</div>
+              <div v-if="selected.data?.categories?.length" class="modal-categories">
+                <div
+                  v-for="cat in selected.data.categories"
+                  :key="cat.name"
+                  class="modal-cat-row"
+                >
+                  <div class="modal-cat-label">{{ cat.name }}</div>
+                  <div class="modal-cat-bar-wrap">
+                    <div class="modal-cat-bar" :style="{ width: cat.score + '%' }"></div>
+                  </div>
+                  <div class="modal-cat-pct">{{ cat.score }}%</div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-paywall-overlay">
+              <div class="modal-paywall-lock">🔒</div>
+              <div class="modal-paywall-title serif">Полный анализ</div>
+              <div class="modal-paywall-sub">Доступен при разблокировке в разделе Совместимость</div>
             </div>
           </div>
         </template>
@@ -292,7 +301,8 @@ function entryNote(entry: DiaryEntryDto): string {
   const d = entry.data
   if (!d) return ''
   if (entry.featureType === 'DAILY_CARD')     return truncate(d.meaning || d.advice || '', 100)
-  if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label ? `${d.label}. ${d.interpretation || ''}` : (d.interpretation || ''), 100)
+  // Для совместимости показываем только label, без платной интерпретации
+  if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label || '', 100)
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
   return truncate(d.interpretation || '', 100)
 }
@@ -312,16 +322,11 @@ onMounted(loadAll)
 </script>
 
 <style scoped>
-.screen-wrap { min-height: 100vh; padding-bottom: 90px; overflow-y: auto; }
-.content { padding: 56px 20px 20px; }
+.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
 
 .header-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-.back-btn {
-  width:36px; height:36px; border-radius:12px;
-  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
-  display:flex; align-items:center; justify-content:center; cursor:pointer; color:#F5ECFF;
-}
-.header-title { font-size:18px; }
+.header-title { font-size:18px; text-align:center; }
 
 /* Filter tabs */
 .filter-tabs { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:18px; }
@@ -404,7 +409,7 @@ onMounted(loadAll)
   background:linear-gradient(180deg, #1a0b3e 0%, #0d0620 100%);
   border-top:1px solid rgba(255,255,255,.1);
   border-radius:22px 22px 0 0;
-  padding:12px 20px 40px;
+  padding:12px 20px calc(40px + var(--tg-safe-area-inset-bottom, 0px));
   position:relative;
 }
 .modal-handle {
@@ -509,4 +514,26 @@ onMounted(loadAll)
   border-radius:14px; padding:14px 16px;
 }
 .modal-affirmation-text { font-size:16px; font-style:italic; color:rgba(255,255,255,.9); line-height:1.5; }
+
+/* Paywall в модалке совместимости */
+.modal-paywall-wrap {
+  position:relative; margin-top:4px;
+}
+.modal-paywall-content {
+  filter:blur(6px);
+  pointer-events:none;
+  user-select:none;
+}
+.modal-paywall-overlay {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px;
+  background:rgba(10,5,20,.55);
+  backdrop-filter:blur(2px);
+  border-radius:14px;
+  padding:24px 20px;
+}
+.modal-paywall-lock { font-size:28px; }
+.modal-paywall-title { font-size:18px; color:#F5ECFF; text-align:center; }
+.modal-paywall-sub { font-size:12px; color:rgba(255,255,255,.5); text-align:center; line-height:1.5; }
 </style>
