@@ -50,8 +50,9 @@ import OnboardingScreen    from './components/screens/OnboardingScreen.vue'
 import CardDiaryScreen     from './components/screens/CardDiaryScreen.vue'
 import HistoryScreen       from './components/screens/HistoryScreen.vue'
 import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
-import FortuneScreen       from './components/screens/FortuneScreen.vue'
-import PaymentScreen       from './components/screens/PaymentScreen.vue'
+import FortuneScreen          from './components/screens/FortuneScreen.vue'
+import PaymentScreen          from './components/screens/PaymentScreen.vue'
+import PaymentSuccessScreen   from './components/screens/PaymentSuccessScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
@@ -68,7 +69,7 @@ const isInitializing = ref<boolean>(true)
 
 // Скрины без нижней навигации
 const showNav = computed(() =>
-  !['onboarding'].includes(currentRoute.value)
+  !['onboarding', 'payment-success'].includes(currentRoute.value)
 )
 
 const currentScreen = computed(() => {
@@ -79,9 +80,10 @@ const currentScreen = computed(() => {
     'tarot-day':   TarotDayDetailedScreen,
     numerology:    NumerologyScreen,
     compatibility: CompatibilityScreen,
-    fortune:       FortuneScreen,
-    payment:       PaymentScreen,
-    profile:       ProfileScreen,
+    fortune:           FortuneScreen,
+    payment:           PaymentScreen,
+    'payment-success': PaymentSuccessScreen,
+    profile:           ProfileScreen,
     diary:         CardDiaryScreen,
     history:       HistoryScreen,
     shop:          DeckShopScreen,

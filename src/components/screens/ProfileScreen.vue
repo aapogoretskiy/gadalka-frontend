@@ -14,6 +14,19 @@
 
       <!-- Stats row (временно скрыт — расчёт на бэке не реализован) -->
 
+      <!-- Balance card -->
+      <div class="balance-card glass haptic" @click="navigate('payment')">
+        <div class="balance-icon">🔮</div>
+        <div class="balance-body">
+          <div class="balance-label">Баланс гаданий</div>
+          <div class="balance-val">
+            <span v-if="balance > 0">{{ balance }} {{ balancePluralLabel }}</span>
+            <span v-else class="balance-empty">Нет гаданий</span>
+          </div>
+        </div>
+        <div class="balance-action">{{ balance > 0 ? 'Пополнить' : 'Купить' }} →</div>
+      </div>
+
       <!-- Life number -->
       <div class="life-card gradient-card haptic" @click="lifeCardExpanded = !lifeCardExpanded">
         <div class="life-inner">
@@ -139,6 +152,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useUser } from '@/composables/useUser'
+import { useBalance } from '@/composables/useBalance'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
 import { api, type Goal, type NumerologyTodayResponse } from '@/utils/api'
@@ -146,6 +160,14 @@ import { api, type Goal, type NumerologyTodayResponse } from '@/utils/api'
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { telegramUser, profile, updateProfile, resetProfile } = useUser()
+const { balance } = useBalance()
+
+const balancePluralLabel = computed(() => {
+  const n = balance.value
+  if (n === 1) return 'гадание'
+  if (n >= 2 && n <= 4) return 'гадания'
+  return 'гаданий'
+})
 
 const userName    = computed(() => telegramUser.value?.first_name || 'Мистик')
 const userInitial = computed(() => userName.value.charAt(0).toUpperCase())
@@ -304,6 +326,18 @@ async function saveEdit() {
 .stat-val   { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
 .stat-label { font-size: 10px; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
 .stat-div   { width: 1px; height: 32px; background: rgba(255,255,255,.08); }
+
+/* Balance card */
+.balance-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; margin-bottom: 14px; cursor: pointer;
+}
+.balance-icon { font-size: 28px; flex-shrink: 0; }
+.balance-body { flex: 1; }
+.balance-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; margin-bottom: 3px; }
+.balance-val { font-size: 18px; font-weight: 700; color: #ffc857; }
+.balance-empty { color: rgba(255,255,255,.4); font-size: 16px; font-weight: 500; }
+.balance-action { font-size: 12px; color: #b654ff; font-weight: 600; white-space: nowrap; }
 
 /* Life card */
 .life-card { padding: 18px 20px; margin-bottom: 14px; }

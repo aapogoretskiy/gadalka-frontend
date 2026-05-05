@@ -8,8 +8,17 @@
           <div class="hello">{{ dateStr }}</div>
           <div class="name serif">{{ userName }}</div>
         </div>
-        <div class="avatar" @click="navigate('profile')">
-          {{ userInitial }}
+        <div class="greeting-right">
+          <div
+            class="balance-chip haptic"
+            :class="{ 'balance-chip--empty': balance === 0 }"
+            @click="navigate('payment')"
+          >
+            🔮 {{ balance > 0 ? `${balance} ${balance === 1 ? 'гадание' : balance < 5 ? 'гадания' : 'гаданий'}` : 'Купить' }}
+          </div>
+          <div class="avatar" @click="navigate('profile')">
+            {{ userInitial }}
+          </div>
         </div>
       </div>
 
@@ -245,6 +254,31 @@ onMounted(async () => {
 }
 .hello { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 2px; text-transform: capitalize; }
 .name  { font-size: 22px; }
+
+.greeting-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.balance-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255,200,87,0.15);
+  border: 1px solid rgba(255,200,87,0.35);
+  color: #ffc857;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.balance-chip--empty {
+  background: rgba(182,84,255,0.15);
+  border-color: rgba(182,84,255,0.35);
+  color: #b654ff;
+}
 
 .avatar {
   width: 44px; height: 44px;

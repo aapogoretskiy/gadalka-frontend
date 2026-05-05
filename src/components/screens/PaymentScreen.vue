@@ -93,27 +93,6 @@
           </button>
         </div>
 
-        <!-- Статус после YooKassa-оплаты -->
-        <Transition name="fade">
-          <div v-if="yookassaPending" class="pending-banner">
-            <div class="pending-icon">⏳</div>
-            <div class="pending-text">
-              <div class="pending-title">Платёж обрабатывается</div>
-              <div class="pending-sub">Гадания появятся в течение минуты после оплаты</div>
-            </div>
-          </div>
-        </Transition>
-
-        <!-- Статус после Stars-оплаты -->
-        <Transition name="fade">
-          <div v-if="starsSuccess" class="success-banner">
-            <div class="success-icon">✓</div>
-            <div class="success-text">
-              <div class="success-title">Оплата прошла!</div>
-              <div class="success-sub">Баланс пополнен: {{ balance }} гаданий</div>
-            </div>
-          </div>
-        </Transition>
       </template>
 
       <!-- Пояснение -->
@@ -141,10 +120,12 @@ import { ref, computed, onMounted, inject } from 'vue'
 import WebApp from '@twa-dev/sdk'
 import { api, type PaymentProduct } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
+import { useLastPurchase } from '@/composables/useLastPurchase'
 import { useToast } from '@/composables/useToast'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { balance, refreshBalance } = useBalance()
+const { setPurchase } = useLastPurchase()
 const { addToast } = useToast()
 
 const products      = ref<PaymentProduct[]>([])
@@ -152,8 +133,6 @@ const selectedCode  = ref<string>('')
 const isLoading     = ref(true)
 const isCreating    = ref(false)
 const activeProvider = ref<'yookassa' | 'stars' | null>(null)
-const yookassaPending = ref(false)
-const starsSuccess   = ref(false)
 
 const selectedProduct = computed(() =>
   products.value.find(p => p.code === selectedCode.value) ?? null
@@ -188,10 +167,18 @@ async function payWithYooKassa() {
     // try_instant_view: false — чтобы открылось как полноценный браузер, а не instant view
     WebApp.openLink(paymentUrl, { try_instant_view: false })
 
-    // Показываем баннер "обрабатывается" — webhook асинхронный, ждать нельзя
-    yookassaPending.value = true
+    // Переходим на экран успеха сразу — баланс обновится по webhook'у
+    // isPending=true показывает пользователю, что гадания появятся чуть позже
+    setPurchase({
+      productName:   selectedProduct.value?.name ?? '',
+      readingsCount: selectedProduct.value?.readingsCount ?? 0,
+      provider:      'yookassa',
+      isPending:     true,
+      newBalance:    balance.value,
+    })
+    navigate?.('payment-success')
 
-    // Через 60 секунд обновляем баланс (webhook обычно приходит быстрее)
+    // Фоновый поллинг — обновим баланс когда webhook придёт
     setTimeout(() => { refreshBalance() }, 60_000)
 
   } catch {
@@ -218,8 +205,14 @@ async function payWithStars() {
       if (status === 'paid') {
         // Telegram уже обработал платёж через бота — обновляем баланс
         await refreshBalance()
-        starsSuccess.value = true
-        setTimeout(() => { starsSuccess.value = false }, 5000)
+        setPurchase({
+          productName:   selectedProduct.value?.name ?? '',
+          readingsCount: selectedProduct.value?.readingsCount ?? 0,
+          provider:      'stars',
+          isPending:     false,
+          newBalance:    balance.value,
+        })
+        navigate?.('payment-success')
       } else if (status === 'cancelled') {
         addToast('Оплата отменена', 'info')
       } else if (status === 'failed') {
