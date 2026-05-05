@@ -60,7 +60,7 @@
           <div
             v-for="s in spreads" :key="s.count"
             class="spread-card"
-            :class="{ selected: selectedSpread === s.count, 'spread-card--locked': s.count !== 3 || (s.count === 3 && fortuneUsed && !isDev), haptic: s.count === 3 && (!fortuneUsed || isDev) }"
+            :class="{ selected: selectedSpread === s.count, 'spread-card--locked': s.count !== 3, haptic: s.count === 3 }"
             @click="handleSpreadSelect(s.count)"
           >
             <div class="spread-icon-wrap">
@@ -74,10 +74,12 @@
             <div class="spread-right">
               <ComingSoonBadge v-if="s.count !== 3" />
               <template v-if="s.count === 3">
-                <div v-if="!fortuneUsed || isDev" class="spread-price" style="color:#70e0a8">
-                  <span style="text-decoration:line-through;color:rgba(255,200,87,0.55);font-size:11px;margin-right:3px">199 ₽</span>Бесплатно
+                <!-- Есть баланс — показываем что тратим 1 гадание -->
+                <div v-if="hasCredits || isDev" class="spread-price" style="color:#70e0a8">
+                  1 гадание
                 </div>
-                <div v-else class="spread-price" style="color:#ffc857">199 ₽</div>
+                <!-- Нет баланса — предлагаем купить -->
+                <div v-else class="spread-price" style="color:#ffc857">Купить →</div>
               </template>
               <div v-else class="spread-price" style="color:#ffc857">
                 {{ s.count === 5 ? '299 ₽' : '499 ₽' }}
@@ -86,7 +88,15 @@
           </div>
         </div>
 
-        <button class="fortune-btn haptic" style="margin-top:20px" :disabled="fortuneUsed && !isDev" @click="startFortune">
+        <!-- Баланс иссяк — кнопка ведёт на экран покупки -->
+        <div v-if="!hasCredits && !isDev" class="no-credits-block">
+          <p>У вас закончились гадания</p>
+          <button class="fortune-btn haptic" style="margin-top:12px" @click="navigate('payment')">
+            🔮 Пополнить баланс
+          </button>
+        </div>
+
+        <button v-else class="fortune-btn haptic" style="margin-top:20px" @click="startFortune">
           Перейти к раскладу →
         </button>
       </template>
@@ -227,13 +237,13 @@ import type { FortuneResponse } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { useDevMode } from '@/composables/useDevMode'
-import { useFortuneState } from '@/composables/useFortuneState'
+import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { isDev } = useDevMode()
-const { fortuneUsed, setFortuneUsed } = useFortuneState()
+const { balance, hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
 
 const step = ref(1)
@@ -305,7 +315,8 @@ const startFortune = async () => {
   try {
     const res = await api.getFortune(question.value, selectedCategory.value || undefined)
     result.value = res.data
-    setFortuneUsed(true)
+    // Баланс потрачен на бэкенде — обновляем локально
+    await refreshBalance()
     progress.value = 100
     setTimeout(() => { step.value = 4 }, 400)
   } catch (e: any) {
@@ -332,8 +343,9 @@ const saveToDiary = async () => {
 
 function handleSpreadSelect(count: number) {
   if (count !== 3) return
-  if (fortuneUsed.value && !isDev.value) {
-    addToast('Оплата скоро будет доступна 🔮', 'info')
+  if (!hasCredits.value && !isDev.value) {
+    // Нет баланса — ведём на экран покупки
+    navigate?.('payment')
     return
   }
   selectedSpread.value = count
@@ -694,4 +706,18 @@ const resetFortune = () => {
 .success-text strong { color: #70e0a8; }
 
 .error-msg { color: #ff6b6b; font-size: 13px; text-align: center; margin-top: 16px; }
+
+.no-credits-block {
+  margin-top: 20px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(255,200,87,0.08), rgba(233,74,168,0.06));
+  border: 1px solid rgba(255,200,87,0.25);
+  border-radius: 18px;
+  text-align: center;
+}
+.no-credits-block p {
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+  margin: 0 0 4px;
+}
 </style>

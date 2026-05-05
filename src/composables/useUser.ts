@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { api, type TelegramUserDto, type ProfileResponse, type CreateProfileRequest, type UpdateProfileRequest } from '@/utils/api'
 import WebApp from '@twa-dev/sdk'
-import { useFortuneState } from '@/composables/useFortuneState'
+import { useBalance } from '@/composables/useBalance'
 
 // Состояние живёт вне функции — это синглтон, общий для всего приложения
 // (аналог статического поля в Java)
@@ -10,7 +10,7 @@ const profile = ref<ProfileResponse | null>(null)
 const isAuthLoading = ref(false)
 
 export function useUser() {
-  const { setFortuneUsed } = useFortuneState()
+  const { setBalance } = useBalance()
   const isAuthenticated = computed(() => !!localStorage.getItem('jwt_token'))
   const hasProfile = computed(() => profile.value !== null)
 
@@ -28,13 +28,13 @@ export function useUser() {
     isAuthLoading.value = true
     try {
       const response = await api.authTelegram(initData)
-      const { user, jwtToken, fortuneUsed } = response.data
+      const { user, jwtToken, readingBalance } = response.data
 
       // Сохраняем токен в localStorage — он будет автоматически добавляться
       // к каждому запросу через axios interceptor в api.ts
       localStorage.setItem('jwt_token', jwtToken)
       telegramUser.value = user
-      setFortuneUsed(fortuneUsed)
+      setBalance(readingBalance)
       return true
     } catch {
       return false

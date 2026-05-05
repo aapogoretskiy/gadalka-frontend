@@ -80,7 +80,9 @@
         <h3>Задать вопрос Оракулу</h3>
         <p>Получите ответ через расклад карт Таро</p>
         <div class="cta-btn-inner">Начать <span>→</span></div>
-        <div class="free-badge">{{ fortuneUsed ? '199 ₽' : 'Первый бесплатно' }}</div>
+        <div class="free-badge">
+          {{ balance > 0 ? `${balance} ${balance === 1 ? 'гадание' : balance < 5 ? 'гадания' : 'гаданий'}` : 'Купить гадания' }}
+        </div>
       </div>
 
       <!-- Actions grid -->
@@ -111,14 +113,14 @@ import { ref, computed, onMounted, inject } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { useDailyCard } from '@/composables/useDailyCard'
 import { useDevMode } from '@/composables/useDevMode'
-import { useFortuneState } from '@/composables/useFortuneState'
+import { useBalance } from '@/composables/useBalance'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { isDev, toggleDevMode } = useDevMode()
-const { fortuneUsed } = useFortuneState()
+const { balance, hasCredits } = useBalance()
 
 const cardFlipped    = ref(false)
 const betaVisible    = ref(true)

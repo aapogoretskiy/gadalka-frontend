@@ -51,6 +51,7 @@ import CardDiaryScreen     from './components/screens/CardDiaryScreen.vue'
 import HistoryScreen       from './components/screens/HistoryScreen.vue'
 import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
 import FortuneScreen       from './components/screens/FortuneScreen.vue'
+import PaymentScreen       from './components/screens/PaymentScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
@@ -79,6 +80,7 @@ const currentScreen = computed(() => {
     numerology:    NumerologyScreen,
     compatibility: CompatibilityScreen,
     fortune:       FortuneScreen,
+    payment:       PaymentScreen,
     profile:       ProfileScreen,
     diary:         CardDiaryScreen,
     history:       HistoryScreen,
@@ -87,6 +89,7 @@ const currentScreen = computed(() => {
   return screens[currentRoute.value] || HomeScreen
 })
 
+// Вкладки нижней навигации (payment — не вкладка, открывается поверх)
 const tabOrder = ['home', 'numerology', 'fortune', 'shop', 'profile']
 
 const navigate = (route: string) => {

@@ -71,7 +71,7 @@ export interface TelegramUserDto {
 export interface TelegramAuthResponse {
   user: TelegramUserDto
   jwtToken: string
-  fortuneUsed: boolean
+  readingBalance: number   // баланс гаданий на момент входа
 }
 
 // GET/POST/PUT /api/user-profiles
@@ -175,6 +175,29 @@ export interface NumerologyTodayResponse {
   personalMonthNumber: number
 }
 
+// ── Платежи ─────────────────────────────────────────────────────────────────
+
+export interface PaymentProduct {
+  code: string           // "pack_3", "pack_7", "pack_15"
+  name: string           // "3 гадания"
+  readingsCount: number  // сколько гаданий даёт пакет
+  priceRub: number       // цена в рублях
+  priceStars: number     // цена в Telegram Stars
+}
+
+export interface BalanceResponse {
+  balance: number
+  hasActiveSubscription: boolean
+}
+
+export interface CreatePaymentRequest {
+  productCode: string
+}
+
+export interface CreatePaymentResponse {
+  paymentUrl: string
+}
+
 // GET/POST /api/diary
 export type FeatureType = 'THREE_CARD' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
 
@@ -243,6 +266,19 @@ export const api = {
   // Нумерология дня
   getNumerologyToday: () =>
     apiClient.get<NumerologyTodayResponse>('/api/numerology/today'),
+
+  // Платежи
+  getProducts: () =>
+    apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
+
+  getBalance: () =>
+    apiClient.get<BalanceResponse>('/api/v1/payments/balance'),
+
+  createYooKassaPayment: (data: CreatePaymentRequest) =>
+    apiClient.post<CreatePaymentResponse>('/api/v1/payments/yookassa/create', data),
+
+  createStarsPayment: (data: CreatePaymentRequest) =>
+    apiClient.post<CreatePaymentResponse>('/api/v1/payments/stars/create', data),
 
   // Health check
   health: () =>

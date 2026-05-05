@@ -1,10 +1,5 @@
-import { ref } from 'vue'
-
-const fortuneUsed = ref(false)
-
-export function useFortuneState() {
-  const setFortuneUsed = (value: boolean) => {
-    fortuneUsed.value = value
-  }
-  return { fortuneUsed, setFortuneUsed }
-}
+/**
+ * @deprecated Используй useBalance вместо useFortuneState.
+ * Оставлен только для совместимости — перенаправляет на useBalance.
+ */
+export { useBalance as useFortuneState } from '@/composables/useBalance'
