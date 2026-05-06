@@ -158,7 +158,7 @@
             <div class="result-desc glass">
               <p>{{ result.interpretation }}</p>
             </div>
-            <div v-if="result.categories.length" class="aspects glass">
+            <div v-if="result.categories?.length" class="aspects glass">
               <div class="aspect-row" v-for="cat in result.categories" :key="cat.name">
                 <div class="aspect-label">{{ cat.name }}</div>
                 <div class="aspect-bar-wrap">
