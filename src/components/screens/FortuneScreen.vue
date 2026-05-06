@@ -82,7 +82,7 @@
                 <div v-else class="spread-price" style="color:#ffc857">Купить →</div>
               </template>
               <div v-else class="spread-price" style="color:#ffc857">
-                {{ s.count === 5 ? '299 ₽' : '499 ₽' }}
+                {{ s.count === 5 ? '2 гадания' : '3 гадания' }}
               </div>
             </div>
           </div>

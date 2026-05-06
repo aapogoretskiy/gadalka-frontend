@@ -147,12 +147,13 @@ export interface CompatibilityCategoryScore {
 }
 
 export interface CompatibilityResponse {
-  id?: number
+  id: number
   persons: PersonInput[]
   compatibilityScore: number
   label: string
-  interpretation: string
-  categories: CompatibilityCategoryScore[]
+  unlocked: boolean
+  interpretation?: string
+  categories?: CompatibilityCategoryScore[]
 }
 
 // GET /api/numerology/today
@@ -256,6 +257,11 @@ export const api = {
   // Совместимость
   getCompatibility: (data: CompatibilityRequest) =>
     apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data),
+
+  // Разблокировать полный анализ совместимости за 1 гадание
+  unlockCompatibility: (id: number) =>
+    apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`),
+
 
   // Дневник
   getDiaryHistory: (featureType: FeatureType, from: string, to: string) =>

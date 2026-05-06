@@ -173,11 +173,18 @@
             <div class="paywall-lock">🔒</div>
             <div class="paywall-title serif">Полный анализ</div>
             <div class="paywall-sub">Интерпретация и разбор по категориям</div>
-            <button class="paywall-btn haptic" @click="unlockPremium" style="display:flex;align-items:center;justify-content:center;gap:8px">
-              <span>Открыть за 99 ₽</span>
-              <ComingSoonBadge v-if="!isDev" />
+
+            <!-- Есть гадания — можно открыть -->
+            <button v-if="hasCredits || isDev" class="paywall-btn haptic" @click="unlockPremium">
+              🔮 Открыть за 1 гадание
             </button>
-            <div v-if="isDev" class="paywall-dev-hint">DEV: кнопка эмулирует оплату</div>
+
+            <!-- Нет гаданий — ведём на пополнение -->
+            <button v-else class="paywall-btn paywall-btn--buy haptic" @click="navigate('payment')">
+              Купить гадания →
+            </button>
+
+            <div v-if="isDev" class="paywall-dev-hint">DEV: кнопка эмулирует списание</div>
           </div>
         </div>
 
@@ -205,6 +212,7 @@ import { ref, computed, inject } from 'vue'
 import { api, type CompatibilityResponse } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
 import { useDevMode } from '@/composables/useDevMode'
+import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
@@ -212,6 +220,7 @@ import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
 const { isDev } = useDevMode()
+const { hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
 const tipDismissed = ref(localStorage.getItem('compatTipDismissed') === 'true')
 function dismissTip() {
@@ -265,6 +274,8 @@ async function calculate() {
       ],
     })
     result.value = response.data
+    // Если расклад уже был разблокирован ранее — показываем полный анализ сразу
+    paidUnlocked.value = response.data.unlocked
   } catch (err: any) {
     errorMsg.value = err.response?.data?.message || 'Не удалось рассчитать совместимость. Попробуйте ещё раз.'
   } finally {
@@ -272,13 +283,20 @@ async function calculate() {
   }
 }
 
-function unlockPremium() {
+async function unlockPremium() {
   if (isDev.value) {
     paidUnlocked.value = true
     return
   }
-  // Переходим на экран пополнения баланса
-  navigate?.('payment')
+  try {
+    const res = await api.unlockCompatibility(result.value!.id)
+    result.value = res.data
+    paidUnlocked.value = true
+    await refreshBalance()
+    hapticFeedback.success()
+  } catch {
+    addToast('Не удалось списать гадание. Попробуйте ещё раз.')
+  }
 }
 
 async function saveToDiary() {
@@ -528,6 +546,12 @@ function reset() {
   border: none;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(182,84,255,.45);
+}
+.paywall-btn--buy {
+  background: linear-gradient(135deg, rgba(255,200,87,0.2), rgba(233,74,168,0.15));
+  border: 1px solid rgba(255,200,87,0.4) !important;
+  color: #ffc857;
+  box-shadow: none;
 }
 .paywall-dev-hint {
   font-size: 10px;
