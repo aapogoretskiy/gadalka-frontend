@@ -277,7 +277,8 @@ function unlockPremium() {
     paidUnlocked.value = true
     return
   }
-  addToast('Оплата скоро будет доступна 🔮', 'info')
+  // Переходим на экран пополнения баланса
+  navigate?.('payment')
 }
 
 async function saveToDiary() {

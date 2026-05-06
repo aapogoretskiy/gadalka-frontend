@@ -36,7 +36,18 @@
         <div class="empty-icon">📜</div>
         <div class="empty-title serif">Пусто</div>
         <div class="empty-sub">Здесь появятся ваши расклады и расчёты</div>
-        <button class="empty-btn haptic" @click="navigate('fortune')">
+        <button
+          v-if="activeTab === 'COMPATIBILITY'"
+          class="empty-btn haptic"
+          @click="navigate('compatibility')"
+        >
+          Рассчитать совместимость →
+        </button>
+        <button
+          v-else
+          class="empty-btn haptic"
+          @click="navigate('fortune')"
+        >
           Сделать расклад →
         </button>
       </div>
@@ -93,6 +104,11 @@
         <template v-if="selected.featureType === 'THREE_CARD'">
           <div class="modal-type-label">🔮 Расклад 3 карты</div>
           <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
+          <!-- Вопрос, на который делался расклад -->
+          <div v-if="selected.data?.question" class="modal-question-pill">
+            <span class="modal-question-icon">💬</span>
+            <span class="modal-question-text">{{ selected.data.question }}</span>
+          </div>
           <div
             v-for="card in (selected.data?.cards ?? [])"
             :key="card.id"
@@ -275,6 +291,8 @@ function entryTitle(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY') {
     return d.dayCode != null ? `Код дня — ${d.dayCode}` : 'Число дня'
   }
+  // THREE_CARD: показываем вопрос как заголовок, если есть
+  if (d.question) return truncate(d.question, 60)
   const cards = d.cards as Array<{ name: string }>
   return cards?.length ? cards.map((c: { name: string }) => c.name).join(' · ') : 'Расклад 3 карты'
 }
@@ -304,6 +322,11 @@ function entryNote(entry: DiaryEntryDto): string {
   // Для совместимости показываем только label, без платной интерпретации
   if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label || '', 100)
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
+  // THREE_CARD: если заголовок уже показывает вопрос, в note показываем карты; иначе — интерпретацию
+  if (d.question) {
+    const cards = d.cards as Array<{ name: string }>
+    return cards?.length ? cards.map((c: { name: string }) => c.name).join(' · ') : truncate(d.interpretation || '', 100)
+  }
   return truncate(d.interpretation || '', 100)
 }
 
@@ -448,6 +471,17 @@ onMounted(loadAll)
 .modal-section-body {
   font-size:14px; line-height:1.65; color:rgba(255,255,255,.8);
 }
+
+/* Вопрос расклада */
+.modal-question-pill {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:10px 14px; margin-bottom:14px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:12px;
+}
+.modal-question-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+.modal-question-text { font-size:13px; color:rgba(255,255,255,.75); line-height:1.5; font-style:italic; }
 
 /* THREE_CARD card blocks */
 .modal-card-block {

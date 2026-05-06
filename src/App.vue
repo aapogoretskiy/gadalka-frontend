@@ -52,7 +52,6 @@ import HistoryScreen       from './components/screens/HistoryScreen.vue'
 import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
 import FortuneScreen          from './components/screens/FortuneScreen.vue'
 import PaymentScreen          from './components/screens/PaymentScreen.vue'
-import PaymentSuccessScreen   from './components/screens/PaymentSuccessScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
@@ -69,7 +68,7 @@ const isInitializing = ref<boolean>(true)
 
 // Скрины без нижней навигации
 const showNav = computed(() =>
-  !['onboarding', 'payment-success'].includes(currentRoute.value)
+  !['onboarding', 'payment'].includes(currentRoute.value)
 )
 
 const currentScreen = computed(() => {
@@ -82,7 +81,6 @@ const currentScreen = computed(() => {
     compatibility: CompatibilityScreen,
     fortune:           FortuneScreen,
     payment:           PaymentScreen,
-    'payment-success': PaymentSuccessScreen,
     profile:           ProfileScreen,
     diary:         CardDiaryScreen,
     history:       HistoryScreen,
@@ -92,7 +90,7 @@ const currentScreen = computed(() => {
 })
 
 // Вкладки нижней навигации (payment — не вкладка, открывается поверх)
-const tabOrder = ['home', 'numerology', 'fortune', 'shop', 'profile']
+const tabOrder = ['home', 'numerology', 'fortune', 'compatibility', 'profile']
 
 const navigate = (route: string) => {
   previousRoute.value = currentRoute.value

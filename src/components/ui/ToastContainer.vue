@@ -28,12 +28,12 @@ const icons = { error: '⚠', success: '✓', info: 'ℹ' }
 <style scoped>
 .toast-container {
   position: fixed;
-  top: 16px;
+  bottom: calc(100px + var(--tg-safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 8px;
   width: calc(100vw - 32px);
   max-width: 380px;
@@ -83,6 +83,6 @@ const icons = { error: '⚠', success: '✓', info: 'ℹ' }
 
 .toast-enter-active { transition: all 0.3s ease; }
 .toast-leave-active { transition: all 0.25s ease; }
-.toast-enter-from  { opacity: 0; transform: translateY(-10px) scale(0.96); }
-.toast-leave-to    { opacity: 0; transform: translateY(-6px) scale(0.96); }
+.toast-enter-from  { opacity: 0; transform: translateY(10px) scale(0.96); }
+.toast-leave-to    { opacity: 0; transform: translateY(6px) scale(0.96); }
 </style>

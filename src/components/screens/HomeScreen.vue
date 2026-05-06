@@ -99,7 +99,7 @@
         <div class="action-card glass haptic" @click="navigate('compatibility')">
           <div class="action-icon">💕</div>
           <div class="action-title">Совместимость</div>
-          <div class="action-sub">По именам</div>
+          <div class="action-sub">Нумерология пары</div>
         </div>
         <div class="action-card glass haptic" @click="navigate('shop')">
           <div class="action-icon">🃏</div>

@@ -67,8 +67,8 @@
       </div>
 
       <div v-if="isFlipped" style="margin-top:16px">
-        <button class="action-btn secondary haptic" @click="navigate('tarot')">
-          Открыть колоду
+        <button class="action-btn secondary haptic" @click="navigate('shop')">
+          Выбрать колоду
         </button>
       </div>
 
@@ -98,7 +98,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(30px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
 .content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
 
 .header-bar {

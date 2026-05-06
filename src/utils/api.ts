@@ -126,6 +126,7 @@ export interface CardDto {
 export interface FortuneResponse {
   id?: number
   username: string
+  question?: string
   cards: CardDto[]
   interpretation: string
 }

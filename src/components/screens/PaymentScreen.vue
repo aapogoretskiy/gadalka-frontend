@@ -120,12 +120,10 @@ import { ref, computed, onMounted, inject } from 'vue'
 import WebApp from '@twa-dev/sdk'
 import { api, type PaymentProduct } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
-import { useLastPurchase } from '@/composables/useLastPurchase'
 import { useToast } from '@/composables/useToast'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { balance, refreshBalance } = useBalance()
-const { setPurchase } = useLastPurchase()
 const { addToast } = useToast()
 
 const products      = ref<PaymentProduct[]>([])
@@ -167,19 +165,10 @@ async function payWithYooKassa() {
     // try_instant_view: false — чтобы открылось как полноценный браузер, а не instant view
     WebApp.openLink(paymentUrl, { try_instant_view: false })
 
-    // Переходим на экран успеха сразу — баланс обновится по webhook'у
-    // isPending=true показывает пользователю, что гадания появятся чуть позже
-    setPurchase({
-      productName:   selectedProduct.value?.name ?? '',
-      readingsCount: selectedProduct.value?.readingsCount ?? 0,
-      provider:      'yookassa',
-      isPending:     true,
-      newBalance:    balance.value,
-    })
-    navigate?.('payment-success')
-
-    // Фоновый поллинг — обновим баланс когда webhook придёт
-    setTimeout(() => { refreshBalance() }, 60_000)
+    // После открытия ссылки возвращаемся на главную
+    // Бот пришлёт сообщение о результате оплаты
+    addToast('Ссылка на оплату открыта. После оплаты бот вас уведомит 🔮', 'info')
+    navigate?.('home')
 
   } catch {
     addToast('Не удалось создать платёж. Попробуйте ещё раз.')
@@ -203,16 +192,10 @@ async function payWithStars() {
     // status: 'paid' | 'cancelled' | 'failed' | 'pending'
     WebApp.openInvoice(invoiceUrl, async (status) => {
       if (status === 'paid') {
-        // Telegram уже обработал платёж через бота — обновляем баланс
+        // Telegram уже обработал платёж — обновляем баланс и возвращаемся на главную
+        // Бот отправит сообщение об успешной оплате
         await refreshBalance()
-        setPurchase({
-          productName:   selectedProduct.value?.name ?? '',
-          readingsCount: selectedProduct.value?.readingsCount ?? 0,
-          provider:      'stars',
-          isPending:     false,
-          newBalance:    balance.value,
-        })
-        navigate?.('payment-success')
+        navigate?.('home')
       } else if (status === 'cancelled') {
         addToast('Оплата отменена', 'info')
       } else if (status === 'failed') {
