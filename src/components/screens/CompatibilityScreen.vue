@@ -54,12 +54,17 @@
           </div>
           <div class="input-group">
             <label class="input-label">Дата рождения <span class="req">*</span></label>
-            <input
-              v-model="birthDate1"
-              type="date"
-              class="compat-input date-input"
-              @input="result = null"
-            />
+            <div class="compat-input date-wrapper">
+              <span v-if="!birthDate1" class="date-placeholder">Например: 15.06.1990</span>
+              <span v-else class="date-value">{{ displayDate(birthDate1) }}</span>
+              <input
+                ref="dateInput1"
+                v-model="birthDate1"
+                type="date"
+                class="date-native"
+                @change="result = null"
+              />
+            </div>
           </div>
         </div>
 
@@ -80,12 +85,17 @@
           </div>
           <div class="input-group">
             <label class="input-label">Дата рождения <span class="req">*</span></label>
-            <input
-              v-model="birthDate2"
-              type="date"
-              class="compat-input date-input"
-              @input="result = null"
-            />
+            <div class="compat-input date-wrapper">
+              <span v-if="!birthDate2" class="date-placeholder">Например: 20.03.1988</span>
+              <span v-else class="date-value">{{ displayDate(birthDate2) }}</span>
+              <input
+                ref="dateInput2"
+                v-model="birthDate2"
+                type="date"
+                class="date-native"
+                @change="result = null"
+              />
+            </div>
           </div>
         </div>
 
@@ -284,6 +294,13 @@ async function saveToDiary() {
   }
 }
 
+// Форматируем ISO-дату (YYYY-MM-DD) в читаемый вид ДД.ММ.ГГГГ
+function displayDate(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}.${m}.${y}`
+}
+
 function reset() {
   result.value = null
   name1.value = ''
@@ -347,11 +364,36 @@ function reset() {
 }
 .compat-input:focus { border-color: rgba(182,84,255,.5); }
 .compat-input::placeholder { color: rgba(255,255,255,.35); -webkit-text-fill-color: rgba(255,255,255,.35); }
-.date-input {
-  color: #F5ECFF;
-  -webkit-text-fill-color: #F5ECFF;
+/* Обёртка для date-picker — выглядит как обычное поле */
+.date-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  min-height: 50px;
 }
-.date-input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); cursor: pointer; }
+.date-placeholder {
+  color: rgba(255,255,255,.35);
+  font-size: 15px;
+  pointer-events: none;
+}
+.date-value {
+  color: #F5ECFF;
+  font-size: 15px;
+  pointer-events: none;
+}
+/* Прозрачный нативный input поверх — открывает системный пикер */
+.date-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  -webkit-appearance: none;
+}
 
 .calc-btn {
   width: 100%; padding: 15px; border-radius: 16px; margin-top: 4px;
