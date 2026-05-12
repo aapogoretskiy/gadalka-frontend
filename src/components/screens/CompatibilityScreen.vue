@@ -418,6 +418,7 @@ function reset() {
 }
 .date-placeholder {
   color: rgba(255,255,255,.35);
+  -webkit-text-fill-color: rgba(255,255,255,.35);
   font-size: 15px;
   pointer-events: none;
 }

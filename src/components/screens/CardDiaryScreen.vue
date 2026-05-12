@@ -174,31 +174,65 @@
             <div class="modal-score-label serif">{{ selected.data?.label }}</div>
           </div>
 
-          <!-- Платный контент — закрыт paywall -->
-          <div class="modal-paywall-wrap">
+          <!-- Платный контент — закрыт paywall пока не разблокирован -->
+          <div class="modal-paywall-wrap" :class="{ 'modal-paywall-wrap--unlocked': isCompatUnlocked(selected) }">
             <div class="modal-paywall-content">
-              <div v-if="selected.data?.interpretation" class="modal-section">
-                <div class="modal-section-label">✦ Интерпретация</div>
-                <div class="modal-section-body">{{ selected.data.interpretation }}</div>
-              </div>
-              <div v-if="selected.data?.categories?.length" class="modal-categories">
-                <div
-                  v-for="cat in selected.data.categories"
-                  :key="cat.name"
-                  class="modal-cat-row"
-                >
-                  <div class="modal-cat-label">{{ cat.name }}</div>
-                  <div class="modal-cat-bar-wrap">
-                    <div class="modal-cat-bar" :style="{ width: cat.score + '%' }"></div>
-                  </div>
-                  <div class="modal-cat-pct">{{ cat.score }}%</div>
+              <template v-if="isCompatUnlocked(selected)">
+                <!-- Реальные данные после разблокировки -->
+                <div v-if="selected.data?.interpretation" class="modal-section">
+                  <div class="modal-section-label">✦ Интерпретация</div>
+                  <div class="modal-section-body">{{ selected.data.interpretation }}</div>
                 </div>
-              </div>
+                <div v-if="selected.data?.categories?.length" class="modal-categories">
+                  <div v-for="cat in selected.data.categories" :key="cat.name" class="modal-cat-row">
+                    <div class="modal-cat-label">{{ cat.name }}</div>
+                    <div class="modal-cat-bar-wrap">
+                      <div class="modal-cat-bar" :style="{ width: cat.score + '%' }"></div>
+                    </div>
+                    <div class="modal-cat-pct">{{ cat.score }}%</div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <!-- Фейковый preview под блюром -->
+                <div class="modal-section">
+                  <div class="modal-section-label">✦ Интерпретация</div>
+                  <div class="modal-section-body">Глубокий анализ показывает сильную эмоциональную связь и взаимное притяжение. Ваши числа создают гармоничный союз...</div>
+                </div>
+                <div class="modal-categories">
+                  <div v-for="fake in [{name:'Любовь',score:78},{name:'Доверие',score:85},{name:'Общение',score:72},{name:'Ценности',score:90},{name:'Перспектива',score:68}]" :key="fake.name" class="modal-cat-row">
+                    <div class="modal-cat-label">{{ fake.name }}</div>
+                    <div class="modal-cat-bar-wrap"><div class="modal-cat-bar" :style="{ width: fake.score + '%' }"></div></div>
+                    <div class="modal-cat-pct">{{ fake.score }}%</div>
+                  </div>
+                </div>
+              </template>
             </div>
-            <div class="modal-paywall-overlay">
+
+            <div v-if="!isCompatUnlocked(selected)" class="modal-paywall-overlay">
               <div class="modal-paywall-lock">🔒</div>
               <div class="modal-paywall-title serif">Полный анализ</div>
-              <div class="modal-paywall-sub">Доступен при разблокировке в разделе Совместимость</div>
+              <div class="modal-paywall-sub">Интерпретация и разбор по 5 категориям</div>
+
+              <!-- Есть гадания — разблокировать прямо здесь -->
+              <button
+                v-if="selected.data?.id && (hasCredits || isDev)"
+                class="modal-paywall-btn haptic"
+                :disabled="isUnlocking"
+                @click="unlockFromDiary"
+              >
+                <span v-if="isUnlocking">Открываем...</span>
+                <span v-else>🔮 Открыть за 1 гадание</span>
+              </button>
+
+              <!-- Нет гаданий или нет id — перейти в раздел -->
+              <button
+                v-else
+                class="modal-paywall-btn modal-paywall-btn--nav haptic"
+                @click="selected = null; navigate('compatibility')"
+              >
+                {{ !selected.data?.id ? 'Перейти к Совместимости →' : 'Купить гадания →' }}
+              </button>
             </div>
           </div>
         </template>
@@ -210,8 +244,50 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, inject } from 'vue'
 import { api, type DiaryEntryDto, type FeatureType } from '@/utils/api'
+import { useBalance } from '@/composables/useBalance'
+import { useDevMode } from '@/composables/useDevMode'
+import { useToast } from '@/composables/useToast'
+import { hapticFeedback } from '@/utils/telegram'
 
 const navigate = inject<(r: string) => void>('navigate')
+const { hasCredits, refreshBalance } = useBalance()
+const { isDev } = useDevMode()
+const { addToast } = useToast()
+
+const isUnlocking = ref(false)
+const unlockedIds = ref(new Set<number>())
+
+async function unlockFromDiary() {
+  const id = selected.value?.data?.id
+  if (!id || isUnlocking.value) return
+  isUnlocking.value = true
+  try {
+    const res = await api.unlockCompatibility(id)
+    // Обновляем данные в открытой записи
+    if (selected.value) {
+      selected.value = {
+        ...selected.value,
+        data: {
+          ...selected.value.data,
+          interpretation: res.data.interpretation,
+          categories: res.data.categories,
+        }
+      }
+    }
+    unlockedIds.value = new Set([...unlockedIds.value, id])
+    await refreshBalance()
+    hapticFeedback.success()
+  } catch {
+    addToast('Не удалось списать гадание. Попробуйте ещё раз.')
+  } finally {
+    isUnlocking.value = false
+  }
+}
+
+function isCompatUnlocked(entry: DiaryEntryDto | null): boolean {
+  if (!entry || entry.featureType !== 'COMPATIBILITY') return false
+  return isDev.value || unlockedIds.value.has(entry.data?.id)
+}
 
 const isLoading = ref(false)
 const error = ref('')
@@ -569,5 +645,25 @@ onMounted(loadAll)
 }
 .modal-paywall-lock { font-size:28px; }
 .modal-paywall-title { font-size:18px; color:#F5ECFF; text-align:center; }
-.modal-paywall-sub { font-size:12px; color:rgba(255,255,255,.5); text-align:center; line-height:1.5; }
+.modal-paywall-sub { font-size:12px; color:rgba(255,255,255,.5); text-align:center; line-height:1.5; margin-bottom:4px; }
+.modal-paywall-btn {
+  padding:12px 24px; border-radius:14px;
+  background:linear-gradient(135deg, #b654ff, #e94aa8);
+  color:#fff; font-size:14px; font-weight:700;
+  font-family:'Manrope',sans-serif; border:none; cursor:pointer;
+  box-shadow:0 6px 20px rgba(182,84,255,.45);
+  margin-top:4px;
+}
+.modal-paywall-btn:disabled { opacity:.6; cursor:default; }
+.modal-paywall-btn--nav {
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  color:#F5ECFF;
+  box-shadow:none;
+}
+.modal-paywall-wrap--unlocked .modal-paywall-content {
+  filter:none;
+  pointer-events:auto;
+  user-select:auto;
+}
 </style>
