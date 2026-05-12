@@ -141,9 +141,8 @@
         <div class="result-cards" :class="`cards-${result.cards.length}`">
           <div v-for="(card, i) in result.cards" :key="card.id" class="result-card-wrap">
             <div
-              class="result-card haptic"
+              class="result-card"
               :class="{ flipped: flipped.has(i) }"
-              @click="flipCard(i)"
             >
               <div class="res-face res-back">
                 <div class="res-back-border">
@@ -164,13 +163,22 @@
           </div>
         </div>
 
-        <!-- Hint if cards not flipped yet -->
-        <div v-if="flipped.size === 0" class="flip-hint">
-          Нажмите на карту, чтобы открыть её
+        <!-- Кнопка «Разложить» — показывается пока карты не открыты -->
+        <div v-if="!allFlipped" class="deal-wrap">
+          <button
+            class="deal-btn haptic"
+            :disabled="isDealing"
+            @click="dealCards"
+          >
+            <span v-if="isDealing" class="deal-spinner"></span>
+            <span v-else>✦ Разложить карты</span>
+          </button>
+          <div v-if="!isDealing" class="flip-hint">Нажмите, чтобы раскрыть расклад</div>
         </div>
 
-        <!-- Per-card sections -->
+        <!-- Per-card sections — появляются только когда все карты открыты -->
         <div
+          v-if="allFlipped"
           v-for="(card, i) in result.cards"
           :key="`section-${i}`"
           class="card-section"
@@ -199,28 +207,30 @@
           </div>
         </div>
 
-        <!-- General interpretation -->
-        <div class="summary-block">
-          <div class="summary-label">✦ Общий вывод</div>
-          <div class="summary-body">{{ result.interpretation }}</div>
-        </div>
+        <!-- General interpretation + actions — только когда все карты открыты -->
+        <template v-if="allFlipped">
+          <div class="summary-block">
+            <div class="summary-label">✦ Общий вывод</div>
+            <div class="summary-body">{{ result.interpretation }}</div>
+          </div>
 
-        <!-- Save to diary -->
-        <button
-          v-if="result.id"
-          class="fortune-btn haptic"
-          style="margin-bottom:10px"
-          :disabled="isSaving || savedToDiary"
-          @click="saveToDiary"
-        >
-          {{ savedToDiary ? '✓ Сохранено в дневник' : isSaving ? 'Сохраняем...' : 'Добавить в дневник' }}
-        </button>
+          <!-- Save to diary -->
+          <button
+            v-if="result.id"
+            class="fortune-btn haptic"
+            style="margin-bottom:10px"
+            :disabled="isSaving || savedToDiary"
+            @click="saveToDiary"
+          >
+            {{ savedToDiary ? '✓ Сохранено в дневник' : isSaving ? 'Сохраняем...' : 'Добавить в дневник' }}
+          </button>
 
-        <!-- Actions -->
-        <div class="actions-row">
-          <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
-          <button class="fortune-btn-sec haptic" @click="navigate('profile')">В профиль</button>
-        </div>
+          <!-- Actions -->
+          <div class="actions-row">
+            <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
+            <button class="fortune-btn-sec haptic" @click="navigate('profile')">В профиль</button>
+          </div>
+        </template>
       </template>
 
       <!-- Error -->
@@ -231,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, watch } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
@@ -255,6 +265,8 @@ const isLoading = ref(false)
 const error = ref('')
 const result = ref<FortuneResponse | null>(null)
 const flipped = ref(new Set<number>())
+const isDealing = ref(false)
+const allFlipped = computed(() => result.value !== null && flipped.value.size >= result.value.cards.length)
 const openAccordions = ref(new Set<number>())
 const msgIdx = ref(0)
 const progress = ref(0)
@@ -292,6 +304,17 @@ watch(step, (s) => {
 })
 
 const flipCard = (i: number) => { flipped.value = new Set([...flipped.value, i]) }
+
+const dealCards = async () => {
+  if (isDealing.value || !result.value) return
+  isDealing.value = true
+  const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
+  for (let i = 0; i < result.value.cards.length; i++) {
+    await delay(i === 0 ? 200 : 500)
+    flipCard(i)
+  }
+  isDealing.value = false
+}
 const toggleAccordion = (i: number) => {
   const s = new Set(openAccordions.value)
   s.has(i) ? s.delete(i) : s.add(i)
@@ -357,6 +380,7 @@ const resetFortune = () => {
   charCount.value = 0
   result.value = null
   flipped.value = new Set()
+  isDealing.value = false
   openAccordions.value = new Set()
   savedToDiary.value = false
 }
@@ -504,7 +528,7 @@ const resetFortune = () => {
 .result-card {
   width: 90px; height: 135px;
   border-radius: 12px; overflow: hidden;
-  position: relative; cursor: pointer;
+  position: relative;
   box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,200,87,0.2);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -515,7 +539,6 @@ const resetFortune = () => {
 .cards-7 .res-emoji { font-size: 22px; }
 .cards-7 .res-name  { font-size: 8px; }
 .cards-7 .position-label { font-size: 8px; }
-.result-card:active { transform: scale(0.96); }
 .res-face {
   position: absolute; inset: 0; border-radius: 12px; opacity: 0;
   transition: opacity 0.45s ease;
@@ -550,12 +573,46 @@ const resetFortune = () => {
 .pos-label--present { color: #ffc857; }
 .pos-label--future  { color: #70e0a8; }
 
+/* Deal button */
+.deal-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 18px;
+}
+.deal-btn {
+  padding: 14px 36px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(182,84,255,0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  letter-spacing: .02em;
+}
+.deal-btn:active { transform: scale(0.97); }
+.deal-btn:disabled { opacity: 0.7; cursor: default; }
+.deal-spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
+
 /* Flip hint */
 .flip-hint {
   text-align: center;
   font-size: 12px;
   color: rgba(255,255,255,.35);
-  margin-bottom: 18px;
   letter-spacing: .02em;
 }
 

@@ -154,7 +154,8 @@
 
         <!-- PAYWALL: interpretation + categories -->
         <div class="paywall-wrap" :class="{ locked: !isPremiumUnlocked }">
-          <div class="paywall-content">
+          <!-- Реальный контент — показываем только если разблокировано -->
+          <div v-if="isPremiumUnlocked" class="paywall-content">
             <div class="result-desc glass">
               <p>{{ result.interpretation }}</p>
             </div>
@@ -169,10 +170,26 @@
             </div>
           </div>
 
+          <!-- Фейковый preview — всегда под блюром пока не разблокировано -->
+          <div v-else class="paywall-content">
+            <div class="result-desc glass">
+              <p>Глубокий анализ показывает сильную эмоциональную связь и взаимное притяжение. Ваши числа рождения создают гармоничный союз с потенциалом долгосрочных отношений...</p>
+            </div>
+            <div class="aspects glass">
+              <div class="aspect-row" v-for="fake in fakeCategories" :key="fake.name">
+                <div class="aspect-label">{{ fake.name }}</div>
+                <div class="aspect-bar-wrap">
+                  <div class="aspect-bar" :style="{ width: fake.score + '%' }"></div>
+                </div>
+                <div class="aspect-pct">{{ fake.score }}%</div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="!isPremiumUnlocked" class="paywall-overlay">
             <div class="paywall-lock">🔒</div>
             <div class="paywall-title serif">Полный анализ</div>
-            <div class="paywall-sub">Интерпретация и разбор по категориям</div>
+            <div class="paywall-sub">Интерпретация и разбор по 5 категориям</div>
 
             <!-- Есть гадания — можно открыть -->
             <button v-if="hasCredits || isDev" class="paywall-btn haptic" @click="unlockPremium">
@@ -188,7 +205,7 @@
           </div>
         </div>
 
-        <div class="result-actions">
+        <div class="result-actions" style="margin-top: 8px">
           <button
             v-if="result.id"
             class="action-btn primary haptic"
@@ -223,6 +240,14 @@ const { isDev } = useDevMode()
 const { hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
 const tipDismissed = ref(localStorage.getItem('compatTipDismissed') === 'true')
+
+const fakeCategories = [
+  { name: 'Любовь',      score: 78 },
+  { name: 'Доверие',     score: 85 },
+  { name: 'Общение',     score: 72 },
+  { name: 'Ценности',    score: 90 },
+  { name: 'Перспектива', score: 68 },
+]
 function dismissTip() {
   tipDismissed.value = true
   localStorage.setItem('compatTipDismissed', 'true')

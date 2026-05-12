@@ -93,7 +93,6 @@
             <div class="period-icon">{{ p.icon }}</div>
             <div class="period-title serif">{{ p.label }}</div>
             <div class="period-desc">{{ p.desc }}</div>
-            <div class="period-price">{{ p.price }}</div>
           </div>
         </div>
 
@@ -134,9 +133,9 @@ onMounted(async () => {
 
 const selectedPeriod = ref('Месяц')
 const periods = [
-  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней',  price: '149 ₽',  popular: false },
-  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ',   price: '349 ₽',  popular: false },
-  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы',  price: '1290 ₽', popular: false },
+  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней', popular: false },
+  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ',  popular: false },
+  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', popular: false },
 ]
 </script>
 
@@ -223,7 +222,6 @@ const periods = [
 .period-icon  { font-size:20px; margin-bottom:4px; }
 .period-title { font-size:14px; margin-bottom:2px; }
 .period-desc  { font-size:9.5px; color:rgba(255,255,255,.5); margin-bottom:6px; line-height:1.3; }
-.period-price { font-size:12px; font-weight:700; color:#ffc857; }
 
 /* Button */
 .action-btn {

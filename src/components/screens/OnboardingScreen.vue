@@ -49,15 +49,75 @@
           <label class="input-label">Город рождения <span class="req">*</span></label>
           <input v-model="form.birthCity" type="text" placeholder="Например: Москва" class="onb-input" />
         </div>
+        <!-- Checkbox согласия -->
+        <div class="terms-row">
+          <button
+            class="terms-checkbox haptic"
+            :class="{ checked: termsAccepted }"
+            @click="termsAccepted = !termsAccepted"
+            type="button"
+          >
+            <svg v-if="termsAccepted" viewBox="0 0 12 10" fill="none" width="12" height="10">
+              <path d="M1 5L4.5 8.5L11 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="terms-text">
+            Продолжая использование Сервиса и/или вводя свои данные, я подтверждаю, что ознакомился и согласен с
+            <button class="terms-link" @click="termsOpen = true" type="button">Пользовательским соглашением и Политикой конфиденциальности</button>.
+          </div>
+        </div>
+
         <button
           class="onb-btn haptic"
-          :disabled="!form.birthDate || !form.birthTime || !form.birthCity.trim()"
+          :disabled="!form.birthDate || !form.birthTime || !form.birthCity.trim() || !termsAccepted"
           @click="step = 2"
         >
           Далее →
         </button>
       </div>
     </div>
+
+    <!-- Модальное окно: Пользовательское соглашение -->
+    <Teleport to="body">
+      <div v-if="termsOpen" class="terms-modal-overlay" @click.self="termsOpen = false">
+        <div class="terms-modal">
+          <div class="terms-modal-header">
+            <div class="terms-modal-title serif">Пользовательское соглашение</div>
+            <button class="terms-modal-close haptic" @click="termsOpen = false">✕</button>
+          </div>
+          <div class="terms-modal-body">
+            <h3>1. Общие положения</h3>
+            <p>Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения между ИП / Разработчиком сервиса «Гадалка» (далее — «Сервис») и пользователем данного Сервиса.</p>
+            <p>Используя Сервис, вы подтверждаете, что прочитали, поняли и принимаете условия настоящего Соглашения и Политики конфиденциальности.</p>
+
+            <h3>2. Описание сервиса</h3>
+            <p>Сервис предоставляет развлекательный контент в области нумерологии, таро и астрологии. Все результаты носят исключительно развлекательный характер и не являются предсказаниями, медицинскими, юридическими или финансовыми рекомендациями.</p>
+
+            <h3>3. Возраст пользователей</h3>
+            <p>Сервис предназначен для пользователей старше 18 лет. Используя Сервис, вы подтверждаете, что достигли указанного возраста.</p>
+
+            <h3>4. Платные функции</h3>
+            <p>Часть функций Сервиса предоставляется на платной основе. Списание средств производится только после явного подтверждения пользователем. Все покупки являются окончательными и не подлежат возврату, если иное не предусмотрено действующим законодательством.</p>
+
+            <h3>5. Политика конфиденциальности</h3>
+            <p>Мы собираем следующие данные: Telegram ID, имя пользователя, дата рождения, город рождения, время рождения (если указаны). Данные используются исключительно для предоставления персонализированных расчётов в рамках Сервиса.</p>
+            <p>Мы не передаём ваши персональные данные третьим лицам, за исключением случаев, предусмотренных законодательством.</p>
+            <p>Вы имеете право запросить удаление ваших данных, нажав кнопку «Сбросить профиль» в разделе «Профиль».</p>
+
+            <h3>6. Ограничение ответственности</h3>
+            <p>Сервис предоставляется «как есть». Мы не несём ответственности за решения, принятые пользователем на основе контента Сервиса.</p>
+
+            <h3>7. Изменения соглашения</h3>
+            <p>Мы оставляем за собой право вносить изменения в настоящее Соглашение. Актуальная версия всегда доступна в данном разделе.</p>
+
+            <p class="terms-updated">Последнее обновление: май 2025 г.</p>
+          </div>
+          <button class="terms-modal-accept haptic" @click="termsAccepted = true; termsOpen = false">
+            Принимаю соглашение ✓
+          </button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Step 2: Цели -->
     <div v-if="step === 2" class="onb-screen">
@@ -136,6 +196,8 @@ const { createProfile, authWithTelegram } = useUser()
 const step = ref(1)
 const isLoading = ref(false)
 const errorMsg = ref('')
+const termsAccepted = ref(false)
+const termsOpen = ref(false)
 
 const form = ref({
   birthDate: '',
@@ -381,6 +443,102 @@ const handleFinish = async () => {
   font-size: 13px; cursor: pointer; margin-top: 12px; font-family: 'Manrope', sans-serif;
 }
 .onb-error { color: #ff6b6b; font-size: 13px; text-align: center; margin-top: 8px; }
+
+/* Terms checkbox */
+.terms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.terms-checkbox {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(182,84,255,0.5);
+  background: rgba(182,84,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; transition: all 0.2s;
+  margin-top: 1px;
+}
+.terms-checkbox.checked {
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgba(182,84,255,0.4);
+}
+.terms-text {
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.55);
+  flex: 1;
+}
+.terms-link {
+  background: none; border: none; padding: 0;
+  color: #d89fff;
+  font-size: 11px;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(216,159,255,0.4);
+  line-height: inherit;
+}
+
+/* Terms modal */
+.terms-modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end;
+}
+.terms-modal {
+  width: 100%; max-height: 88vh;
+  background: #130a28;
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.terms-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 20px 0;
+  flex-shrink: 0;
+}
+.terms-modal-title { font-size: 20px; color: #F5ECFF; }
+.terms-modal-close {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: none;
+  color: rgba(255,255,255,0.6); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Manrope', sans-serif;
+}
+.terms-modal-body {
+  flex: 1; overflow-y: auto;
+  padding: 16px 20px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px; line-height: 1.7;
+}
+.terms-modal-body h3 {
+  font-size: 14px; font-weight: 700;
+  color: #ffc857;
+  margin: 18px 0 8px;
+}
+.terms-modal-body h3:first-child { margin-top: 0; }
+.terms-modal-body p { margin: 0 0 10px; }
+.terms-updated { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 20px; }
+.terms-modal-accept {
+  margin: 0 20px 32px;
+  flex-shrink: 0;
+  padding: 15px; border-radius: 16px;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff; font-size: 15px; font-weight: 600;
+  font-family: 'Manrope', sans-serif; border: none; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(182,84,255,0.4);
+}
 
 /* Day code */
 .day-code-number {
