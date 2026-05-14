@@ -206,14 +206,6 @@
         </div>
 
         <div class="result-actions" style="margin-top: 8px">
-          <button
-            v-if="result.id"
-            class="action-btn primary haptic"
-            :disabled="isSaving || savedToDiary"
-            @click="saveToDiary"
-          >
-            {{ savedToDiary ? '✓ Сохранено' : isSaving ? 'Сохраняем...' : 'В дневник' }}
-          </button>
           <button class="action-btn secondary haptic" @click="reset">
             Новый расчёт
           </button>
@@ -260,8 +252,6 @@ const birthDate2 = ref('')
 const isLoading = ref(false)
 const errorMsg = ref('')
 const result = ref<CompatibilityResponse | null>(null)
-const isSaving = ref(false)
-const savedToDiary = ref(false)
 const paidUnlocked = ref(false)
 const isPremiumUnlocked = computed(() => isDev.value || paidUnlocked.value)
 
@@ -324,20 +314,6 @@ async function unlockPremium() {
   }
 }
 
-async function saveToDiary() {
-  if (!result.value?.id || isSaving.value || savedToDiary.value) return
-  isSaving.value = true
-  try {
-    await api.saveDiaryEntry({ featureType: 'COMPATIBILITY', referenceId: result.value.id })
-    hapticFeedback.success()
-    savedToDiary.value = true
-  } catch {
-    hapticFeedback.error?.()
-  } finally {
-    isSaving.value = false
-  }
-}
-
 // Форматируем ISO-дату (YYYY-MM-DD) в читаемый вид ДД.ММ.ГГГГ
 function displayDate(iso: string): string {
   if (!iso) return ''
@@ -352,7 +328,6 @@ function reset() {
   name2.value = ''
   birthDate2.value = ''
   errorMsg.value = ''
-  savedToDiary.value = false
   paidUnlocked.value = false
 }
 </script>

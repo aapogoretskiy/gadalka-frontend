@@ -170,6 +170,21 @@ onMounted(async () => {
   try { WebApp.ready() } catch {}
   try { WebApp.expand() } catch {}
 
+  // Когда клавиатура появляется — visualViewport уменьшается.
+  // Прокручиваем активный input/textarea в видимую область чтобы он
+  // не оказался под клавиатурой.
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+        // Небольшая задержка — браузер ещё анимирует появление клавиатуры
+        setTimeout(() => {
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        }, 100)
+      }
+    })
+  }
+
   // Блокируем горизонтальную ориентацию
   try { WebApp.lockOrientation() } catch {}
   try { screen.orientation.lock('portrait') } catch {}
