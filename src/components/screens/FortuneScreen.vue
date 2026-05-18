@@ -58,37 +58,35 @@
 
         <div class="spread-options">
           <div
-            v-for="s in spreads" :key="s.count"
-            class="spread-card"
-            :class="{ selected: selectedSpread === s.count, 'spread-card--locked': s.count !== 3, haptic: s.count === 3 }"
-            @click="handleSpreadSelect(s.count)"
+            v-for="s in spreads" :key="s.type"
+            class="spread-card haptic"
+            :class="{ selected: selectedSpread === s.type, 'spread-card--locked': !isDev && (balance ?? 0) < s.cost }"
+            @click="handleSpreadSelect(s.type, s.cost)"
           >
             <div class="spread-icon-wrap">
-              <div v-for="i in s.count" :key="i" class="mini-card-spread"
-                :style="`left:${(i-1)*Math.min(10,36/Math.max(s.count-1,1))}px;transform:rotate(${(i-Math.ceil(s.count/2))*(s.count>5?5:8)}deg)`"></div>
+              <div v-for="i in s.cardCount" :key="i" class="mini-card-spread"
+                :style="`left:${(i-1)*Math.min(10,36/Math.max(s.cardCount-1,1))}px;transform:rotate(${(i-Math.ceil(s.cardCount/2))*(s.cardCount>5?5:8)}deg)`"></div>
             </div>
             <div class="spread-info">
-              <div class="spread-title serif">{{ s.count }} {{ s.count === 1 ? 'карта' : s.count < 5 ? 'карты' : 'карт' }}</div>
+              <div class="spread-title serif">{{ s.name }}</div>
               <div class="spread-desc">{{ s.desc }}</div>
             </div>
             <div class="spread-right">
-              <ComingSoonBadge v-if="s.count !== 3" />
-              <template v-if="s.count === 3">
-                <!-- Есть баланс — показываем что тратим 1 гадание -->
-                <div v-if="hasCredits || isDev" class="spread-price" style="color:#70e0a8">
-                  1 гадание
+              <!-- Достаточно кредитов (или дев-режим) -->
+              <template v-if="isDev || (balance ?? 0) >= s.cost">
+                <div class="spread-price" style="color:#70e0a8">
+                  {{ s.cost }} {{ s.cost === 1 ? 'гадание' : s.cost < 5 ? 'гадания' : 'гаданий' }}
                 </div>
-                <!-- Нет баланса — предлагаем купить -->
-                <div v-else class="spread-price" style="color:#ffc857">Купить →</div>
               </template>
-              <div v-else class="spread-price" style="color:#ffc857">
-                {{ s.count === 5 ? '2 гадания' : '3 гадания' }}
-              </div>
+              <!-- Недостаточно кредитов -->
+              <template v-else>
+                <div class="spread-price" style="color:#ffc857">Купить →</div>
+              </template>
             </div>
           </div>
         </div>
 
-        <!-- Баланс иссяк — кнопка ведёт на экран покупки -->
+        <!-- Совсем нет кредитов — подсказка -->
         <div v-if="!hasCredits && !isDev" class="no-credits-block">
           <p>У вас закончились гадания</p>
           <button class="fortune-btn haptic" style="margin-top:12px" @click="navigate('payment')">
@@ -243,9 +241,8 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch } from 'vue'
 import { api } from '@/utils/api'
-import type { FortuneResponse } from '@/utils/api'
+import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
@@ -260,7 +257,7 @@ const step = ref(1)
 const question = ref('')
 const charCount = ref(0)
 const selectedCategory = ref('')
-const selectedSpread = ref(3)
+const selectedSpread = ref<SpreadType>('THREE_CARD')
 const isLoading = ref(false)
 const error = ref('')
 const result = ref<FortuneResponse | null>(null)
@@ -281,11 +278,64 @@ const categories = [
   { value: 'health', label: 'Здоровье', emoji: '🌿' },
 ]
 
-const spreads = [
-  { count: 3, desc: 'Прошлое · Настоящее · Будущее' },
-  { count: 5, desc: 'Детальный анализ ситуации' },
-  { count: 7, desc: 'Полный расклад судьбы' },
+const spreads: { type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[] = [
+  { type: 'THREE_CARD',   name: 'Три карты',       cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 1 },
+  { type: 'HORSESHOE',    name: 'Подкова',          cardCount: 7,  desc: 'Углублённый анализ ситуации',    cost: 2 },
+  { type: 'CELTIC_CROSS', name: 'Кельтский крест',  cardCount: 10, desc: 'Полный расклад судьбы',          cost: 3 },
 ]
+
+// ── Метки и иконки позиций карт ─────────────────────────────────────────────
+const positionLabels: Record<string, string> = {
+  // Три карты
+  PAST:                   'Прошлое',
+  PRESENT:                'Настоящее',
+  FUTURE:                 'Будущее',
+  // Подкова
+  HORSESHOE_PAST:         'Прошлое',
+  HORSESHOE_PRESENT:      'Настоящее',
+  HORSESHOE_HIDDEN:       'Скрытые влияния',
+  HORSESHOE_OBSTACLES:    'Препятствия',
+  HORSESHOE_EXTERNAL:     'Внешние влияния',
+  HORSESHOE_ADVICE:       'Совет',
+  HORSESHOE_OUTCOME:      'Итог',
+  // Кельтский крест
+  CELTIC_HEART:           'Суть вопроса',
+  CELTIC_CROSS:           'Что мешает',
+  CELTIC_FOUNDATION:      'Основа',
+  CELTIC_PAST:            'Прошлое',
+  CELTIC_POSSIBLE_FUTURE: 'Возможное будущее',
+  CELTIC_NEAR_FUTURE:     'Ближайшее будущее',
+  CELTIC_SELF:            'Ваша позиция',
+  CELTIC_EXTERNAL:        'Внешние влияния',
+  CELTIC_HOPES_FEARS:     'Надежды и страхи',
+  CELTIC_OUTCOME:         'Итог',
+}
+
+const positionIcons: Record<string, string> = {
+  // Три карты
+  PAST:                   '🌑',
+  PRESENT:                '🌕',
+  FUTURE:                 '⭐',
+  // Подкова
+  HORSESHOE_PAST:         '🌑',
+  HORSESHOE_PRESENT:      '🌕',
+  HORSESHOE_HIDDEN:       '🔮',
+  HORSESHOE_OBSTACLES:    '⛰️',
+  HORSESHOE_EXTERNAL:     '🌊',
+  HORSESHOE_ADVICE:       '🕊️',
+  HORSESHOE_OUTCOME:      '✨',
+  // Кельтский крест
+  CELTIC_HEART:           '💫',
+  CELTIC_CROSS:           '⚡',
+  CELTIC_FOUNDATION:      '🏛️',
+  CELTIC_PAST:            '🌑',
+  CELTIC_POSSIBLE_FUTURE: '🌠',
+  CELTIC_NEAR_FUTURE:     '⭐',
+  CELTIC_SELF:            '🪞',
+  CELTIC_EXTERNAL:        '🌊',
+  CELTIC_HOPES_FEARS:     '🌓',
+  CELTIC_OUTCOME:         '✨',
+}
 
 const loadingMessages = [
   'Соединяемся с энергиями...',
@@ -320,8 +370,8 @@ const toggleAccordion = (i: number) => {
   s.has(i) ? s.delete(i) : s.add(i)
   openAccordions.value = s
 }
-const posLabel = (p: string) => ({ PAST: 'Прошлое', PRESENT: 'Настоящее', FUTURE: 'Будущее' }[p] ?? p)
-const posIcon  = (p: string) => ({ PAST: '🌑', PRESENT: '🌕', FUTURE: '⭐' }[p] ?? '🔮')
+const posLabel = (p: string) => positionLabels[p] ?? p
+const posIcon  = (p: string) => positionIcons[p] ?? '🔮'
 
 const startFortune = async () => {
   step.value = 3
@@ -336,7 +386,7 @@ const startFortune = async () => {
   }, 900)
 
   try {
-    const res = await api.getFortune(question.value, selectedCategory.value || undefined)
+    const res = await api.getFortune(question.value, selectedCategory.value || undefined, selectedSpread.value)
     result.value = res.data
     // Баланс потрачен на бэкенде — обновляем локально
     await refreshBalance()
@@ -353,8 +403,10 @@ const startFortune = async () => {
 const saveToDiary = async () => {
   if (!result.value?.id || isSaving.value || savedToDiary.value) return
   isSaving.value = true
+  // spreadType из ответа бэкенда — надёжнее, чем локальный selectedSpread
+  const featureType = result.value.spreadType ?? selectedSpread.value
   try {
-    await api.saveDiaryEntry({ featureType: 'THREE_CARD', referenceId: result.value.id })
+    await api.saveDiaryEntry({ featureType, referenceId: result.value.id })
     hapticFeedback.success()
     savedToDiary.value = true
   } catch {
@@ -364,20 +416,20 @@ const saveToDiary = async () => {
   }
 }
 
-function handleSpreadSelect(count: number) {
-  if (count !== 3) return
-  if (!hasCredits.value && !isDev.value) {
-    // Нет баланса — ведём на экран покупки
+function handleSpreadSelect(type: SpreadType, cost: number) {
+  if (!isDev.value && (balance.value ?? 0) < cost) {
+    // Недостаточно кредитов — ведём на экран покупки
     navigate?.('payment')
     return
   }
-  selectedSpread.value = count
+  selectedSpread.value = type
 }
 
 const resetFortune = () => {
   step.value = 1
   question.value = ''
   charCount.value = 0
+  selectedSpread.value = 'THREE_CARD'
   result.value = null
   flipped.value = new Set()
   isDealing.value = false
@@ -569,9 +621,31 @@ const resetFortune = () => {
   font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
   font-weight: 700; text-align: center;
 }
+/* Три карты */
 .pos-label--past    { color: #b39ddb; }
 .pos-label--present { color: #ffc857; }
 .pos-label--future  { color: #70e0a8; }
+
+/* Подкова */
+.pos-label--horseshoe_past      { color: #b39ddb; }
+.pos-label--horseshoe_present   { color: #ffc857; }
+.pos-label--horseshoe_hidden    { color: #cc88ff; }
+.pos-label--horseshoe_obstacles { color: #ff8a65; }
+.pos-label--horseshoe_external  { color: #4dd0e1; }
+.pos-label--horseshoe_advice    { color: #a5d6a7; }
+.pos-label--horseshoe_outcome   { color: #70e0a8; }
+
+/* Кельтский крест */
+.pos-label--celtic_heart           { color: #e91e8c; }
+.pos-label--celtic_cross           { color: #ff5252; }
+.pos-label--celtic_foundation      { color: #b39ddb; }
+.pos-label--celtic_past            { color: #9e9e9e; }
+.pos-label--celtic_possible_future { color: #ffc857; }
+.pos-label--celtic_near_future     { color: #ffeb3b; }
+.pos-label--celtic_self            { color: #ce93d8; }
+.pos-label--celtic_external        { color: #4dd0e1; }
+.pos-label--celtic_hopes_fears     { color: #90caf9; }
+.pos-label--celtic_outcome         { color: #70e0a8; }
 
 /* Deal button */
 .deal-wrap {
@@ -641,9 +715,31 @@ const resetFortune = () => {
   border: 1px solid rgba(255,255,255,0.07);
   border-left-width: 3px;
 }
+/* Три карты */
 .card-section--past    { border-left-color: #b39ddb; }
 .card-section--present { border-left-color: #ffc857; }
 .card-section--future  { border-left-color: #70e0a8; }
+
+/* Подкова */
+.card-section--horseshoe_past      { border-left-color: #b39ddb; }
+.card-section--horseshoe_present   { border-left-color: #ffc857; }
+.card-section--horseshoe_hidden    { border-left-color: #cc88ff; }
+.card-section--horseshoe_obstacles { border-left-color: #ff8a65; }
+.card-section--horseshoe_external  { border-left-color: #4dd0e1; }
+.card-section--horseshoe_advice    { border-left-color: #a5d6a7; }
+.card-section--horseshoe_outcome   { border-left-color: #70e0a8; }
+
+/* Кельтский крест */
+.card-section--celtic_heart           { border-left-color: #e91e8c; }
+.card-section--celtic_cross           { border-left-color: #ff5252; }
+.card-section--celtic_foundation      { border-left-color: #b39ddb; }
+.card-section--celtic_past            { border-left-color: #9e9e9e; }
+.card-section--celtic_possible_future { border-left-color: #ffc857; }
+.card-section--celtic_near_future     { border-left-color: #ffeb3b; }
+.card-section--celtic_self            { border-left-color: #ce93d8; }
+.card-section--celtic_external        { border-left-color: #4dd0e1; }
+.card-section--celtic_hopes_fears     { border-left-color: #90caf9; }
+.card-section--celtic_outcome         { border-left-color: #70e0a8; }
 
 .cs-pos-row {
   display: flex;
@@ -658,9 +754,29 @@ const resetFortune = () => {
   text-transform: uppercase;
   letter-spacing: .12em;
 }
+/* Три карты */
 .card-section--past    .cs-pos-label { color: #b39ddb; }
 .card-section--present .cs-pos-label { color: #ffc857; }
 .card-section--future  .cs-pos-label { color: #70e0a8; }
+/* Подкова */
+.card-section--horseshoe_past      .cs-pos-label { color: #b39ddb; }
+.card-section--horseshoe_present   .cs-pos-label { color: #ffc857; }
+.card-section--horseshoe_hidden    .cs-pos-label { color: #cc88ff; }
+.card-section--horseshoe_obstacles .cs-pos-label { color: #ff8a65; }
+.card-section--horseshoe_external  .cs-pos-label { color: #4dd0e1; }
+.card-section--horseshoe_advice    .cs-pos-label { color: #a5d6a7; }
+.card-section--horseshoe_outcome   .cs-pos-label { color: #70e0a8; }
+/* Кельтский крест */
+.card-section--celtic_heart           .cs-pos-label { color: #e91e8c; }
+.card-section--celtic_cross           .cs-pos-label { color: #ff5252; }
+.card-section--celtic_foundation      .cs-pos-label { color: #b39ddb; }
+.card-section--celtic_past            .cs-pos-label { color: #9e9e9e; }
+.card-section--celtic_possible_future .cs-pos-label { color: #ffc857; }
+.card-section--celtic_near_future     .cs-pos-label { color: #ffeb3b; }
+.card-section--celtic_self            .cs-pos-label { color: #ce93d8; }
+.card-section--celtic_external        .cs-pos-label { color: #4dd0e1; }
+.card-section--celtic_hopes_fears     .cs-pos-label { color: #90caf9; }
+.card-section--celtic_outcome         .cs-pos-label { color: #70e0a8; }
 
 .cs-pos-line {
   flex: 1;

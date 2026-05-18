@@ -115,11 +115,24 @@ export interface DailyCardResponse {
 }
 
 // GET /api/fortune
+export type SpreadType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS'
+
+export type CardPosition =
+  // Три карты
+  | 'PAST' | 'PRESENT' | 'FUTURE'
+  // Подкова (7 карт)
+  | 'HORSESHOE_PAST' | 'HORSESHOE_PRESENT' | 'HORSESHOE_HIDDEN'
+  | 'HORSESHOE_OBSTACLES' | 'HORSESHOE_EXTERNAL' | 'HORSESHOE_ADVICE' | 'HORSESHOE_OUTCOME'
+  // Кельтский крест (10 карт)
+  | 'CELTIC_HEART' | 'CELTIC_CROSS' | 'CELTIC_FOUNDATION' | 'CELTIC_PAST'
+  | 'CELTIC_POSSIBLE_FUTURE' | 'CELTIC_NEAR_FUTURE' | 'CELTIC_SELF'
+  | 'CELTIC_EXTERNAL' | 'CELTIC_HOPES_FEARS' | 'CELTIC_OUTCOME'
+
 export interface CardDto {
   id: number
   name: string
   meaning: string
-  cardPosition: 'PAST' | 'PRESENT' | 'FUTURE'
+  cardPosition: CardPosition
   interpretation?: string
 }
 
@@ -129,6 +142,7 @@ export interface FortuneResponse {
   question?: string
   cards: CardDto[]
   interpretation: string
+  spreadType: SpreadType
 }
 
 // POST /api/fortune/compatibility
@@ -201,7 +215,7 @@ export interface CreatePaymentResponse {
 }
 
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
+export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -250,9 +264,9 @@ export const api = {
   getDailyCard: () =>
     apiClient.get<DailyCardResponse>('/api/daily-card'),
 
-  // Гадание "3 карты"
-  getFortune: (question: string, category?: string) =>
-    apiClient.post<FortuneResponse>('/api/fortune', { question, category: category || null }),
+  // Гадание (тип расклада передаётся явно; по умолчанию THREE_CARD)
+  getFortune: (question: string, category?: string, spreadType: SpreadType = 'THREE_CARD') =>
+    apiClient.post<FortuneResponse>('/api/fortune', { question, category: category || null, spreadType }),
 
   // Совместимость
   getCompatibility: (data: CompatibilityRequest) =>
