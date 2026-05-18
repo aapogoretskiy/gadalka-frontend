@@ -135,28 +135,50 @@
           <span>"{{ question }}"</span>
         </div>
 
-        <!-- Cards row -->
-        <div class="result-cards" :class="`cards-${result.cards.length}`">
+        <!-- ─── THREE CARD: горизонтальный ряд ────────────────────────── -->
+        <div v-if="result.spreadType === 'THREE_CARD'" class="result-cards cards-3">
           <div v-for="(card, i) in result.cards" :key="card.id" class="result-card-wrap">
-            <div
-              class="result-card"
-              :class="{ flipped: flipped.has(i) }"
-            >
-              <div class="res-face res-back">
-                <div class="res-back-border">
-                  <svg viewBox="0 0 40 56" fill="none" opacity="0.8">
-                    <rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/>
-                    <circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="res-face res-front">
-                <div class="res-emoji">{{ posIcon(card.cardPosition) }}</div>
-                <div class="res-name serif">{{ card.name }}</div>
-              </div>
+            <div class="result-card" :class="{ flipped: flipped.has(i) }">
+              <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+              <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
             </div>
-            <div class="position-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">
-              {{ posLabel(card.cardPosition) }}
+            <div class="position-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+          </div>
+        </div>
+
+        <!-- ─── HORSESHOE: дуга (подкова) ──────────────────────────────── -->
+        <div v-else-if="result.spreadType === 'HORSESHOE'" class="hs-spread">
+          <div v-for="(card, i) in result.cards" :key="card.id"
+               class="hs-slot" :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px`">
+            <div class="result-card hs-card" :class="{ flipped: flipped.has(i) }">
+              <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+              <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+            </div>
+            <div class="hs-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+          </div>
+        </div>
+
+        <!-- ─── CELTIC CROSS: крест + посох ────────────────────────────── -->
+        <div v-else-if="result.spreadType === 'CELTIC_CROSS'" class="cc-spread">
+          <!-- Крест (карты 1–6) -->
+          <div class="cc-cross">
+            <div v-for="(card, i) in result.cards.slice(0, 6)" :key="card.id"
+                 class="cc-slot" :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px`">
+              <div class="result-card cc-card" :class="{ flipped: flipped.has(i), 'cc-crossing': i === 1 }">
+                <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+                <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+              </div>
+              <div v-if="i !== 1" class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+            </div>
+          </div>
+          <!-- Посох (карты 7–10) -->
+          <div class="cc-staff">
+            <div v-for="(card, i) in result.cards.slice(6)" :key="card.id" class="cc-staff-slot">
+              <div class="result-card cc-card" :class="{ flipped: flipped.has(i + 6) }">
+                <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+                <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+              </div>
+              <div class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
             </div>
           </div>
         </div>
@@ -282,6 +304,30 @@ const spreads: { type: SpreadType; name: string; cardCount: number; desc: string
   { type: 'THREE_CARD',   name: 'Три карты',       cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 1 },
   { type: 'HORSESHOE',    name: 'Подкова',          cardCount: 7,  desc: 'Углублённый анализ ситуации',    cost: 2 },
   { type: 'CELTIC_CROSS', name: 'Кельтский крест',  cardCount: 10, desc: 'Полный расклад судьбы',          cost: 3 },
+]
+
+// ── Позиции карт для фигурных раскладов ─────────────────────────────────────
+// Подкова: дуга, контейнер 300×240px, карта 58×87px
+// Центр дуги (150, 210), радиус 120px, углы 160°→20°
+const HORSESHOE_POS = [
+  { x: 8,   y: 126 }, // 1: Прошлое      (левый низ)
+  { x: 34,  y: 85  }, // 2: Настоящее    (левый средний)
+  { x: 74,  y: 57  }, // 3: Скрытые      (левый верх)
+  { x: 121, y: 47  }, // 4: Препятствия  (вершина)
+  { x: 168, y: 57  }, // 5: Внешние      (правый верх)
+  { x: 208, y: 85  }, // 6: Совет        (правый средний)
+  { x: 234, y: 126 }, // 7: Итог         (правый низ)
+]
+
+// Кельтский крест: контейнер 270×305px, карта 60×90px
+// Карта с индексом 1 накладывается на карту 0 с поворотом 90°
+const CELTIC_CROSS_POS = [
+  { x: 105, y: 107 }, // 0: Суть вопроса       (центр)
+  { x: 105, y: 107 }, // 1: Что мешает         (центр, поверх, повёрнута)
+  { x: 105, y: 207 }, // 2: Основа             (ниже центра)
+  { x: 35,  y: 107 }, // 3: Прошлое            (слева)
+  { x: 105, y: 7   }, // 4: Возможное будущее  (вверху)
+  { x: 175, y: 107 }, // 5: Ближайшее будущее  (справа)
 ]
 
 // ── Метки и иконки позиций карт ─────────────────────────────────────────────
@@ -892,5 +938,94 @@ const resetFortune = () => {
   font-size: 14px;
   color: rgba(255,255,255,0.7);
   margin: 0 0 4px;
+}
+
+/* ── Horseshoe spread ── */
+.hs-spread {
+  position: relative;
+  width: 300px;
+  height: 240px;
+  margin: 0 auto 12px;
+}
+.hs-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.hs-card {
+  width: 58px !important;
+  height: 87px !important;
+}
+.hs-label {
+  font-size: 6.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+  color: rgba(255,255,255,0.65);
+  max-width: 60px;
+  line-height: 1.3;
+}
+
+/* ── Celtic Cross spread ── */
+.cc-spread {
+  margin: 0 auto 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.cc-cross {
+  position: relative;
+  width: 270px;
+  height: 305px;
+  flex-shrink: 0;
+}
+.cc-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  overflow: visible;
+}
+.cc-card {
+  width: 60px !important;
+  height: 90px !important;
+}
+.cc-crossing {
+  transform: rotate(90deg);
+  z-index: 2;
+}
+.cc-label {
+  font-size: 6.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+  color: rgba(255,255,255,0.65);
+  max-width: 64px;
+  line-height: 1.3;
+  white-space: normal;
+  z-index: 3;
+  position: relative;
+}
+.cc-label--hidden {
+  display: none;
+}
+.cc-staff {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  width: 270px;
+}
+.cc-staff-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 </style>
