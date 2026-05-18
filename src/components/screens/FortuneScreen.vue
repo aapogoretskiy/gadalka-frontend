@@ -307,16 +307,16 @@ const spreads: { type: SpreadType; name: string; cardCount: number; desc: string
 ]
 
 // ── Позиции карт для фигурных раскладов ─────────────────────────────────────
-// Подкова: дуга, контейнер 300×240px, карта 58×87px
-// Центр дуги (150, 210), радиус 120px, углы 160°→20°
+// Подкова: дуга, контейнер 350×235px, карта 46×70px
+// Шаг 50px между позициями (46px карта + 4px зазор), парабола y = 120*((x-152)/152)^2 + 20
 const HORSESHOE_POS = [
-  { x: 8,   y: 126 }, // 1: Прошлое      (левый низ)
-  { x: 34,  y: 85  }, // 2: Настоящее    (левый средний)
-  { x: 74,  y: 57  }, // 3: Скрытые      (левый верх)
-  { x: 121, y: 47  }, // 4: Препятствия  (вершина)
-  { x: 168, y: 57  }, // 5: Внешние      (правый верх)
-  { x: 208, y: 85  }, // 6: Совет        (правый средний)
-  { x: 234, y: 126 }, // 7: Итог         (правый низ)
+  { x: 0,   y: 140 }, // 1: Прошлое      (левый низ)
+  { x: 50,  y: 74  }, // 2: Настоящее    (левый средний)
+  { x: 100, y: 34  }, // 3: Скрытые      (левый верх)
+  { x: 152, y: 20  }, // 4: Препятствия  (вершина)
+  { x: 202, y: 33  }, // 5: Внешние      (правый верх)
+  { x: 252, y: 72  }, // 6: Совет        (правый средний)
+  { x: 304, y: 140 }, // 7: Итог         (правый низ)
 ]
 
 // Кельтский крест: контейнер 270×305px, карта 60×90px
@@ -943,9 +943,11 @@ const resetFortune = () => {
 /* ── Horseshoe spread ── */
 .hs-spread {
   position: relative;
-  width: 300px;
-  height: 240px;
+  width: 350px;
+  height: 235px;
   margin: 0 auto 12px;
+  /* Если экран уже 350px — масштабируем */
+  max-width: 100%;
 }
 .hs-slot {
   position: absolute;
@@ -955,16 +957,19 @@ const resetFortune = () => {
   gap: 4px;
 }
 .hs-card {
-  width: 58px !important;
-  height: 87px !important;
+  width: 46px !important;
+  height: 70px !important;
+  border-radius: 8px !important;
 }
+.hs-card .res-emoji  { font-size: 16px !important; }
+.hs-card .res-name   { font-size: 6px !important; line-height: 1.2; }
 .hs-label {
-  font-size: 6.5px;
+  font-size: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
   text-align: center;
   color: rgba(255,255,255,0.65);
-  max-width: 60px;
+  width: 50px;
   line-height: 1.3;
 }
 
@@ -997,6 +1002,11 @@ const resetFortune = () => {
 .cc-crossing {
   transform: rotate(90deg);
   z-index: 2;
+}
+/* Лицевая сторона крестовой карты — контр-ротируем контент,
+   чтобы текст читался горизонтально, пока рамка карты остаётся на боку */
+.cc-card.cc-crossing .res-front {
+  transform: rotate(-90deg);
 }
 .cc-label {
   font-size: 6.5px;
