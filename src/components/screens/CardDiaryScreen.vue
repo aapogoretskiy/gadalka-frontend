@@ -100,9 +100,9 @@
           </div>
         </template>
 
-        <!-- THREE_CARD -->
-        <template v-if="selected.featureType === 'THREE_CARD'">
-          <div class="modal-type-label">🔮 Расклад 3 карты</div>
+        <!-- THREE_CARD / HORSESHOE / CELTIC_CROSS -->
+        <template v-if="['THREE_CARD', 'HORSESHOE', 'CELTIC_CROSS'].includes(selected.featureType)">
+          <div class="modal-type-label">🔮 Расклад «{{ SPREAD_LABELS[selected.featureType] ?? selected.featureType }}»</div>
           <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
           <!-- Вопрос, на который делался расклад -->
           <div v-if="selected.data?.question" class="modal-question-pill">
@@ -292,22 +292,25 @@ function isCompatUnlocked(entry: DiaryEntryDto | null): boolean {
 const isLoading = ref(false)
 const error = ref('')
 const allEntries = ref<DiaryEntryDto[]>([])
-const activeTab = ref<FeatureType | 'ALL'>('ALL')
+type TabValue = FeatureType | 'ALL' | 'FORTUNE'
+const activeTab = ref<TabValue>('ALL')
 const selected = ref<DiaryEntryDto | null>(null)
 
-const tabs = [
-  { value: 'ALL' as const,            label: 'Все' },
-  { value: 'DAILY_CARD' as const,     label: 'Карта дня' },
-  { value: 'THREE_CARD' as const,     label: '3 карты' },
-  { value: 'COMPATIBILITY' as const,  label: 'Совместимость' },
-  { value: 'NUMEROLOGY_DAY' as const, label: 'Числа' },
+const tabs: { value: TabValue; label: string }[] = [
+  { value: 'ALL',            label: 'Все' },
+  { value: 'FORTUNE',        label: 'Гадание' },
+  { value: 'DAILY_CARD',     label: 'Карта дня' },
+  { value: 'COMPATIBILITY',  label: 'Совместимость' },
+  { value: 'NUMEROLOGY_DAY', label: 'Числа' },
 ]
 
-const filteredEntries = computed(() =>
-  activeTab.value === 'ALL'
-    ? allEntries.value
-    : allEntries.value.filter(e => e.featureType === activeTab.value)
-)
+const FORTUNE_TYPES: FeatureType[] = ['THREE_CARD', 'HORSESHOE', 'CELTIC_CROSS']
+
+const filteredEntries = computed(() => {
+  if (activeTab.value === 'ALL')     return allEntries.value
+  if (activeTab.value === 'FORTUNE') return allEntries.value.filter(e => FORTUNE_TYPES.includes(e.featureType))
+  return allEntries.value.filter(e => e.featureType === (activeTab.value as FeatureType))
+})
 
 function dateRange() {
   const to = new Date()
@@ -321,14 +324,16 @@ async function loadAll() {
   error.value = ''
   const { from, to } = dateRange()
   try {
-    const [r1, r2, r3, r4] = await Promise.allSettled([
+    const [r1, r2, r3, r4, r5, r6] = await Promise.allSettled([
       api.getDiaryHistory('THREE_CARD', from, to),
+      api.getDiaryHistory('HORSESHOE', from, to),
+      api.getDiaryHistory('CELTIC_CROSS', from, to),
       api.getDiaryHistory('COMPATIBILITY', from, to),
       api.getDiaryHistory('DAILY_CARD', from, to),
       api.getDiaryHistory('NUMEROLOGY_DAY', from, to),
     ])
     const entries: DiaryEntryDto[] = []
-    for (const r of [r1, r2, r3, r4]) {
+    for (const r of [r1, r2, r3, r4, r5, r6]) {
       if (r.status === 'fulfilled') entries.push(...r.value.data.entries)
     }
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -356,6 +361,12 @@ function entryBg(entry: DiaryEntryDto): string {
   return 'linear-gradient(135deg, #3a1b6e, #1a0b2e)'
 }
 
+const SPREAD_LABELS: Record<string, string> = {
+  THREE_CARD:   '3 карты',
+  HORSESHOE:    'Подкова',
+  CELTIC_CROSS: 'Кельтский крест',
+}
+
 function entryTitle(entry: DiaryEntryDto): string {
   const d = entry.data
   if (!d) return '—'
@@ -367,19 +378,22 @@ function entryTitle(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY') {
     return d.dayCode != null ? `Код дня — ${d.dayCode}` : 'Число дня'
   }
-  // THREE_CARD: показываем вопрос как заголовок, если есть
+  // Все расклады (THREE_CARD, HORSESHOE, CELTIC_CROSS): показываем вопрос
   if (d.question) return truncate(d.question, 60)
   const cards = d.cards as Array<{ name: string }>
-  return cards?.length ? cards.map((c: { name: string }) => c.name).join(' · ') : 'Расклад 3 карты'
+  const label = SPREAD_LABELS[entry.featureType] ?? 'Расклад'
+  return cards?.length ? cards.map((c: { name: string }) => c.name).join(' · ') : label
 }
 
 function entryKeywords(entry: DiaryEntryDto): string[] {
   const d = entry.data
   if (!d) return []
   if (entry.featureType === 'COMPATIBILITY') return d.compatibilityScore != null ? [`${d.compatibilityScore}%`] : []
-  if (entry.featureType === 'THREE_CARD') {
+  if (FORTUNE_TYPES.includes(entry.featureType)) {
+    const label = SPREAD_LABELS[entry.featureType]
     const cards = d.cards as Array<{ cardPosition: string }>
-    return cards?.slice(0, 3).map((c: { cardPosition: string }) => posLabel(c.cardPosition)) ?? []
+    const positions = cards?.slice(0, 3).map((c: { cardPosition: string }) => posLabel(c.cardPosition)) ?? []
+    return label ? [label, ...positions] : positions
   }
   if (entry.featureType === 'NUMEROLOGY_DAY') {
     const kws: string[] = []
@@ -395,10 +409,9 @@ function entryNote(entry: DiaryEntryDto): string {
   const d = entry.data
   if (!d) return ''
   if (entry.featureType === 'DAILY_CARD')     return truncate(d.meaning || d.advice || '', 100)
-  // Для совместимости показываем только label, без платной интерпретации
   if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label || '', 100)
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
-  // THREE_CARD: если заголовок уже показывает вопрос, в note показываем карты; иначе — интерпретацию
+  // Все расклады: если заголовок уже показывает вопрос — в note показываем карты; иначе — интерпретацию
   if (d.question) {
     const cards = d.cards as Array<{ name: string }>
     return cards?.length ? cards.map((c: { name: string }) => c.name).join(' · ') : truncate(d.interpretation || '', 100)
@@ -406,8 +419,26 @@ function entryNote(entry: DiaryEntryDto): string {
   return truncate(d.interpretation || '', 100)
 }
 
-const posLabel = (p: string) => ({ PAST: 'Прошлое', PRESENT: 'Настоящее', FUTURE: 'Будущее' } as Record<string, string>)[p] ?? p
-const posIcon  = (p: string) => ({ PAST: '🌑', PRESENT: '🌕', FUTURE: '⭐' } as Record<string, string>)[p] ?? '🔮'
+const posLabel = (p: string): string => ({
+  PAST: 'Прошлое', PRESENT: 'Настоящее', FUTURE: 'Будущее',
+  HORSESHOE_PAST: 'Прошлое', HORSESHOE_PRESENT: 'Настоящее',
+  HORSESHOE_HIDDEN: 'Скрытые влияния', HORSESHOE_OBSTACLES: 'Препятствия',
+  HORSESHOE_EXTERNAL: 'Внешние влияния', HORSESHOE_ADVICE: 'Совет', HORSESHOE_OUTCOME: 'Итог',
+  CELTIC_HEART: 'Суть вопроса', CELTIC_CROSS: 'Что мешает',
+  CELTIC_FOUNDATION: 'Основа', CELTIC_PAST: 'Прошлое',
+  CELTIC_POSSIBLE_FUTURE: 'Возможное будущее', CELTIC_NEAR_FUTURE: 'Ближайшее будущее',
+  CELTIC_SELF: 'Ваша позиция', CELTIC_EXTERNAL: 'Внешние влияния',
+  CELTIC_HOPES_FEARS: 'Надежды и страхи', CELTIC_OUTCOME: 'Итог',
+} as Record<string, string>)[p] ?? p
+
+const posIcon = (p: string): string => ({
+  PAST: '🌑', PRESENT: '🌕', FUTURE: '⭐',
+  HORSESHOE_PAST: '🌑', HORSESHOE_PRESENT: '🌕', HORSESHOE_HIDDEN: '🌙',
+  HORSESHOE_OBSTACLES: '⚡', HORSESHOE_EXTERNAL: '🌊', HORSESHOE_ADVICE: '💡', HORSESHOE_OUTCOME: '🎯',
+  CELTIC_HEART: '💫', CELTIC_CROSS: '✚', CELTIC_FOUNDATION: '🏛',
+  CELTIC_PAST: '🌑', CELTIC_POSSIBLE_FUTURE: '🌠', CELTIC_NEAR_FUTURE: '⭐',
+  CELTIC_SELF: '🪞', CELTIC_EXTERNAL: '🌊', CELTIC_HOPES_FEARS: '🌙', CELTIC_OUTCOME: '🎯',
+} as Record<string, string>)[p] ?? '🔮'
 
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s
