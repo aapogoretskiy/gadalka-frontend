@@ -2,7 +2,7 @@
   <div class="screen-wrap scrollbar-hide">
     <div class="content">
 
-      <!-- Step 1: Вопрос -->
+      <!-- ══ Step 1: Вопрос ══════════════════════════════════════════════ -->
       <template v-if="step === 1">
         <div class="header-bar">
           <div style="width:36px"></div>
@@ -42,7 +42,7 @@
         </button>
       </template>
 
-      <!-- Step 2: Выбор расклада -->
+      <!-- ══ Step 2: Выбор расклада ══════════════════════════════════════ -->
       <template v-if="step === 2">
         <div class="header-bar">
           <div style="width:36px"></div>
@@ -72,13 +72,11 @@
               <div class="spread-desc">{{ s.desc }}</div>
             </div>
             <div class="spread-right">
-              <!-- Достаточно кредитов (или дев-режим) -->
               <template v-if="isDev || (balance ?? 0) >= s.cost">
                 <div class="spread-price" style="color:#70e0a8">
                   {{ s.cost }} {{ s.cost === 1 ? 'гадание' : s.cost < 5 ? 'гадания' : 'гаданий' }}
                 </div>
               </template>
-              <!-- Недостаточно кредитов -->
               <template v-else>
                 <div class="spread-price" style="color:#ffc857">Купить →</div>
               </template>
@@ -86,7 +84,6 @@
           </div>
         </div>
 
-        <!-- Совсем нет кредитов — подсказка -->
         <div v-if="!hasCredits && !isDev" class="no-credits-block">
           <p>У вас закончились гадания</p>
           <button class="fortune-btn haptic" style="margin-top:12px" @click="navigate('payment')">
@@ -99,7 +96,7 @@
         </button>
       </template>
 
-      <!-- Step 3: Загрузка -->
+      <!-- ══ Step 3: Загрузка ════════════════════════════════════════════ -->
       <template v-if="step === 3">
         <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 0">
           <div class="ai-orb">
@@ -115,7 +112,7 @@
         </div>
       </template>
 
-      <!-- Step 4: Результат -->
+      <!-- ══ Step 4: Анимация веера + расклад карт ══════════════════════ -->
       <template v-if="step === 4 && result">
         <div class="header-bar">
           <div style="width:36px"></div>
@@ -123,10 +120,130 @@
           <div style="width:36px"></div>
         </div>
 
-        <!-- Success banner -->
-        <div class="success-banner">
-          <div class="success-icon">✓</div>
-          <div class="success-text">Расклад готов · <strong>{{ result.username }}</strong></div>
+        <div class="question-pill">
+          <span class="question-pill-icon">💬</span>
+          <span>"{{ question }}"</span>
+        </div>
+
+        <!-- Плавный переход между веером и раскладом -->
+        <transition name="phase-fade" mode="out-in">
+
+          <!-- ── Фаза веера ───────────────────────────────────────────── -->
+          <div v-if="dealPhase === 'fan'" key="fan" class="fan-wrap">
+            <div class="fan-stage">
+              <div
+                v-for="i in FAN_CARD_COUNT"
+                :key="i"
+                class="fan-card-item"
+                :style="fanStyle(i - 1, FAN_CARD_COUNT)"
+              >
+                <div class="fan-card-body" :style="{ animationDelay: `${(i - 1) * 110}ms` }">
+                  <div class="fan-card-face">
+                    <svg viewBox="0 0 40 56" fill="none" opacity="0.75">
+                      <rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/>
+                      <circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="fan-hint">✦ Карты перемешиваются...</p>
+          </div>
+
+          <!-- ── Фаза расклада ──────────────────────────────────────── -->
+          <div v-else key="spread" class="spread-phase">
+
+            <!-- Success banner -->
+            <div class="success-banner">
+              <div class="success-icon">✓</div>
+              <div class="success-text">Расклад готов · <strong>{{ result.username }}</strong></div>
+            </div>
+
+            <!-- ─── THREE CARD ──────────────────────────────────────── -->
+            <div v-if="result.spreadType === 'THREE_CARD'" class="result-cards cards-3">
+              <div
+                v-for="(card, i) in result.cards" :key="card.id"
+                class="result-card-wrap"
+                :class="{ 'card-visible': visibleCards.has(i) }"
+              >
+                <div class="result-card" :class="{ flipped: flipped.has(i) }">
+                  <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+                  <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                </div>
+                <div class="position-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+              </div>
+            </div>
+
+            <!-- ─── HORSESHOE ───────────────────────────────────────── -->
+            <div v-else-if="result.spreadType === 'HORSESHOE'" class="hs-spread">
+              <div
+                v-for="(card, i) in result.cards" :key="card.id"
+                class="hs-slot"
+                :class="{ 'card-visible': visibleCards.has(i) }"
+                :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px`"
+              >
+                <div class="result-card hs-card" :class="{ flipped: flipped.has(i) }">
+                  <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+                  <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                </div>
+                <div class="hs-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+              </div>
+            </div>
+
+            <!-- ─── CELTIC CROSS ────────────────────────────────────── -->
+            <!-- Карта 1 ("Что мешает") теперь НЕ перекрывает карту 0,  -->
+            <!-- а располагается отдельно ниже центра                    -->
+            <div v-else-if="result.spreadType === 'CELTIC_CROSS'" class="cc-spread">
+              <!-- Крест (карты 1–6) -->
+              <div class="cc-cross">
+                <div
+                  v-for="(card, i) in result.cards.slice(0, 6)" :key="card.id"
+                  class="cc-slot"
+                  :class="{ 'card-visible': visibleCards.has(i) }"
+                  :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px`"
+                >
+                  <div class="result-card cc-card" :class="{ flipped: flipped.has(i) }">
+                    <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+                    <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                  </div>
+                  <div class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+                </div>
+              </div>
+              <!-- Посох (карты 7–10) -->
+              <div class="cc-staff">
+                <div
+                  v-for="(card, i) in result.cards.slice(6)" :key="card.id"
+                  class="cc-staff-slot"
+                  :class="{ 'card-visible': visibleCards.has(i + 6) }"
+                >
+                  <div class="result-card cc-card" :class="{ flipped: flipped.has(i + 6) }">
+                    <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
+                    <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                  </div>
+                  <div class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Кнопка пояснения — появляется после переворота всех карт -->
+            <transition name="btn-rise">
+              <div v-if="dealPhase === 'done'" class="explain-btn-wrap">
+                <button class="explain-btn haptic" @click="step = 5">
+                  ✦ Получить пояснение
+                </button>
+              </div>
+            </transition>
+
+          </div>
+        </transition>
+      </template>
+
+      <!-- ══ Step 5: Пояснения к раскладу ═══════════════════════════════ -->
+      <template v-if="step === 5 && result">
+        <div class="header-bar">
+          <div style="width:36px"></div>
+          <div class="header-title serif">Пояснение</div>
+          <div style="width:36px"></div>
         </div>
 
         <!-- Question display -->
@@ -135,70 +252,8 @@
           <span>"{{ question }}"</span>
         </div>
 
-        <!-- ─── THREE CARD: горизонтальный ряд ────────────────────────── -->
-        <div v-if="result.spreadType === 'THREE_CARD'" class="result-cards cards-3">
-          <div v-for="(card, i) in result.cards" :key="card.id" class="result-card-wrap">
-            <div class="result-card" :class="{ flipped: flipped.has(i) }">
-              <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-              <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
-            </div>
-            <div class="position-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
-          </div>
-        </div>
-
-        <!-- ─── HORSESHOE: дуга (подкова) ──────────────────────────────── -->
-        <div v-else-if="result.spreadType === 'HORSESHOE'" class="hs-spread">
-          <div v-for="(card, i) in result.cards" :key="card.id"
-               class="hs-slot" :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px`">
-            <div class="result-card hs-card" :class="{ flipped: flipped.has(i) }">
-              <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-              <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
-            </div>
-            <div class="hs-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
-          </div>
-        </div>
-
-        <!-- ─── CELTIC CROSS: крест + посох ────────────────────────────── -->
-        <div v-else-if="result.spreadType === 'CELTIC_CROSS'" class="cc-spread">
-          <!-- Крест (карты 1–6) -->
-          <div class="cc-cross">
-            <div v-for="(card, i) in result.cards.slice(0, 6)" :key="card.id"
-                 class="cc-slot" :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px`">
-              <div class="result-card cc-card" :class="{ flipped: flipped.has(i), 'cc-crossing': i === 1 }">
-                <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-                <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
-              </div>
-              <div v-if="i !== 1" class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
-            </div>
-          </div>
-          <!-- Посох (карты 7–10) -->
-          <div class="cc-staff">
-            <div v-for="(card, i) in result.cards.slice(6)" :key="card.id" class="cc-staff-slot">
-              <div class="result-card cc-card" :class="{ flipped: flipped.has(i + 6) }">
-                <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-                <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
-              </div>
-              <div class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Кнопка «Разложить» — показывается пока карты не открыты -->
-        <div v-if="!allFlipped" class="deal-wrap">
-          <button
-            class="deal-btn haptic"
-            :disabled="isDealing"
-            @click="dealCards"
-          >
-            <span v-if="isDealing" class="deal-spinner"></span>
-            <span v-else>✦ Разложить карты</span>
-          </button>
-          <div v-if="!isDealing" class="flip-hint">Нажмите, чтобы раскрыть расклад</div>
-        </div>
-
-        <!-- Per-card sections — появляются только когда все карты открыты -->
+        <!-- Per-card sections -->
         <div
-          v-if="allFlipped"
           v-for="(card, i) in result.cards"
           :key="`section-${i}`"
           class="card-section"
@@ -227,30 +282,28 @@
           </div>
         </div>
 
-        <!-- General interpretation + actions — только когда все карты открыты -->
-        <template v-if="allFlipped">
-          <div class="summary-block">
-            <div class="summary-label">✦ Общий вывод</div>
-            <div class="summary-body">{{ result.interpretation }}</div>
-          </div>
+        <!-- General interpretation -->
+        <div class="summary-block">
+          <div class="summary-label">✦ Общий вывод</div>
+          <div class="summary-body">{{ result.interpretation }}</div>
+        </div>
 
-          <!-- Save to diary -->
-          <button
-            v-if="result.id"
-            class="fortune-btn haptic"
-            style="margin-bottom:10px"
-            :disabled="isSaving || savedToDiary"
-            @click="saveToDiary"
-          >
-            {{ savedToDiary ? '✓ Сохранено в дневник' : isSaving ? 'Сохраняем...' : 'Добавить в дневник' }}
-          </button>
+        <!-- Save to diary -->
+        <button
+          v-if="result.id"
+          class="fortune-btn haptic"
+          style="margin-bottom:10px"
+          :disabled="isSaving || savedToDiary"
+          @click="saveToDiary"
+        >
+          {{ savedToDiary ? '✓ Сохранено в дневник' : isSaving ? 'Сохраняем...' : 'Добавить в дневник' }}
+        </button>
 
-          <!-- Actions -->
-          <div class="actions-row">
-            <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
-            <button class="fortune-btn-sec haptic" @click="navigate('profile')">В профиль</button>
-          </div>
-        </template>
+        <!-- Actions -->
+        <div class="actions-row">
+          <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
+          <button class="fortune-btn-sec haptic" @click="navigate('profile')">В профиль</button>
+        </div>
       </template>
 
       <!-- Error -->
@@ -261,7 +314,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, watch } from 'vue'
+import { ref, inject, watch } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
@@ -275,23 +328,28 @@ const { isDev } = useDevMode()
 const { balance, hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
 
-const step = ref(1)
-const question = ref('')
-const charCount = ref(0)
+// ── Основное состояние ───────────────────────────────────────────────────────
+const step             = ref(1)
+const question         = ref('')
+const charCount        = ref(0)
 const selectedCategory = ref('')
-const selectedSpread = ref<SpreadType>('THREE_CARD')
-const isLoading = ref(false)
-const error = ref('')
-const result = ref<FortuneResponse | null>(null)
-const flipped = ref(new Set<number>())
-const isDealing = ref(false)
-const allFlipped = computed(() => result.value !== null && flipped.value.size >= result.value.cards.length)
-const openAccordions = ref(new Set<number>())
-const msgIdx = ref(0)
-const progress = ref(0)
-const isSaving = ref(false)
-const savedToDiary = ref(false)
+const selectedSpread   = ref<SpreadType>('THREE_CARD')
+const error            = ref('')
+const result           = ref<FortuneResponse | null>(null)
+const flipped          = ref(new Set<number>())
+const openAccordions   = ref(new Set<number>())
+const msgIdx           = ref(0)
+const progress         = ref(0)
+const isSaving         = ref(false)
+const savedToDiary     = ref(false)
 
+// ── Анимация ─────────────────────────────────────────────────────────────────
+const FAN_CARD_COUNT = 7
+const dealPhase      = ref<'fan' | 'placing' | 'flipping' | 'done'>('fan')
+const visibleCards   = ref(new Set<number>())
+const animationDone  = ref(false)
+
+// ── Данные ───────────────────────────────────────────────────────────────────
 const categories = [
   { value: 'love',   label: 'Любовь',   emoji: '💕' },
   { value: 'money',  label: 'Деньги',   emoji: '💰' },
@@ -301,36 +359,34 @@ const categories = [
 ]
 
 const spreads: { type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[] = [
-  { type: 'THREE_CARD',   name: 'Три карты',       cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 1 },
-  { type: 'HORSESHOE',    name: 'Подкова',          cardCount: 7,  desc: 'Углублённый анализ ситуации',    cost: 2 },
-  { type: 'CELTIC_CROSS', name: 'Кельтский крест',  cardCount: 10, desc: 'Полный расклад судьбы',          cost: 3 },
+  { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 1 },
+  { type: 'HORSESHOE',    name: 'Подкова',         cardCount: 7,  desc: 'Углублённый анализ ситуации',   cost: 2 },
+  { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: 3 },
 ]
 
-// ── Позиции карт для фигурных раскладов ─────────────────────────────────────
-// Подкова: дуга, контейнер 350×235px, карта 46×70px
-// Шаг 50px между позициями (46px карта + 4px зазор), парабола y = 120*((x-152)/152)^2 + 20
+// Подкова: контейнер 350×235px, карта 46×70px
 const HORSESHOE_POS = [
-  { x: 0,   y: 140 }, // 1: Прошлое      (левый низ)
-  { x: 50,  y: 74  }, // 2: Настоящее    (левый средний)
-  { x: 100, y: 34  }, // 3: Скрытые      (левый верх)
-  { x: 152, y: 20  }, // 4: Препятствия  (вершина)
-  { x: 202, y: 33  }, // 5: Внешние      (правый верх)
-  { x: 252, y: 72  }, // 6: Совет        (правый средний)
-  { x: 304, y: 140 }, // 7: Итог         (правый низ)
+  { x: 0,   y: 140 }, // 1: Прошлое
+  { x: 50,  y: 74  }, // 2: Настоящее
+  { x: 100, y: 34  }, // 3: Скрытые
+  { x: 152, y: 20  }, // 4: Препятствия
+  { x: 202, y: 33  }, // 5: Внешние
+  { x: 252, y: 72  }, // 6: Совет
+  { x: 304, y: 140 }, // 7: Итог
 ]
 
-// Кельтский крест: контейнер 270×305px, карта 60×90px
-// Карта с индексом 1 накладывается на карту 0 с поворотом 90°
+// Кельтский крест: контейнер 270×400px, карта 60×90px
+// Карта 1 ("Что мешает") БОЛЬШЕ НЕ перекрывает карту 0 —
+// она расположена отдельно ниже центра, чтобы обе были видны
 const CELTIC_CROSS_POS = [
-  { x: 105, y: 107 }, // 0: Суть вопроса       (центр)
-  { x: 105, y: 107 }, // 1: Что мешает         (центр, поверх, повёрнута)
-  { x: 105, y: 207 }, // 2: Основа             (ниже центра)
-  { x: 35,  y: 107 }, // 3: Прошлое            (слева)
-  { x: 105, y: 7   }, // 4: Возможное будущее  (вверху)
-  { x: 175, y: 107 }, // 5: Ближайшее будущее  (справа)
+  { x: 105, y: 100 }, // 0: Суть вопроса       (центр)
+  { x: 105, y: 205 }, // 1: Что мешает         (ниже центра, отдельно)
+  { x: 105, y: 305 }, // 2: Основа             (снизу)
+  { x: 35,  y: 100 }, // 3: Прошлое            (слева)
+  { x: 105, y: 0   }, // 4: Возможное будущее  (вверху)
+  { x: 175, y: 100 }, // 5: Ближайшее будущее  (справа)
 ]
 
-// ── Метки и иконки позиций карт ─────────────────────────────────────────────
 const positionLabels: Record<string, string> = {
   // Три карты
   PAST:                   'Прошлое',
@@ -358,11 +414,9 @@ const positionLabels: Record<string, string> = {
 }
 
 const positionIcons: Record<string, string> = {
-  // Три карты
   PAST:                   '🌑',
   PRESENT:                '🌕',
   FUTURE:                 '⭐',
-  // Подкова
   HORSESHOE_PAST:         '🌑',
   HORSESHOE_PRESENT:      '🌕',
   HORSESHOE_HIDDEN:       '🔮',
@@ -370,7 +424,6 @@ const positionIcons: Record<string, string> = {
   HORSESHOE_EXTERNAL:     '🌊',
   HORSESHOE_ADVICE:       '🕊️',
   HORSESHOE_OUTCOME:      '✨',
-  // Кельтский крест
   CELTIC_HEART:           '💫',
   CELTIC_CROSS:           '⚡',
   CELTIC_FOUNDATION:      '🏛️',
@@ -390,32 +443,78 @@ const loadingMessages = [
   'Формируем ответ...',
 ]
 
-// Когда мы на шаге 2 — Telegram BackButton должен идти на шаг 1, а не выходить из экрана
+// ── Стиль карты в веере ──────────────────────────────────────────────────────
+// Каждая карта поворачивается вокруг нижней точки (transform-origin: 50% 100%)
+const fanStyle = (index: number, total: number): Record<string, string> => {
+  const spreadDeg = Math.min(82, total * 14)
+  const startAngle = -spreadDeg / 2
+  const angleStep = total > 1 ? spreadDeg / (total - 1) : 0
+  const angle = startAngle + angleStep * index
+  return {
+    transform: `rotate(${angle}deg)`,
+    zIndex: String(index + 1),
+  }
+}
+
+// ── Анимация раскладки ───────────────────────────────────────────────────────
+const startAnimation = async () => {
+  if (animationDone.value || !result.value) return
+  dealPhase.value = 'fan'
+  const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
+  // Показываем веер 1.8 секунды
+  await delay(1800)
+
+  // Карты появляются на позициях по одной
+  dealPhase.value = 'placing'
+  const cardCount = result.value.cards.length
+  for (let i = 0; i < cardCount; i++) {
+    await delay(i === 0 ? 200 : 380)
+    visibleCards.value = new Set([...visibleCards.value, i])
+  }
+
+  // Пауза перед переворотом
+  await delay(380)
+  dealPhase.value = 'flipping'
+
+  // Карты переворачиваются по одной
+  for (let i = 0; i < cardCount; i++) {
+    await delay(i === 0 ? 200 : 480)
+    flipped.value = new Set([...flipped.value, i])
+  }
+
+  // Появляется кнопка «Получить пояснение»
+  await delay(600)
+  dealPhase.value = 'done'
+  animationDone.value = true
+}
+
+// ── Back-кнопка Telegram ─────────────────────────────────────────────────────
 watch(step, (s) => {
   if (s === 2) {
     setBackOverride?.(() => { step.value = 1 })
+  } else if (s === 4) {
+    // Назад со step 4 — сбросить всё и вернуться на шаг 1
+    setBackOverride?.(() => { resetFortune() })
+    // Запускаем анимацию только один раз
+    if (result.value && !animationDone.value) {
+      startAnimation()
+    }
+  } else if (s === 5) {
+    // Назад со step 5 — вернуться к раскладу (без повтора анимации)
+    setBackOverride?.(() => { step.value = 4 })
   } else {
     setBackOverride?.(null)
   }
 })
 
-const flipCard = (i: number) => { flipped.value = new Set([...flipped.value, i]) }
-
-const dealCards = async () => {
-  if (isDealing.value || !result.value) return
-  isDealing.value = true
-  const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
-  for (let i = 0; i < result.value.cards.length; i++) {
-    await delay(i === 0 ? 200 : 500)
-    flipCard(i)
-  }
-  isDealing.value = false
-}
+// ── Функции ──────────────────────────────────────────────────────────────────
 const toggleAccordion = (i: number) => {
   const s = new Set(openAccordions.value)
   s.has(i) ? s.delete(i) : s.add(i)
   openAccordions.value = s
 }
+
 const posLabel = (p: string) => positionLabels[p] ?? p
 const posIcon  = (p: string) => positionIcons[p] ?? '🔮'
 
@@ -425,7 +524,6 @@ const startFortune = async () => {
   progress.value = 0
   msgIdx.value = 0
 
-  // Animate progress
   const interval = setInterval(() => {
     msgIdx.value = (msgIdx.value + 1) % loadingMessages.length
     progress.value = Math.min(progress.value + 25, 90)
@@ -434,9 +532,9 @@ const startFortune = async () => {
   try {
     const res = await api.getFortune(question.value, selectedCategory.value || undefined, selectedSpread.value)
     result.value = res.data
-    // Баланс потрачен на бэкенде — обновляем локально
     await refreshBalance()
     progress.value = 100
+    // step → 4 запускает watcher, который вызовет startAnimation()
     setTimeout(() => { step.value = 4 }, 400)
   } catch (e: any) {
     error.value = e.response?.data?.message || 'Не удалось получить расклад. Попробуйте снова.'
@@ -449,7 +547,6 @@ const startFortune = async () => {
 const saveToDiary = async () => {
   if (!result.value?.id || isSaving.value || savedToDiary.value) return
   isSaving.value = true
-  // spreadType из ответа бэкенда — надёжнее, чем локальный selectedSpread
   const featureType = result.value.spreadType ?? selectedSpread.value
   try {
     await api.saveDiaryEntry({ featureType, referenceId: result.value.id })
@@ -464,7 +561,6 @@ const saveToDiary = async () => {
 
 function handleSpreadSelect(type: SpreadType, cost: number) {
   if (!isDev.value && (balance.value ?? 0) < cost) {
-    // Недостаточно кредитов — ведём на экран покупки
     navigate?.('payment')
     return
   }
@@ -472,15 +568,19 @@ function handleSpreadSelect(type: SpreadType, cost: number) {
 }
 
 const resetFortune = () => {
-  step.value = 1
-  question.value = ''
-  charCount.value = 0
+  step.value        = 1
+  question.value    = ''
+  charCount.value   = 0
   selectedSpread.value = 'THREE_CARD'
-  result.value = null
-  flipped.value = new Set()
-  isDealing.value = false
+  result.value      = null
+  flipped.value     = new Set()
   openAccordions.value = new Set()
-  savedToDiary.value = false
+  savedToDiary.value   = false
+  error.value       = ''
+  // Сбрасываем анимацию
+  dealPhase.value   = 'fan'
+  visibleCards.value = new Set()
+  animationDone.value = false
 }
 </script>
 
@@ -534,7 +634,7 @@ const resetFortune = () => {
 .question-area textarea::placeholder { color: rgba(255,255,255,0.4); }
 .char-count { font-size: 11px; color: rgba(255,255,255,0.4); text-align: right; margin-top: 6px; }
 
-/* Spread */
+/* Spread selector */
 .spread-options { display: flex; flex-direction: column; gap: 10px; }
 .spread-card {
   padding: 16px 18px;
@@ -614,7 +714,188 @@ const resetFortune = () => {
   transition: width 0.4s ease;
 }
 
-/* Result cards */
+/* ══ Анимация перехода фаза-фаза ═══════════════════════════════════════════ */
+.phase-fade-enter-active,
+.phase-fade-leave-active {
+  transition: opacity 0.45s ease;
+}
+.phase-fade-enter-from,
+.phase-fade-leave-to {
+  opacity: 0;
+}
+
+/* ══ Веер карт ══════════════════════════════════════════════════════════════ */
+.fan-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 0 28px;
+  gap: 36px;
+}
+
+.fan-stage {
+  position: relative;
+  width: 220px;
+  height: 190px;
+  /* Карты выровнены по нижнему краю и вращаются вокруг нижней точки */
+}
+
+.fan-card-item {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  margin-left: -30px;   /* центрирование: половина ширины карты 60px */
+  width: 60px;
+  height: 90px;
+  transform-origin: 50% 100%; /* вращение вокруг нижнего центра */
+}
+
+.fan-card-body {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(160deg, #3d1a72, #1e0b35);
+  border: 1px solid rgba(255, 200, 87, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(182,84,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Анимация парения — на дочернем элементе, чтобы не конфликтовать с rotate родителя */
+  animation: fan-float 1.9s ease-in-out infinite;
+}
+
+.fan-card-face {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(255, 200, 87, 0.4);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fan-card-face svg { width: 55%; }
+
+@keyframes fan-float {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-5px); }
+}
+
+.fan-hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  letter-spacing: 0.06em;
+  animation: hint-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.9;  }
+}
+
+/* ══ Расклад — обёртка ══════════════════════════════════════════════════════ */
+.spread-phase { width: 100%; }
+
+/* ══ Анимация появления карт ════════════════════════════════════════════════ */
+
+/* Три карты: fade + slide up */
+.result-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(18px) scale(0.9);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.result-card-wrap.card-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Подкова: слоты с абсолютной позицией */
+.hs-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.38s ease, transform 0.38s ease;
+}
+.hs-slot.card-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Кельтский крест: слоты с абсолютной позицией */
+.cc-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  overflow: visible;
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.38s ease, transform 0.38s ease;
+}
+.cc-slot.card-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Посох: горизонтальные слоты */
+.cc-staff-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.38s ease, transform 0.38s ease;
+}
+.cc-staff-slot.card-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ══ Кнопка «Получить пояснение» ════════════════════════════════════════════ */
+.explain-btn-wrap {
+  margin: 22px 0 6px;
+}
+
+.explain-btn {
+  width: 100%;
+  padding: 17px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  animation: explain-glow 2.3s ease-in-out infinite;
+}
+
+@keyframes explain-glow {
+  0%, 100% { box-shadow: 0 8px 28px rgba(182,84,255,0.5); }
+  50%       { box-shadow: 0 8px 48px rgba(182,84,255,0.95), 0 0 28px rgba(233,74,168,0.55); }
+}
+
+/* Кнопка вылетает снизу */
+.btn-rise-enter-active {
+  transition: opacity 0.55s ease, transform 0.5s ease;
+}
+.btn-rise-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+/* ══ Карты результата ═══════════════════════════════════════════════════════ */
 .result-cards {
   display: flex;
   justify-content: center;
@@ -622,7 +903,7 @@ const resetFortune = () => {
   margin: 0 0 10px;
   flex-wrap: wrap;
 }
-.result-card-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
 .result-card {
   width: 90px; height: 135px;
   border-radius: 12px; overflow: hidden;
@@ -631,18 +912,19 @@ const resetFortune = () => {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* 7-card spread: smaller cards so they fit in 2 rows without icon/text overlap */
 .cards-7 { gap: 6px 8px; margin-bottom: 16px; }
 .cards-7 .result-card { width: 78px; height: 116px; }
 .cards-7 .res-emoji { font-size: 22px; }
 .cards-7 .res-name  { font-size: 8px; }
 .cards-7 .position-label { font-size: 8px; }
+
 .res-face {
   position: absolute; inset: 0; border-radius: 12px; opacity: 0;
   transition: opacity 0.45s ease;
 }
 .result-card:not(.flipped) .res-back  { opacity: 1; }
-.result-card.flipped      .res-front { opacity: 1; }
+.result-card.flipped       .res-front { opacity: 1; }
+
 .res-back {
   background: linear-gradient(135deg, #3a1b6e, #1a0b2e);
   display: flex; align-items: center; justify-content: center;
@@ -667,6 +949,7 @@ const resetFortune = () => {
   font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
   font-weight: 700; text-align: center;
 }
+
 /* Три карты */
 .pos-label--past    { color: #b39ddb; }
 .pos-label--present { color: #ffc857; }
@@ -693,50 +976,7 @@ const resetFortune = () => {
 .pos-label--celtic_hopes_fears     { color: #90caf9; }
 .pos-label--celtic_outcome         { color: #70e0a8; }
 
-/* Deal button */
-.deal-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin: 4px 0 18px;
-}
-.deal-btn {
-  padding: 14px 36px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #b654ff, #e94aa8);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  font-family: 'Manrope', sans-serif;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 8px 28px rgba(182,84,255,0.5);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  letter-spacing: .02em;
-}
-.deal-btn:active { transform: scale(0.97); }
-.deal-btn:disabled { opacity: 0.7; cursor: default; }
-.deal-spinner {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.4);
-  border-top-color: #fff;
-  animation: spin .7s linear infinite;
-  flex-shrink: 0;
-}
-
-/* Flip hint */
-.flip-hint {
-  text-align: center;
-  font-size: 12px;
-  color: rgba(255,255,255,.35);
-  letter-spacing: .02em;
-}
-
-/* Question pill */
+/* ══ Question pill ══════════════════════════════════════════════════════════ */
 .question-pill {
   display: flex;
   align-items: flex-start;
@@ -752,7 +992,7 @@ const resetFortune = () => {
 }
 .question-pill-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
 
-/* Per-card sections */
+/* ══ Пояснения (step 5) ═════════════════════════════════════════════════════ */
 .card-section {
   border-radius: 18px;
   padding: 18px 16px 14px;
@@ -761,6 +1001,7 @@ const resetFortune = () => {
   border: 1px solid rgba(255,255,255,0.07);
   border-left-width: 3px;
 }
+
 /* Три карты */
 .card-section--past    { border-left-color: #b39ddb; }
 .card-section--present { border-left-color: #ffc857; }
@@ -800,6 +1041,7 @@ const resetFortune = () => {
   text-transform: uppercase;
   letter-spacing: .12em;
 }
+
 /* Три карты */
 .card-section--past    .cs-pos-label { color: #b39ddb; }
 .card-section--present .cs-pos-label { color: #ffc857; }
@@ -940,21 +1182,13 @@ const resetFortune = () => {
   margin: 0 0 4px;
 }
 
-/* ── Horseshoe spread ── */
+/* ══ Подкова ════════════════════════════════════════════════════════════════ */
 .hs-spread {
   position: relative;
   width: 350px;
   height: 235px;
   margin: 0 auto 12px;
-  /* Если экран уже 350px — масштабируем */
   max-width: 100%;
-}
-.hs-slot {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
 }
 .hs-card {
   width: 46px !important;
@@ -973,7 +1207,8 @@ const resetFortune = () => {
   line-height: 1.3;
 }
 
-/* ── Celtic Cross spread ── */
+/* ══ Кельтский крест ════════════════════════════════════════════════════════ */
+/* Карта 1 теперь ниже карты 0, контейнер увеличен по высоте               */
 .cc-spread {
   margin: 0 auto 12px;
   display: flex;
@@ -984,29 +1219,12 @@ const resetFortune = () => {
 .cc-cross {
   position: relative;
   width: 270px;
-  height: 305px;
+  height: 400px;   /* было 305px, увеличено под новое расположение карты 1 */
   flex-shrink: 0;
-}
-.cc-slot {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  overflow: visible;
 }
 .cc-card {
   width: 60px !important;
   height: 90px !important;
-}
-.cc-crossing {
-  transform: rotate(90deg);
-  z-index: 2;
-}
-/* Лицевая сторона крестовой карты — контр-ротируем контент,
-   чтобы текст читался горизонтально, пока рамка карты остаётся на боку */
-.cc-card.cc-crossing .res-front {
-  transform: rotate(-90deg);
 }
 .cc-label {
   font-size: 6.5px;
@@ -1020,9 +1238,6 @@ const resetFortune = () => {
   z-index: 3;
   position: relative;
 }
-.cc-label--hidden {
-  display: none;
-}
 .cc-staff {
   display: flex;
   flex-direction: row;
@@ -1031,11 +1246,5 @@ const resetFortune = () => {
   padding-top: 10px;
   border-top: 1px solid rgba(255,255,255,0.12);
   width: 270px;
-}
-.cc-staff-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
 }
 </style>
