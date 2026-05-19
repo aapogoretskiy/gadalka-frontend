@@ -265,8 +265,14 @@ export const api = {
     apiClient.get<DailyCardResponse>('/api/daily-card'),
 
   // Гадание (тип расклада передаётся явно; по умолчанию THREE_CARD)
+  // Кельтский крест (10 карт) делает 11 последовательных запросов к AI — может занять до ~20с,
+  // поэтому таймаут для этого эндпоинта выше глобального.
   getFortune: (question: string, category?: string, spreadType: SpreadType = 'THREE_CARD') =>
-    apiClient.post<FortuneResponse>('/api/fortune', { question, category: category || null, spreadType }),
+    apiClient.post<FortuneResponse>(
+      '/api/fortune',
+      { question, category: category || null, spreadType },
+      { timeout: 60000 },
+    ),
 
   // Совместимость
   getCompatibility: (data: CompatibilityRequest) =>
