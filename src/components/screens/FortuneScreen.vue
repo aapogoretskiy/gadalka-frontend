@@ -364,15 +364,17 @@ const spreads: { type: SpreadType; name: string; cardCount: number; desc: string
   { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: 3 },
 ]
 
-// Подкова: контейнер 350×235px, карта 46×70px
+// Подкова: контейнер 350×278px, карта 50×75px
+// Шаг 50px (карта 50px → нулевой горизонтальный зазор, как и раньше)
+// y-дуга заметно глубже: нижние карты на y=172, верхняя на y=28
 const HORSESHOE_POS = [
-  { x: 0,   y: 140 }, // 1: Прошлое
-  { x: 50,  y: 74  }, // 2: Настоящее
-  { x: 100, y: 34  }, // 3: Скрытые
-  { x: 152, y: 20  }, // 4: Препятствия
-  { x: 202, y: 33  }, // 5: Внешние
-  { x: 252, y: 72  }, // 6: Совет
-  { x: 304, y: 140 }, // 7: Итог
+  { x: 0,   y: 172 }, // 1: Прошлое      (левый низ)
+  { x: 50,  y: 92  }, // 2: Настоящее    (левый средний)
+  { x: 100, y: 44  }, // 3: Скрытые      (левый верх)
+  { x: 150, y: 28  }, // 4: Препятствия  (вершина)
+  { x: 200, y: 44  }, // 5: Внешние      (правый верх)
+  { x: 250, y: 92  }, // 6: Совет        (правый средний)
+  { x: 300, y: 172 }, // 7: Итог         (правый низ)
 ]
 
 // Кельтский крест: контейнер 290×520px, карта 68×102px
@@ -1186,24 +1188,24 @@ const resetFortune = () => {
 .hs-spread {
   position: relative;
   width: 350px;
-  height: 235px;
+  height: 278px;  /* увеличено: глубже дуга + карты выше */
   margin: 0 auto 12px;
   max-width: 100%;
 }
 .hs-card {
-  width: 46px !important;
-  height: 70px !important;
+  width: 50px !important;  /* было 46px */
+  height: 75px !important; /* было 70px */
   border-radius: 8px !important;
 }
-.hs-card .res-emoji  { font-size: 16px !important; }
-.hs-card .res-name   { font-size: 6px !important; line-height: 1.2; }
+.hs-card .res-emoji  { font-size: 18px !important; }
+.hs-card .res-name   { font-size: 7px !important; line-height: 1.2; }
 .hs-label {
-  font-size: 6px;
+  font-size: 7px;          /* было 6px */
   text-transform: uppercase;
   letter-spacing: 0.3px;
   text-align: center;
   color: rgba(255,255,255,0.65);
-  width: 50px;
+  width: 54px;             /* было 50px */
   line-height: 1.3;
 }
 
