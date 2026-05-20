@@ -338,32 +338,3 @@ export const api = {
 }
 
 export default apiClient
-    apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
-
-  getBalance: () =>
-    apiClient.get<BalanceResponse>('/api/v1/payments/balance'),
-
-  createYooKassaPayment: (data: CreatePaymentRequest) =>
-    apiClient.post<CreatePaymentResponse>('/api/v1/payments/yookassa/create', data),
-
-  createStarsPayment: (data: CreatePaymentRequest) =>
-    apiClient.post<CreatePaymentResponse>('/api/v1/payments/stars/create', data),
-
-  // Темы карт (магазин колод)
-  getThemes: () =>
-    apiClient.get<ThemeDto[]>('/api/themes'),
-
-  activateTheme: (themeId: number) =>
-    apiClient.post<void>(`/api/themes/${themeId}/activate`),
-
-  // skipGlobalError: true — обрабатываем ошибки вручную в useTheme
-  // (402 = мало кредитов, 409 = уже куплена — показываем свои сообщения)
-  purchaseTheme: (themeId: number) =>
-    apiClient.post<void>(`/api/themes/${themeId}/purchase`, {}, { skipGlobalError: true }),
-
-  // Health check
-  health: () =>
-    apiClient.get<Record<string, string>>('/api/health'),
-}
-
-export default apiClient
