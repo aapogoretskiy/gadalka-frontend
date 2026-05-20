@@ -15,52 +15,73 @@
           <div class="hero-title serif">Коллекция колод</div>
           <div class="hero-sub">Выберите свою тему</div>
         </div>
-        <div class="hero-count">{{ decks.length }} тем</div>
+        <div class="hero-count">{{ themes.length }} тем</div>
       </div>
 
       <!-- Filter chips -->
       <div class="filter-row">
         <button
-          v-for="f in filters" :key="f"
+          v-for="f in availableFilters" :key="f"
           class="filter-chip haptic"
           :class="{ active: activeFilter === f }"
           @click="activeFilter = f"
         >{{ f }}</button>
       </div>
 
+      <!-- Состояние загрузки — скелетон-карточки -->
+      <div v-if="isLoading" class="deck-grid">
+        <div v-for="i in 4" :key="i" class="deck-card glass">
+          <div class="skeleton" style="height:110px"></div>
+          <div style="padding:12px 14px 14px">
+            <div class="skeleton" style="height:16px;width:70%;margin-bottom:8px;border-radius:4px"></div>
+            <div class="skeleton" style="height:11px;width:90%;margin-bottom:8px;border-radius:4px"></div>
+            <div class="skeleton" style="height:13px;width:40%;border-radius:4px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ошибка загрузки -->
+      <div v-else-if="loadError" class="error-state glass">
+        <div class="error-icon">⚠️</div>
+        <div class="error-text">Не удалось загрузить темы</div>
+        <button class="retry-btn haptic" @click="loadThemes">Попробовать снова</button>
+      </div>
+
       <!-- Deck grid -->
-      <div class="deck-grid">
+      <div v-else class="deck-grid">
         <div
-          v-for="deck in filteredDecks" :key="deck.id"
+          v-for="theme in filteredThemes" :key="theme.id"
           class="deck-card glass haptic"
-          :class="{ owned: deck.owned, disabled: deck.disabled }"
-          @click="selectDeck(deck)"
+          :class="{ owned: theme.owned, disabled: !theme.enabled }"
+          @click="openSheet(theme)"
         >
-          <!-- Badges: disabled decks show only coming-soon, enabled show hit/active -->
-          <template v-if="deck.disabled">
-            <div class="deck-badge-coming-soon"><ComingSoonBadge /></div>
+          <!-- Бейджи -->
+          <template v-if="!theme.enabled">
+            <div class="deck-badge-coming-soon">
+              <ComingSoonBadge />
+            </div>
           </template>
           <template v-else>
-            <div v-if="deck.popular" class="deck-badge">ХИТ</div>
-            <div v-if="deck.owned && deck.active" class="deck-active-badge">✓</div>
+            <div v-if="visuals(theme.slug).popular" class="deck-badge">ХИТ</div>
+            <div v-if="theme.owned && theme.active" class="deck-active-badge">✓</div>
           </template>
 
-          <div class="deck-preview" :style="{ background: deck.bg }">
-            <div class="deck-emoji">{{ deck.icon }}</div>
+          <div class="deck-preview" :style="{ background: visuals(theme.slug).bg }">
+            <div class="deck-emoji">{{ visuals(theme.slug).icon }}</div>
           </div>
 
           <div class="deck-info">
-            <div class="deck-name serif">{{ deck.name }}</div>
-            <div class="deck-desc">{{ deck.description }}</div>
+            <div class="deck-name serif">{{ theme.name }}</div>
+            <div class="deck-desc">{{ theme.description }}</div>
             <div class="deck-price-row">
-              <div v-if="deck.disabled">
-                <!-- price row intentionally empty for disabled — badge is at top -->
-              </div>
-              <div v-else-if="deck.owned" class="deck-owned">
-                <span v-if="deck.active" class="owned-active">Активна</span>
+              <div v-if="!theme.enabled"><!-- пусто для Coming Soon --></div>
+              <div v-else-if="theme.owned" class="deck-owned">
+                <span v-if="theme.active" class="owned-active">Активна</span>
                 <span v-else class="owned-label">Куплена</span>
               </div>
-              <div v-else class="deck-price">{{ deck.price === 0 ? 'Бесплатно' : deck.price + ' ₽' }}</div>
+              <div v-else class="deck-price">
+                {{ theme.free ? 'Бесплатно' : theme.price + ' гаданий' }}
+              </div>
             </div>
           </div>
         </div>
@@ -68,138 +89,204 @@
 
     </div>
 
-    <!-- Bottom sheet for selected deck -->
-    <div v-if="selected" class="sheet-overlay" @click.self="selected = null">
-      <div class="bottom-sheet">
-        <div class="sheet-handle"></div>
+    <!-- Bottom sheet для выбранной темы -->
+    <Transition name="sheet">
+      <div v-if="selected" class="sheet-overlay" @click.self="selected = null">
+        <div class="bottom-sheet">
+          <div class="sheet-handle"></div>
 
-        <div class="sheet-preview" :style="{ background: selected.bg }">
-          <div class="sheet-emoji">{{ selected.icon }}</div>
-        </div>
+          <div class="sheet-preview" :style="{ background: visuals(selected.slug).bg }">
+            <div class="sheet-emoji">{{ visuals(selected.slug).icon }}</div>
+          </div>
 
-        <div class="sheet-title serif">{{ selected.name }}</div>
-        <div class="sheet-desc">{{ selected.description }}</div>
+          <div class="sheet-title serif">{{ selected.name }}</div>
+          <div class="sheet-desc">{{ selected.description }}</div>
 
-        <div class="sheet-features">
-          <div class="feature" v-for="f in selected.features" :key="f">
-            <span class="feature-check">✓</span> {{ f }}
+          <div class="sheet-features">
+            <div class="feature" v-for="f in visuals(selected.slug).features" :key="f">
+              <span class="feature-check">✓</span> {{ f }}
+            </div>
+          </div>
+
+          <!-- Кнопки действий -->
+          <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+
+            <!-- Тема уже активна -->
+            <button v-if="selected.active" class="sheet-btn active-state" disabled>
+              Активна ✓
+            </button>
+
+            <!-- Тема owned, но не активна — кнопка активации -->
+            <template v-else-if="selected.owned">
+              <button class="sheet-btn primary haptic" @click="handleActivate(selected)">
+                Активировать колоду
+              </button>
+            </template>
+
+            <!-- Тема не куплена — кнопка покупки -->
+            <template v-else>
+              <button
+                class="sheet-btn primary haptic"
+                :disabled="isPurchasing"
+                @click="handlePurchase(selected)"
+              >
+                <span v-if="isPurchasing" class="btn-spinner"></span>
+                <span v-else>
+                  {{ selected.free ? 'Получить бесплатно' : 'Купить за ' + selected.price + ' гаданий' }}
+                </span>
+              </button>
+            </template>
+
+            <button class="sheet-btn secondary haptic" @click="selected = null">
+              Закрыть
+            </button>
           </div>
         </div>
-
-        <div v-if="selected.owned">
-          <button
-            v-if="!selected.active"
-            class="sheet-btn primary haptic"
-            @click="activateDeck(selected)"
-          >Активировать колоду</button>
-          <button v-else class="sheet-btn disabled" disabled>Уже активна ✓</button>
-        </div>
-        <div v-else style="display:flex;flex-direction:column;gap:10px">
-          <button class="sheet-btn primary haptic" @click="purchaseDeck(selected)">
-            {{ selected.price === 0 ? 'Получить бесплатно' : 'Купить за ' + selected.price + ' ₽' }}
-          </button>
-          <button class="sheet-btn secondary haptic" @click="selected = null">Отмена</button>
-        </div>
       </div>
-    </div>
+    </Transition>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useTheme } from '@/composables/useTheme'
+import { type ThemeDto } from '@/utils/api'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
-const navigate = inject<(r: string) => void>('navigate')
-const previousRoute = inject<string>('previousRoute')
-
-interface Deck {
-  id: string
-  name: string
-  description: string
+// ── Визуальные данные тем (slug → иконка, градиент, категория, фичи) ────────
+// Бэкенд отвечает за бизнес-логику (цена, owned, active).
+// Фронтенд отвечает за визуальную подачу (цвета, иконки).
+// При добавлении новой темы на бэке — добавьте её slug сюда.
+interface ThemeVisuals {
   icon: string
   bg: string
-  price: number
-  owned: boolean
-  active: boolean
-  popular?: boolean
-  disabled?: boolean
   category: string
   features: string[]
+  popular?: boolean
 }
 
-const decks = ref<Deck[]>([
-  {
-    id: 'classic', name: 'Классическая', description: 'Традиционная колода Райдера-Уэйта',
-    icon: '📜', bg: 'linear-gradient(135deg, #3a1b0e, #6b3a1f)',
-    price: 0, owned: true, active: true, category: 'Классика',
+const THEME_VISUALS: Record<string, ThemeVisuals> = {
+  classic: {
+    icon: '📜',
+    bg: 'linear-gradient(135deg, #3a1b0e, #6b3a1f)',
+    category: 'Классика',
     features: ['78 карт', 'Традиционный стиль', 'Классическая символика'],
   },
-  {
-    id: 'cosmic', name: 'Космическая', description: 'Звёздная магия и вселенная',
-    icon: '🌌', bg: 'linear-gradient(135deg, #0a1a4e, #1a2b8e)',
-    price: 349, owned: false, active: false, disabled: true, category: 'Мистика',
+  cosmic: {
+    icon: '🌌',
+    bg: 'linear-gradient(135deg, #0a1a4e, #1a2b8e)',
+    category: 'Мистика',
     features: ['78 карт', 'Звёздные фоны', 'Небесные архетипы'],
+    popular: true,
   },
-  {
-    id: 'gothic', name: 'Готическая', description: 'Тёмная эстетика и мистика',
-    icon: '🦇', bg: 'linear-gradient(135deg, #1a0a2e, #2a1a3e)',
-    price: 349, owned: false, active: false, disabled: true, category: 'Мистика',
+  gothic: {
+    icon: '🦇',
+    bg: 'linear-gradient(135deg, #1a0a2e, #2a1a3e)',
+    category: 'Мистика',
     features: ['78 карт', 'Тёмная палитра', 'Мрачные образы'],
   },
-  {
-    id: 'nature', name: 'Природная', description: 'Сила стихий и природы',
-    icon: '🌿', bg: 'linear-gradient(135deg, #0a2e1a, #1a4e2a)',
-    price: 249, owned: false, active: false, disabled: true, category: 'Стихии',
+  nature: {
+    icon: '🌿',
+    bg: 'linear-gradient(135deg, #0a2e1a, #1a4e2a)',
+    category: 'Стихии',
     features: ['78 карт', 'Природные мотивы', 'Зелёная палитра'],
   },
-  {
-    id: 'crystal', name: 'Кристальная', description: 'Магия кристаллов',
-    icon: '💎', bg: 'linear-gradient(135deg, #0a2a4e, #1a3a6e)',
-    price: 399, owned: false, active: false, disabled: true, category: 'Мистика',
+  crystal: {
+    icon: '💎',
+    bg: 'linear-gradient(135deg, #0a2a4e, #1a3a6e)',
+    category: 'Мистика',
     features: ['78 карт', 'Кристаллические текстуры', 'Пастельные оттенки'],
   },
-  {
-    id: 'sakura', name: 'Сакура', description: 'Японская эстетика',
-    icon: '🌸', bg: 'linear-gradient(135deg, #4e0a2a, #6e1a3a)',
-    price: 349, owned: false, active: false, disabled: true, category: 'Стихии',
+  sakura: {
+    icon: '🌸',
+    bg: 'linear-gradient(135deg, #4e0a2a, #6e1a3a)',
+    category: 'Стихии',
     features: ['78 карт', 'Японский стиль', 'Цветочные узоры'],
   },
-])
+}
 
-const filters = ['Все', 'Классика', 'Мистика', 'Стихии']
+// Fallback для тем, slug которых ещё не добавлен в THEME_VISUALS
+const FALLBACK_VISUALS: ThemeVisuals = {
+  icon: '🃏',
+  bg: 'linear-gradient(135deg, #1a0529, #2a1040)',
+  category: 'Другие',
+  features: ['78 карт'],
+}
+
+const visuals = (slug: string): ThemeVisuals =>
+  THEME_VISUALS[slug] ?? FALLBACK_VISUALS
+
+// ── Composable ───────────────────────────────────────────────────────────────
+const { themes, isLoading, isPurchasing, fetchThemes, activateTheme, purchaseTheme } = useTheme()
+
+// ── Локальное состояние ──────────────────────────────────────────────────────
+const loadError    = ref(false)
 const activeFilter = ref('Все')
+const selected     = ref<ThemeDto | null>(null)
 
-const filteredDecks = computed(() =>
-  activeFilter.value === 'Все' ? decks.value : decks.value.filter(d => d.category === activeFilter.value)
-)
+// Список категорий формируем динамически из загруженных тем
+const availableFilters = computed(() => {
+  const cats = themes.value
+    .map(t => visuals(t.slug).category)
+    .filter((c, i, arr) => arr.indexOf(c) === i)
+  return ['Все', ...cats]
+})
 
-const selected = ref<Deck | null>(null)
+const filteredThemes = computed(() => {
+  if (activeFilter.value === 'Все') return themes.value
+  return themes.value.filter(t => visuals(t.slug).category === activeFilter.value)
+})
 
-const selectDeck = (deck: Deck) => { if (!deck.disabled) selected.value = deck }
+// ── Обработчики ──────────────────────────────────────────────────────────────
 
-const activateDeck = (deck: Deck) => {
-  decks.value.forEach(d => { d.active = false })
-  const found = decks.value.find(d => d.id === deck.id)
-  if (found) found.active = true
+const openSheet = (theme: ThemeDto) => {
+  if (!theme.enabled) return
+  selected.value = theme
+}
+
+const handleActivate = async (theme: ThemeDto) => {
+  await activateTheme(theme.id)
   selected.value = null
 }
 
-const purchaseDeck = (deck: Deck) => {
-  // TODO: Telegram Stars payment
-  console.log('Purchase:', deck.id)
-  selected.value = null
+// После покупки обновляем selected, чтобы сразу показать кнопку "Активировать"
+const handlePurchase = async (theme: ThemeDto) => {
+  const success = await purchaseTheme(theme.id)
+  if (success) {
+    const updated = themes.value.find(t => t.id === theme.id)
+    if (updated) selected.value = { ...updated }
+  }
 }
+
+// ── Загрузка ─────────────────────────────────────────────────────────────────
+const loadThemes = async () => {
+  loadError.value = false
+  try {
+    await fetchThemes()
+  } catch {
+    loadError.value = true
+  }
+}
+
+onMounted(() => {
+  loadThemes()
+})
 </script>
 
 <style scoped>
-.screen-wrap { min-height: var(--tg-viewport-stable-height, 100vh); padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px)); overflow-y: auto; }
-.content { padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px; }
+.screen-wrap {
+  min-height: var(--tg-viewport-stable-height, 100vh);
+  padding-bottom: calc(90px + var(--tg-safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+.content {
+  padding: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 16px) 20px 20px;
+}
 
 .header-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
 .header-title { font-size:18px; text-align:center; }
 
-/* Shop hero */
 .shop-hero {
   display: flex; align-items: center; gap: 14px;
   padding: 18px 20px; margin-bottom: 16px;
@@ -211,11 +298,13 @@ const purchaseDeck = (deck: Deck) => {
 .hero-count {
   padding: 6px 12px; border-radius: 100px;
   background: rgba(255,200,87,.15); border: 1px solid rgba(255,200,87,.3);
-  font-size: 12px; font-weight: 700; color: #ffc857;
+  font-size: 12px; font-weight: 700; color: #ffc857; white-space: nowrap;
 }
 
-/* Filter row */
-.filter-row { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; }
+.filter-row {
+  display: flex; gap: 8px; margin-bottom: 16px;
+  overflow-x: auto; padding-bottom: 2px;
+}
 .filter-chip {
   padding: 7px 14px; border-radius: 100px; white-space: nowrap;
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
@@ -227,9 +316,24 @@ const purchaseDeck = (deck: Deck) => {
   border-color: rgba(182,84,255,.5); color: #F5ECFF;
 }
 
-/* Deck grid */
+.error-state {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 32px 20px; text-align: center;
+}
+.error-icon { font-size: 32px; }
+.error-text { font-size: 14px; color: rgba(255,255,255,.6); }
+.retry-btn {
+  padding: 10px 24px; border-radius: 100px;
+  background: rgba(182,84,255,.15); border: 1px solid rgba(182,84,255,.3);
+  color: #b654ff; font-size: 13px; font-weight: 600;
+  font-family: 'Manrope', sans-serif; cursor: pointer;
+}
+
 .deck-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.deck-card { padding: 0; border-radius: 16px; overflow: hidden; cursor: pointer; position: relative; transition: opacity .2s; }
+.deck-card {
+  padding: 0; border-radius: 16px; overflow: hidden;
+  cursor: pointer; position: relative; transition: opacity .2s;
+}
 .deck-card.disabled { opacity: 0.55; cursor: default; }
 .deck-card.disabled:active { transform: none; }
 
@@ -239,9 +343,7 @@ const purchaseDeck = (deck: Deck) => {
   font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
   letter-spacing: .06em; text-transform: uppercase;
 }
-.deck-badge-coming-soon {
-  position: absolute; top: 8px; left: 8px; z-index: 2;
-}
+.deck-badge-coming-soon { position: absolute; top: 8px; left: 8px; z-index: 2; }
 .deck-active-badge {
   position: absolute; top: 8px; right: 8px; z-index: 2;
   width: 20px; height: 20px; border-radius: 50%;
@@ -259,13 +361,10 @@ const purchaseDeck = (deck: Deck) => {
 .deck-info { padding: 12px 14px 14px; }
 .deck-name  { font-size: 16px; margin-bottom: 3px; }
 .deck-desc  { font-size: 11px; color: rgba(255,255,255,.55); line-height: 1.4; margin-bottom: 8px; }
-.deck-price-row { }
 .deck-price { font-size: 13px; font-weight: 700; color: #ffc857; }
-.deck-owned { }
 .owned-active { font-size: 11px; font-weight: 700; color: #70e0a8; }
 .owned-label  { font-size: 11px; color: rgba(255,255,255,.5); }
 
-/* Bottom sheet */
 .sheet-overlay {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
@@ -276,7 +375,7 @@ const purchaseDeck = (deck: Deck) => {
   background: #15062a;
   border-top: 1px solid rgba(255,255,255,.12);
   border-radius: 24px 24px 0 0;
-  padding: 12px 24px 40px;
+  padding: 12px 24px calc(32px + var(--tg-safe-area-inset-bottom, 0px));
   overflow-y: auto;
   display: flex; flex-direction: column; align-items: center; gap: 16px;
 }
@@ -291,8 +390,12 @@ const purchaseDeck = (deck: Deck) => {
 .sheet-emoji { font-size: 56px; filter: drop-shadow(0 4px 16px rgba(0,0,0,.6)); }
 .sheet-title { font-size: 26px; text-align: center; }
 .sheet-desc  { font-size: 14px; color: rgba(255,255,255,.65); text-align: center; line-height: 1.5; }
+
 .sheet-features { width: 100%; display: flex; flex-direction: column; gap: 8px; }
-.feature { font-size: 13px; color: rgba(255,255,255,.75); display: flex; align-items: center; gap: 8px; }
+.feature {
+  font-size: 13px; color: rgba(255,255,255,.75);
+  display: flex; align-items: center; gap: 8px;
+}
 .feature-check {
   width: 18px; height: 18px; border-radius: 50%;
   background: linear-gradient(135deg, #70e0a8, #47b896);
@@ -304,16 +407,35 @@ const purchaseDeck = (deck: Deck) => {
   width: 100%; padding: 15px; border-radius: 16px;
   font-size: 15px; font-weight: 600; font-family: 'Manrope', sans-serif;
   border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .sheet-btn.primary {
   background: linear-gradient(135deg, #b654ff, #e94aa8);
   color: #fff; box-shadow: 0 8px 24px rgba(182,84,255,.4);
 }
+.sheet-btn.primary:disabled { opacity: 0.7; cursor: default; }
 .sheet-btn.secondary {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); color: #F5ECFF;
 }
-.sheet-btn.disabled {
+.sheet-btn.active-state {
   background: rgba(112,224,168,.15); border: 1px solid rgba(112,224,168,.3);
   color: #70e0a8; cursor: default;
 }
+
+.btn-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.sheet-enter-active,
+.sheet-leave-active { transition: opacity 0.25s ease; }
+.sheet-enter-from,
+.sheet-leave-to { opacity: 0; }
+.sheet-enter-active .bottom-sheet,
+.sheet-leave-active .bottom-sheet { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.sheet-enter-from .bottom-sheet { transform: translateY(100%); }
+.sheet-leave-to   .bottom-sheet { transform: translateY(100%); }
 </style>

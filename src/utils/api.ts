@@ -233,6 +233,19 @@ export interface DiaryHistoryResponse {
   entries: DiaryEntryDto[]
 }
 
+// GET /api/themes
+export interface ThemeDto {
+  id: number
+  slug: string
+  name: string
+  description: string
+  price: number        // стоимость в кредитах (гаданиях)
+  owned: boolean       // пользователь владеет темой (куплена или бесплатная)
+  active: boolean      // текущая активная тема
+  enabled: boolean     // доступна для покупки (false = "скоро")
+  free: boolean        // бесплатная тема
+}
+
 // ── API-методы ──────────────────────────────────────────────────────────────
 export const api = {
 
@@ -306,6 +319,47 @@ export const api = {
 
   createStarsPayment: (data: CreatePaymentRequest) =>
     apiClient.post<CreatePaymentResponse>('/api/v1/payments/stars/create', data),
+
+  // Темы карт (магазин колод)
+  getThemes: () =>
+    apiClient.get<ThemeDto[]>('/api/themes'),
+
+  activateTheme: (themeId: number) =>
+    apiClient.post<void>(`/api/themes/${themeId}/activate`),
+
+  // skipGlobalError: true — обрабатываем ошибки вручную в useTheme
+  // (402 = мало кредитов, 409 = уже куплена — показываем свои сообщения)
+  purchaseTheme: (themeId: number) =>
+    apiClient.post<void>(`/api/themes/${themeId}/purchase`, {}, { skipGlobalError: true }),
+
+  // Health check
+  health: () =>
+    apiClient.get<Record<string, string>>('/api/health'),
+}
+
+export default apiClient
+    apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
+
+  getBalance: () =>
+    apiClient.get<BalanceResponse>('/api/v1/payments/balance'),
+
+  createYooKassaPayment: (data: CreatePaymentRequest) =>
+    apiClient.post<CreatePaymentResponse>('/api/v1/payments/yookassa/create', data),
+
+  createStarsPayment: (data: CreatePaymentRequest) =>
+    apiClient.post<CreatePaymentResponse>('/api/v1/payments/stars/create', data),
+
+  // Темы карт (магазин колод)
+  getThemes: () =>
+    apiClient.get<ThemeDto[]>('/api/themes'),
+
+  activateTheme: (themeId: number) =>
+    apiClient.post<void>(`/api/themes/${themeId}/activate`),
+
+  // skipGlobalError: true — обрабатываем ошибки вручную в useTheme
+  // (402 = мало кредитов, 409 = уже куплена — показываем свои сообщения)
+  purchaseTheme: (themeId: number) =>
+    apiClient.post<void>(`/api/themes/${themeId}/purchase`, {}, { skipGlobalError: true }),
 
   // Health check
   health: () =>

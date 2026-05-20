@@ -104,7 +104,7 @@
         <div class="action-card glass haptic" @click="navigate('shop')">
           <div class="action-icon">🃏</div>
           <div class="action-title">Магазин колод</div>
-          <div class="action-sub">6 тем</div>
+          <div class="action-sub">{{ themesCount > 0 ? themesCount + ' тем' : 'Коллекция' }}</div>
         </div>
       </div>
 
@@ -123,6 +123,7 @@ import { useUser } from '@/composables/useUser'
 import { useDailyCard } from '@/composables/useDailyCard'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
+import { useTheme } from '@/composables/useTheme'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
@@ -130,6 +131,7 @@ const { telegramUser } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { isDev, toggleDevMode } = useDevMode()
 const { balance, hasCredits } = useBalance()
+const { themesCount } = useTheme()
 
 const cardFlipped    = ref(false)
 const betaVisible    = ref(true)

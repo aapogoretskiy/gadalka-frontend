@@ -29,5 +29,15 @@ export function useDailyCard() {
     }
   }
 
-  return { dailyCard, isLoading, error, fetchDailyCard }
+  /**
+   * Сбрасывает кэш карты дня.
+   * Вызывается после смены активной темы — при следующем заходе на главный экран
+   * карта перезагрузится с новым imageUrl (из активной темы).
+   */
+  const invalidate = () => {
+    fetched = false
+    dailyCard.value = null
+  }
+
+  return { dailyCard, isLoading, error, fetchDailyCard, invalidate }
 }
