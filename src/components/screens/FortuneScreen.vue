@@ -375,16 +375,16 @@ const HORSESHOE_POS = [
   { x: 304, y: 140 }, // 7: Итог
 ]
 
-// Кельтский крест: контейнер 270×400px, карта 60×90px
-// Карта 1 ("Что мешает") БОЛЬШЕ НЕ перекрывает карту 0 —
-// она расположена отдельно ниже центра, чтобы обе были видны
+// Кельтский крест: контейнер 290×520px, карта 68×102px
+// Зазор между картами ~28px — достаточно для двустрочных подписей
+// Карта 1 ("Что мешает") по-прежнему отдельно ниже центра
 const CELTIC_CROSS_POS = [
-  { x: 105, y: 100 }, // 0: Суть вопроса       (центр)
-  { x: 105, y: 205 }, // 1: Что мешает         (ниже центра, отдельно)
-  { x: 105, y: 305 }, // 2: Основа             (снизу)
-  { x: 35,  y: 100 }, // 3: Прошлое            (слева)
-  { x: 105, y: 0   }, // 4: Возможное будущее  (вверху)
-  { x: 175, y: 100 }, // 5: Ближайшее будущее  (справа)
+  { x: 111, y: 130 }, // 0: Суть вопроса       (центр)
+  { x: 111, y: 260 }, // 1: Что мешает         (ниже центра, зазор 28px)
+  { x: 111, y: 390 }, // 2: Основа             (снизу, зазор 28px)
+  { x: 28,  y: 130 }, // 3: Прошлое            (слева)
+  { x: 111, y: 0   }, // 4: Возможное будущее  (вверху, зазор 28px до центра)
+  { x: 194, y: 130 }, // 5: Ближайшее будущее  (справа)
 ]
 
 const positionLabels: Record<string, string> = {
@@ -1218,21 +1218,21 @@ const resetFortune = () => {
 }
 .cc-cross {
   position: relative;
-  width: 270px;
-  height: 400px;   /* было 305px, увеличено под новое расположение карты 1 */
+  width: 290px;
+  height: 520px;   /* карта 68×102, зазоры ~28px: 4 карты + 3 зазора + подпись */
   flex-shrink: 0;
 }
 .cc-card {
-  width: 60px !important;
-  height: 90px !important;
+  width: 68px !important;
+  height: 102px !important;
 }
 .cc-label {
-  font-size: 6.5px;
+  font-size: 7.5px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   text-align: center;
   color: rgba(255,255,255,0.65);
-  max-width: 64px;
+  max-width: 72px;
   line-height: 1.3;
   white-space: normal;
   z-index: 3;
@@ -1242,9 +1242,9 @@ const resetFortune = () => {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   padding-top: 10px;
   border-top: 1px solid rgba(255,255,255,0.12);
-  width: 270px;
+  width: 290px;
 }
 </style>
