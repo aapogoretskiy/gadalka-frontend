@@ -384,7 +384,7 @@ onMounted(async () => {
 .card-roman { font-family: 'Cormorant Garamond', serif; font-size: 13px; color: #ffc857; letter-spacing: .2em; }
 .card-emoji { font-size: 32px; }
 .card-name  { font-size: 12px; color: #fff; text-align: center; line-height: 1.2; }
-.card-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 10px; }
 
 .tap-hint {
   margin-top: 14px;

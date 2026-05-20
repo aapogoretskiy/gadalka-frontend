@@ -167,7 +167,7 @@ onMounted(() => {
 .big-roman { font-family: 'Cormorant Garamond',serif; font-size: 18px; color: #ffc857; letter-spacing: .2em; }
 .big-illustration { font-size: 70px; flex: 1; display: flex; align-items: center; }
 .big-name { font-family: 'Cormorant Garamond',serif; font-size: 20px; text-align: center; color: #fff; padding-bottom: 4px; }
-.big-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+.big-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 16px; }
 
 .tap-hint {
   text-align: center; font-size: 12px; color: rgba(255,255,255,.45); margin-bottom: 24px;
