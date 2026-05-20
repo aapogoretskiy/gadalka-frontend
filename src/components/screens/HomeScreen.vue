@@ -56,11 +56,21 @@
               </div>
             </div>
             <div class="card-face card-front">
-              <div class="card-roman">✦</div>
-              <div class="card-emoji">🌟</div>
-              <div class="card-name serif">
-                {{ cardLoading ? '...' : (dailyCard?.name || 'Карта дня') }}
-              </div>
+              <!-- Если есть картинка — показываем её на всю карту -->
+              <img
+                v-if="dailyCard?.imageUrl"
+                :src="dailyCard.imageUrl"
+                :alt="dailyCard.name"
+                class="card-image"
+              />
+              <!-- Иначе — заглушка с эмодзи -->
+              <template v-else>
+                <div class="card-roman">✦</div>
+                <div class="card-emoji">🌟</div>
+                <div class="card-name serif">
+                  {{ cardLoading ? '...' : (dailyCard?.name || 'Карта дня') }}
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -374,6 +384,7 @@ onMounted(async () => {
 .card-roman { font-family: 'Cormorant Garamond', serif; font-size: 13px; color: #ffc857; letter-spacing: .2em; }
 .card-emoji { font-size: 32px; }
 .card-name  { font-size: 12px; color: #fff; text-align: center; line-height: 1.2; }
+.card-image { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .tap-hint {
   margin-top: 14px;

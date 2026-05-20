@@ -25,11 +25,21 @@
           </div>
           <!-- Front -->
           <div class="big-face big-front">
-            <div class="big-roman">✦</div>
-            <div class="big-illustration">🌟</div>
-            <div class="big-name serif">
-              {{ cardLoading ? '...' : (dailyCard?.name || 'Карта дня') }}
-            </div>
+            <!-- Если есть картинка — показываем её на всю карту -->
+            <img
+              v-if="dailyCard?.imageUrl"
+              :src="dailyCard.imageUrl"
+              :alt="dailyCard.name"
+              class="big-image"
+            />
+            <!-- Иначе — заглушка с эмодзи -->
+            <template v-else>
+              <div class="big-roman">✦</div>
+              <div class="big-illustration">🌟</div>
+              <div class="big-name serif">
+                {{ cardLoading ? '...' : (dailyCard?.name || 'Карта дня') }}
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -157,6 +167,7 @@ onMounted(() => {
 .big-roman { font-family: 'Cormorant Garamond',serif; font-size: 18px; color: #ffc857; letter-spacing: .2em; }
 .big-illustration { font-size: 70px; flex: 1; display: flex; align-items: center; }
 .big-name { font-family: 'Cormorant Garamond',serif; font-size: 20px; text-align: center; color: #fff; padding-bottom: 4px; }
+.big-image { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .tap-hint {
   text-align: center; font-size: 12px; color: rgba(255,255,255,.45); margin-bottom: 24px;
