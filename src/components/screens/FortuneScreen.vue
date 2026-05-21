@@ -168,7 +168,7 @@
               >
                 <div class="result-card" :class="{ flipped: flipped.has(i) }">
                   <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-                  <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                  <div class="res-face res-front"><img v-if="card.imageUrl" :src="card.imageUrl" :alt="card.name" class="res-image" /><template v-else><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></template></div>
                 </div>
                 <div class="position-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
               </div>
@@ -184,7 +184,7 @@
               >
                 <div class="result-card hs-card" :class="{ flipped: flipped.has(i) }">
                   <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-                  <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                  <div class="res-face res-front"><img v-if="card.imageUrl" :src="card.imageUrl" :alt="card.name" class="res-image" /><template v-else><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></template></div>
                 </div>
                 <div class="hs-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
               </div>
@@ -204,7 +204,7 @@
                 >
                   <div class="result-card cc-card" :class="{ flipped: flipped.has(i) }">
                     <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-                    <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                    <div class="res-face res-front"><img v-if="card.imageUrl" :src="card.imageUrl" :alt="card.name" class="res-image" /><template v-else><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></template></div>
                   </div>
                   <div class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
                 </div>
@@ -218,7 +218,7 @@
                 >
                   <div class="result-card cc-card" :class="{ flipped: flipped.has(i + 6) }">
                     <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
-                    <div class="res-face res-front"><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></div>
+                    <div class="res-face res-front"><img v-if="card.imageUrl" :src="card.imageUrl" :alt="card.name" class="res-image" /><template v-else><div class="res-emoji">{{ posIcon(card.cardPosition) }}</div><div class="res-name serif">{{ card.name }}</div></template></div>
                   </div>
                   <div class="cc-label" :class="`pos-label--${card.cardPosition.toLowerCase()}`">{{ posLabel(card.cardPosition) }}</div>
                 </div>
@@ -946,6 +946,7 @@ const resetFortune = () => {
 }
 .res-emoji { font-size: 28px; }
 .res-name  { font-size: 9px; text-align: center; color: rgba(255,255,255,.9); line-height: 1.2; padding: 0 3px; }
+.res-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
 
 .position-label {
   font-size: 9px; text-transform: uppercase; letter-spacing: .1em;

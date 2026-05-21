@@ -134,6 +134,7 @@ export interface CardDto {
   meaning: string
   cardPosition: CardPosition
   interpretation?: string
+  imageUrl?: string
 }
 
 export interface FortuneResponse {
