@@ -946,7 +946,13 @@ const resetFortune = () => {
 }
 .res-emoji { font-size: 28px; }
 .res-name  { font-size: 9px; text-align: center; color: rgba(255,255,255,.9); line-height: 1.2; padding: 0 3px; }
-.res-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+.res-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; border-radius: inherit; }
+/* Когда карта показывает реальную картинку — чёрный фон вместо фиолетового */
+.res-front:has(.res-image) {
+  background: #000;
+  border-color: transparent;
+  padding: 0;
+}
 
 .position-label {
   font-size: 9px; text-transform: uppercase; letter-spacing: .1em;

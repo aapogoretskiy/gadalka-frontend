@@ -24,7 +24,7 @@
             </div>
           </div>
           <!-- Front -->
-          <div class="big-face big-front">
+          <div class="big-face big-front" :class="{ 'big-front--image': dailyCard?.imageUrl }">
             <!-- Если есть картинка — показываем её на всю карту -->
             <img
               v-if="dailyCard?.imageUrl"
@@ -163,6 +163,12 @@ onMounted(() => {
   align-items: center; justify-content: space-between;
   padding: 20px 14px;
   border: 1px solid rgba(255,200,87,0.3);
+}
+/* Когда есть реальная картинка — убираем фиолетовый фон и рамку */
+.big-front--image {
+  background: #000;
+  border-color: transparent;
+  padding: 0;
 }
 .big-roman { font-family: 'Cormorant Garamond',serif; font-size: 18px; color: #ffc857; letter-spacing: .2em; }
 .big-illustration { font-size: 70px; flex: 1; display: flex; align-items: center; }
