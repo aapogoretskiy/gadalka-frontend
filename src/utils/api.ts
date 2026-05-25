@@ -215,6 +215,11 @@ export interface CreatePaymentResponse {
   paymentUrl: string
 }
 
+export interface PaymentConfig {
+  /** Активный провайдер рублёвых платежей: "robokassa" | "yookassa" */
+  rubProvider: 'robokassa' | 'yookassa'
+}
+
 // GET/POST /api/diary
 export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
 
@@ -311,6 +316,9 @@ export const api = {
   // Платежи
   getProducts: () =>
     apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
+
+  getPaymentConfig: () =>
+    apiClient.get<PaymentConfig>('/api/v1/payments/config'),
 
   getBalance: () =>
     apiClient.get<BalanceResponse>('/api/v1/payments/balance'),
