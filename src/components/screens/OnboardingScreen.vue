@@ -63,7 +63,9 @@
           </button>
           <div class="terms-text">
             Продолжая использование Сервиса и/или вводя свои данные, я подтверждаю, что ознакомился и согласен с
-            <button class="terms-link" @click="termsOpen = true" type="button">Пользовательским соглашением и Политикой конфиденциальности</button>.
+            <button class="terms-link" @click="agreementOpen = true" type="button">Пользовательским соглашением</button>
+            и
+            <button class="terms-link" @click="privacyOpen = true" type="button">Политикой конфиденциальности</button>.
           </div>
         </div>
 
@@ -79,41 +81,39 @@
 
     <!-- Модальное окно: Пользовательское соглашение -->
     <Teleport to="body">
-      <div v-if="termsOpen" class="terms-modal-overlay" @click.self="termsOpen = false">
+      <div v-if="agreementOpen" class="terms-modal-overlay" @click.self="agreementOpen = false">
         <div class="terms-modal">
           <div class="terms-modal-header">
             <div class="terms-modal-title serif">Пользовательское соглашение</div>
-            <button class="terms-modal-close haptic" @click="termsOpen = false">✕</button>
+            <button class="terms-modal-close haptic" @click="agreementOpen = false">✕</button>
           </div>
           <div class="terms-modal-body">
-            <h3>1. Общие положения</h3>
-            <p>Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения между ИП / Разработчиком сервиса «Гадалка» (далее — «Сервис») и пользователем данного Сервиса.</p>
-            <p>Используя Сервис, вы подтверждаете, что прочитали, поняли и принимаете условия настоящего Соглашения и Политики конфиденциальности.</p>
-
-            <h3>2. Описание сервиса</h3>
-            <p>Сервис предоставляет развлекательный контент в области нумерологии, таро и астрологии. Все результаты носят исключительно развлекательный характер и не являются предсказаниями, медицинскими, юридическими или финансовыми рекомендациями.</p>
-
-            <h3>3. Возраст пользователей</h3>
-            <p>Сервис предназначен для пользователей старше 18 лет. Используя Сервис, вы подтверждаете, что достигли указанного возраста.</p>
-
-            <h3>4. Платные функции</h3>
-            <p>Часть функций Сервиса предоставляется на платной основе. Списание средств производится только после явного подтверждения пользователем. Все покупки являются окончательными и не подлежат возврату, если иное не предусмотрено действующим законодательством.</p>
-
-            <h3>5. Политика конфиденциальности</h3>
-            <p>Мы собираем следующие данные: Telegram ID, имя пользователя, дата рождения, город рождения, время рождения (если указаны). Данные используются исключительно для предоставления персонализированных расчётов в рамках Сервиса.</p>
-            <p>Мы не передаём ваши персональные данные третьим лицам, за исключением случаев, предусмотренных законодательством.</p>
-            <p>Вы имеете право запросить удаление ваших данных, нажав кнопку «Сбросить профиль» в разделе «Профиль».</p>
-
-            <h3>6. Ограничение ответственности</h3>
-            <p>Сервис предоставляется «как есть». Мы не несём ответственности за решения, принятые пользователем на основе контента Сервиса.</p>
-
-            <h3>7. Изменения соглашения</h3>
-            <p>Мы оставляем за собой право вносить изменения в настоящее Соглашение. Актуальная версия всегда доступна в данном разделе.</p>
-
-            <p class="terms-updated">Последнее обновление: май 2025 г.</p>
+            <!-- TODO: заменить на реальный текст из документа 260428_Мистика_Пользовательское_соглашение_ru_1.docx -->
+            <p class="terms-placeholder">Текст документа загружается...</p>
+            <p class="terms-updated">Версия от 28 апреля 2025 г.</p>
           </div>
-          <button class="terms-modal-accept haptic" @click="termsAccepted = true; termsOpen = false">
+          <button class="terms-modal-accept haptic" @click="termsAccepted = true; agreementOpen = false">
             Принимаю соглашение ✓
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Модальное окно: Политика конфиденциальности -->
+    <Teleport to="body">
+      <div v-if="privacyOpen" class="terms-modal-overlay" @click.self="privacyOpen = false">
+        <div class="terms-modal">
+          <div class="terms-modal-header">
+            <div class="terms-modal-title serif">Политика конфиденциальности</div>
+            <button class="terms-modal-close haptic" @click="privacyOpen = false">✕</button>
+          </div>
+          <div class="terms-modal-body">
+            <!-- TODO: заменить на реальный текст из документа 260428_Мистика_Политика_конфиденциальности_ru_1.docx -->
+            <p class="terms-placeholder">Текст документа загружается...</p>
+            <p class="terms-updated">Версия от 28 апреля 2025 г.</p>
+          </div>
+          <button class="terms-modal-accept haptic" @click="termsAccepted = true; privacyOpen = false">
+            Принимаю политику ✓
           </button>
         </div>
       </div>
@@ -193,11 +193,15 @@ import type { Goal } from '@/utils/api'
 const navigate = inject<(r: string) => void>('navigate')
 const { createProfile, authWithTelegram } = useUser()
 
+// Версия юридических документов — обновлять при выпуске новой редакции
+const TERMS_VERSION = '2025-04-28'
+
 const step = ref(1)
 const isLoading = ref(false)
 const errorMsg = ref('')
 const termsAccepted = ref(false)
-const termsOpen = ref(false)
+const agreementOpen = ref(false)
+const privacyOpen = ref(false)
 
 const form = ref({
   birthDate: '',
@@ -256,6 +260,7 @@ const handleFinish = async () => {
       birthTime: form.value.birthTime ? form.value.birthTime + ':00' : undefined,
       birthCity: form.value.birthCity || undefined,
       goals: form.value.goals.length ? form.value.goals : undefined,
+      termsVersion: TERMS_VERSION,
     })
     navigate?.('home')
   } catch (e: any) {
@@ -530,6 +535,7 @@ const handleFinish = async () => {
 .terms-modal-body h3:first-child { margin-top: 0; }
 .terms-modal-body p { margin: 0 0 10px; }
 .terms-updated { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 20px; }
+.terms-placeholder { color: rgba(255,255,255,0.35); font-style: italic; text-align: center; padding: 40px 0; }
 .terms-modal-accept {
   margin: 0 20px 32px;
   flex-shrink: 0;

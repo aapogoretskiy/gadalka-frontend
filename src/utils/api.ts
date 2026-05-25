@@ -95,6 +95,7 @@ export interface CreateProfileRequest {
   birthTime?: string       // format: "12:30:00"
   birthCity?: string
   goals?: Goal[]
+  termsVersion?: string    // версия принятых юридических документов (YYYY-MM-DD)
 }
 
 export interface UpdateProfileRequest {
