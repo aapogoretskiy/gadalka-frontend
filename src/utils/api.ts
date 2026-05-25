@@ -321,6 +321,9 @@ export const api = {
   createStarsPayment: (data: CreatePaymentRequest) =>
     apiClient.post<CreatePaymentResponse>('/api/v1/payments/stars/create', data),
 
+  createRobokassaPayment: (data: CreatePaymentRequest) =>
+    apiClient.post<CreatePaymentResponse>('/api/v1/payments/robokassa/create', data),
+
   // Темы карт (магазин колод)
   getThemes: () =>
     apiClient.get<ThemeDto[]>('/api/themes'),

@@ -64,18 +64,18 @@
         <div v-if="selectedCode" class="payment-buttons">
           <div class="payment-hint">Выберите способ оплаты</div>
 
-          <!-- YooKassa — рублёвый платёж -->
+          <!-- Robokassa — рублёвый платёж с чеком для СМЗ -->
           <button
             class="pay-btn pay-btn--rub haptic"
             :disabled="isCreating"
-            @click="payWithYooKassa"
+            @click="payWithRobokassa"
           >
             <span class="pay-icon">💳</span>
             <span class="pay-label">
               <span class="pay-title">Оплатить картой</span>
-              <span class="pay-sub">{{ selectedProduct?.priceRub }} ₽ · Visa, Mastercard, МИР</span>
+              <span class="pay-sub">{{ selectedProduct?.priceRub }} ₽ · Visa, Mastercard, МИР, СБП</span>
             </span>
-            <span v-if="isCreating && activeProvider === 'yookassa'" class="pay-spinner">...</span>
+            <span v-if="isCreating && activeProvider === 'robokassa'" class="pay-spinner">...</span>
           </button>
 
           <!-- Telegram Stars -->
@@ -107,7 +107,7 @@
         </div>
         <div class="info-row">
           <span class="info-icon">🔒</span>
-          <span>Безопасная оплата через ЮKassa и Telegram</span>
+          <span>Безопасная оплата через Robokassa и Telegram</span>
         </div>
       </div>
 
@@ -130,7 +130,7 @@ const products      = ref<PaymentProduct[]>([])
 const selectedCode  = ref<string>('')
 const isLoading     = ref(true)
 const isCreating    = ref(false)
-const activeProvider = ref<'yookassa' | 'stars' | null>(null)
+const activeProvider = ref<'robokassa' | 'stars' | null>(null)
 
 const selectedProduct = computed(() =>
   products.value.find(p => p.code === selectedCode.value) ?? null
@@ -151,29 +151,26 @@ onMounted(async () => {
   }
 })
 
-// ── Оплата через ЮKassa ──────────────────────────────────────────────────────
-async function payWithYooKassa() {
+// ── Оплата через Robokassa ───────────────────────────────────────────────────
+async function payWithRobokassa() {
   if (!selectedCode.value || isCreating.value) return
-  isCreating.value   = true
-  activeProvider.value = 'yookassa'
+  isCreating.value     = true
+  activeProvider.value = 'robokassa'
 
   try {
-    const res = await api.createYooKassaPayment({ productCode: selectedCode.value })
+    const res = await api.createRobokassaPayment({ productCode: selectedCode.value })
     const paymentUrl = res.data.paymentUrl
 
-    // Открываем страницу оплаты ЮKassa в браузере внутри Telegram
-    // try_instant_view: false — чтобы открылось как полноценный браузер, а не instant view
+    // Открываем страницу оплаты Robokassa в браузере внутри Telegram
     WebApp.openLink(paymentUrl, { try_instant_view: false })
 
-    // После открытия ссылки возвращаемся на главную
-    // Бот пришлёт сообщение о результате оплаты
     addToast('Ссылка на оплату открыта. После оплаты бот вас уведомит 🔮', 'info')
     navigate?.('home')
 
   } catch {
     addToast('Не удалось создать платёж. Попробуйте ещё раз.')
   } finally {
-    isCreating.value = false
+    isCreating.value     = false
     activeProvider.value = null
   }
 }
