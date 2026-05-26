@@ -303,33 +303,34 @@
       <div v-if="error" class="error-msg">{{ error }}</div>
 
     </div>
-  </div>
 
-  <!-- ══ Модал детали карты ════════════════════════════════════════════════ -->
-  <Teleport to="body">
-    <Transition name="modal-fade">
-      <div v-if="selectedCard" class="card-modal-overlay" @click="closeCardModal">
-        <div class="card-modal-content" @click.stop>
-        <div class="card-modal-image-wrap">
-          <img
-            v-if="selectedCard.imageUrl"
-            :src="selectedCard.imageUrl"
-            :alt="selectedCard.name"
-            class="card-modal-image"
-          />
-          <div v-else class="card-modal-placeholder">
-            <span class="card-modal-placeholder-emoji">{{ posIcon(selectedCard.cardPosition) }}</span>
+    <!-- ══ Модал детали карты: Teleport внутри root-div,
+         чтобы компонент оставался single-root и Transition в App.vue работал корректно ════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="selectedCard" class="card-modal-overlay" @click="closeCardModal">
+          <div class="card-modal-content" @click.stop>
+          <div class="card-modal-image-wrap">
+            <img
+              v-if="selectedCard.imageUrl"
+              :src="selectedCard.imageUrl"
+              :alt="selectedCard.name"
+              class="card-modal-image"
+            />
+            <div v-else class="card-modal-placeholder">
+              <span class="card-modal-placeholder-emoji">{{ posIcon(selectedCard.cardPosition) }}</span>
+            </div>
+          </div>
+          <div class="card-modal-position" :class="`pos-label--${selectedCard.cardPosition.toLowerCase()}`">
+            {{ posLabel(selectedCard.cardPosition) }}
+          </div>
+          <div class="card-modal-name serif">{{ selectedCard.name }}</div>
+          <button class="card-modal-close haptic" @click="closeCardModal">✕</button>
           </div>
         </div>
-        <div class="card-modal-position" :class="`pos-label--${selectedCard.cardPosition.toLowerCase()}`">
-          {{ posLabel(selectedCard.cardPosition) }}
-        </div>
-        <div class="card-modal-name serif">{{ selectedCard.name }}</div>
-        <button class="card-modal-close haptic" @click="closeCardModal">✕</button>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+      </Transition>
+    </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
