@@ -306,9 +306,10 @@
   </div>
 
   <!-- ══ Модал детали карты ════════════════════════════════════════════════ -->
-  <Transition name="modal-fade">
-    <div v-if="selectedCard" class="card-modal-overlay" @click="closeCardModal">
-      <div class="card-modal-content" @click.stop>
+  <Teleport to="body">
+    <Transition name="modal-fade">
+      <div v-if="selectedCard" class="card-modal-overlay" @click="closeCardModal">
+        <div class="card-modal-content" @click.stop>
         <div class="card-modal-image-wrap">
           <img
             v-if="selectedCard.imageUrl"
@@ -325,9 +326,10 @@
         </div>
         <div class="card-modal-name serif">{{ selectedCard.name }}</div>
         <button class="card-modal-close haptic" @click="closeCardModal">✕</button>
+        </div>
       </div>
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -521,6 +523,9 @@ const startAnimation = async () => {
 
 // ── Back-кнопка Telegram ─────────────────────────────────────────────────────
 watch(step, (s) => {
+  // Закрываем модал при любом переходе между шагами
+  closeCardModal()
+
   if (s === 2) {
     setBackOverride?.(() => { step.value = 1 })
   } else if (s === 4) {
