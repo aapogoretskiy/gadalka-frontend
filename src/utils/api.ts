@@ -71,7 +71,7 @@ export interface TelegramUserDto {
 export interface TelegramAuthResponse {
   user: TelegramUserDto
   jwtToken: string
-  readingBalance: number   // баланс гаданий на момент входа
+  readingBalance: number   // баланс знаков на момент входа
 }
 
 // GET/POST/PUT /api/user-profiles
@@ -197,8 +197,8 @@ export interface NumerologyTodayResponse {
 
 export interface PaymentProduct {
   code: string           // "pack_3", "pack_7", "pack_15"
-  name: string           // "3 гадания"
-  readingsCount: number  // сколько гаданий даёт пакет
+  name: string           // "3 знака"
+  readingsCount: number  // сколько знаков даёт пакет
   priceRub: number       // цена в рублях
   priceStars: number     // цена в Telegram Stars
 }
@@ -246,7 +246,7 @@ export interface ThemeDto {
   slug: string
   name: string
   description: string
-  price: number        // стоимость в кредитах (гаданиях)
+  price: number        // стоимость в кредитах (знаках)
   owned: boolean       // пользователь владеет темой (куплена или бесплатная)
   active: boolean      // текущая активная тема
   enabled: boolean     // доступна для покупки (false = "скоро")
@@ -298,7 +298,7 @@ export const api = {
   getCompatibility: (data: CompatibilityRequest) =>
     apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data),
 
-  // Разблокировать полный анализ совместимости за 1 гадание
+  // Разблокировать полный анализ совместимости за 1 знак
   unlockCompatibility: (id: number) =>
     apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`),
 

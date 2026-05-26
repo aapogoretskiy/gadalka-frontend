@@ -74,7 +74,7 @@
             <div class="spread-right">
               <template v-if="isDev || (balance ?? 0) >= s.cost">
                 <div class="spread-price" style="color:#70e0a8">
-                  {{ s.cost }} {{ s.cost === 1 ? 'гадание' : s.cost < 5 ? 'гадания' : 'гаданий' }}
+                  {{ s.cost }} {{ s.cost === 1 ? 'знак' : s.cost < 5 ? 'знака' : 'знаков' }}
                 </div>
               </template>
               <template v-else>

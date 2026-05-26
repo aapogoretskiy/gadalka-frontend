@@ -222,7 +222,7 @@
                 @click="unlockFromDiary"
               >
                 <span v-if="isUnlocking">Открываем...</span>
-                <span v-else>🔮 Открыть за 1 гадание</span>
+                <span v-else>🔮 Открыть за 1 знак</span>
               </button>
 
               <!-- Нет гаданий или нет id — перейти в раздел -->
@@ -278,7 +278,7 @@ async function unlockFromDiary() {
     await refreshBalance()
     hapticFeedback.success()
   } catch {
-    addToast('Не удалось списать гадание. Попробуйте ещё раз.')
+    addToast('Не удалось списать знак. Попробуйте ещё раз.')
   } finally {
     isUnlocking.value = false
   }
