@@ -95,6 +95,7 @@ export interface CreateProfileRequest {
   birthTime?: string       // format: "12:30:00"
   birthCity?: string
   goals?: Goal[]
+  termsVersion?: string    // версия принятых юридических документов (YYYY-MM-DD)
 }
 
 export interface UpdateProfileRequest {
@@ -215,6 +216,11 @@ export interface CreatePaymentResponse {
   paymentUrl: string
 }
 
+export interface PaymentConfig {
+  /** Активный провайдер рублёвых платежей: "robokassa" | "yookassa" */
+  rubProvider: 'robokassa' | 'yookassa'
+}
+
 // GET/POST /api/diary
 export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
 
@@ -312,6 +318,9 @@ export const api = {
   getProducts: () =>
     apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
 
+  getPaymentConfig: () =>
+    apiClient.get<PaymentConfig>('/api/v1/payments/config'),
+
   getBalance: () =>
     apiClient.get<BalanceResponse>('/api/v1/payments/balance'),
 
@@ -320,6 +329,9 @@ export const api = {
 
   createStarsPayment: (data: CreatePaymentRequest) =>
     apiClient.post<CreatePaymentResponse>('/api/v1/payments/stars/create', data),
+
+  createRobokassaPayment: (data: CreatePaymentRequest) =>
+    apiClient.post<CreatePaymentResponse>('/api/v1/payments/robokassa/create', data),
 
   // Темы карт (магазин колод)
   getThemes: () =>

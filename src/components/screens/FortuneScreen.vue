@@ -288,17 +288,6 @@
           <div class="summary-body">{{ result.interpretation }}</div>
         </div>
 
-        <!-- Save to diary -->
-        <button
-          v-if="result.id"
-          class="fortune-btn haptic"
-          style="margin-bottom:10px"
-          :disabled="isSaving || savedToDiary"
-          @click="saveToDiary"
-        >
-          {{ savedToDiary ? '✓ Сохранено в дневник' : isSaving ? 'Сохраняем...' : 'Добавить в дневник' }}
-        </button>
-
         <!-- Actions -->
         <div class="actions-row">
           <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
@@ -340,8 +329,6 @@ const flipped          = ref(new Set<number>())
 const openAccordions   = ref(new Set<number>())
 const msgIdx           = ref(0)
 const progress         = ref(0)
-const isSaving         = ref(false)
-const savedToDiary     = ref(false)
 
 // ── Анимация ─────────────────────────────────────────────────────────────────
 const FAN_CARD_COUNT = 7
@@ -546,21 +533,6 @@ const startFortune = async () => {
   }
 }
 
-const saveToDiary = async () => {
-  if (!result.value?.id || isSaving.value || savedToDiary.value) return
-  isSaving.value = true
-  const featureType = result.value.spreadType ?? selectedSpread.value
-  try {
-    await api.saveDiaryEntry({ featureType, referenceId: result.value.id })
-    hapticFeedback.success()
-    savedToDiary.value = true
-  } catch {
-    hapticFeedback.error?.()
-  } finally {
-    isSaving.value = false
-  }
-}
-
 function handleSpreadSelect(type: SpreadType, cost: number) {
   if (!isDev.value && (balance.value ?? 0) < cost) {
     navigate?.('payment')
@@ -577,7 +549,6 @@ const resetFortune = () => {
   result.value      = null
   flipped.value     = new Set()
   openAccordions.value = new Set()
-  savedToDiary.value   = false
   error.value       = ''
   // Сбрасываем анимацию
   dealPhase.value   = 'fan'

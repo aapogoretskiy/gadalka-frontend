@@ -68,9 +68,6 @@
               </div>
             </div>
 
-            <button class="add-btn haptic" @click="addToDiary">
-              Добавить в дневник
-            </button>
           </div>
         </div>
       </div>
@@ -111,11 +108,7 @@ const selectCard = (card: TarotCard) => {
   hapticFeedback.medium()
 }
 
-const addToDiary = () => {
-  hapticFeedback.success()
-  selectedCard.value = null
-  navigate?.('diary')
-}
+
 </script>
 
 <style scoped>
