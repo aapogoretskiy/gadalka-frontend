@@ -14,7 +14,7 @@
             :class="{ 'balance-chip--empty': balance === 0 }"
             @click="navigate('payment')"
           >
-            🔮 {{ balance > 0 ? `${balance} ${balance === 1 ? 'гадание' : balance < 5 ? 'гадания' : 'гаданий'}` : 'Купить' }}
+            🔮 {{ balance > 0 ? `${balance} ${balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков'}` : 'Купить' }}
           </div>
           <div class="avatar" @click="navigate('profile')">
             {{ userInitial }}
@@ -100,7 +100,7 @@
         <p>Получите ответ через расклад карт Таро</p>
         <div class="cta-btn-inner">Начать <span>→</span></div>
         <div class="free-badge">
-          {{ balance > 0 ? `${balance} ${balance === 1 ? 'гадание' : balance < 5 ? 'гадания' : 'гаданий'}` : 'Купить гадания' }}
+          {{ balance > 0 ? `${balance} ${balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков'}` : 'Купить знаки' }}
         </div>
       </div>
 

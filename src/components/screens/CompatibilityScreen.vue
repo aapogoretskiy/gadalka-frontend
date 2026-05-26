@@ -193,7 +193,7 @@
 
             <!-- Есть гадания — можно открыть -->
             <button v-if="hasCredits || isDev" class="paywall-btn haptic" @click="unlockPremium">
-              🔮 Открыть за 1 гадание
+              🔮 Открыть за 1 знак
             </button>
 
             <!-- Нет гаданий — ведём на пополнение -->
@@ -310,7 +310,7 @@ async function unlockPremium() {
     await refreshBalance()
     hapticFeedback.success()
   } catch {
-    addToast('Не удалось списать гадание. Попробуйте ещё раз.')
+    addToast('Не удалось списать знак. Попробуйте ещё раз.')
   }
 }
 
