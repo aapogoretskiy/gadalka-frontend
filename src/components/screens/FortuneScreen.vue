@@ -164,9 +164,8 @@
               <div
                 v-for="(card, i) in result.cards" :key="card.id"
                 class="result-card-wrap"
-                :class="{ 'card-visible': visibleCards.has(i) }"
-                :style="flipped.has(i) ? 'cursor:pointer' : ''"
-                @click="flipped.has(i) && openCardModal(card)"
+                :class="{ 'card-visible': visibleCards.has(i), 'card-tappable': flipped.has(i) }"
+                @click="handleCardTap(card, i)"
               >
                 <div class="result-card" :class="{ flipped: flipped.has(i) }">
                   <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -181,9 +180,9 @@
               <div
                 v-for="(card, i) in result.cards" :key="card.id"
                 class="hs-slot"
-                :class="{ 'card-visible': visibleCards.has(i) }"
-                :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px${flipped.has(i) ? ';cursor:pointer' : ''}`"
-                @click="flipped.has(i) && openCardModal(card)"
+                :class="{ 'card-visible': visibleCards.has(i), 'card-tappable': flipped.has(i) }"
+                :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px`"
+                @click="handleCardTap(card, i)"
               >
                 <div class="result-card hs-card" :class="{ flipped: flipped.has(i) }">
                   <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -202,9 +201,9 @@
                 <div
                   v-for="(card, i) in result.cards.slice(0, 6)" :key="card.id"
                   class="cc-slot"
-                  :class="{ 'card-visible': visibleCards.has(i) }"
-                  :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px${flipped.has(i) ? ';cursor:pointer' : ''}`"
-                  @click="flipped.has(i) && openCardModal(card)"
+                  :class="{ 'card-visible': visibleCards.has(i), 'card-tappable': flipped.has(i) }"
+                  :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px`"
+                  @click="handleCardTap(card, i)"
                 >
                   <div class="result-card cc-card" :class="{ flipped: flipped.has(i) }">
                     <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -218,9 +217,8 @@
                 <div
                   v-for="(card, i) in result.cards.slice(6)" :key="card.id"
                   class="cc-staff-slot"
-                  :class="{ 'card-visible': visibleCards.has(i + 6) }"
-                  :style="flipped.has(i + 6) ? 'cursor:pointer' : ''"
-                  @click="flipped.has(i + 6) && openCardModal(card)"
+                  :class="{ 'card-visible': visibleCards.has(i + 6), 'card-tappable': flipped.has(i + 6) }"
+                  @click="handleCardTap(card, i + 6)"
                 >
                   <div class="result-card cc-card" :class="{ flipped: flipped.has(i + 6) }">
                     <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -354,6 +352,11 @@ const openCardModal = (card: { imageUrl: string | null; name: string; cardPositi
   hapticFeedback('light')
 }
 const closeCardModal = () => { selectedCard.value = null }
+
+const handleCardTap = (card: { imageUrl: string | null; name: string; cardPosition: string }, index: number) => {
+  if (!flipped.value.has(index)) return
+  openCardModal(card)
+}
 
 // ── Основное состояние ───────────────────────────────────────────────────────
 const step             = ref(1)
@@ -1266,6 +1269,14 @@ const resetFortune = () => {
   width: 290px;
 }
 
+/* ══ Тапабельные карты ══════════════════════════════════════════════════════ */
+.card-tappable {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
 /* ══ Модал детали карты ═════════════════════════════════════════════════════ */
 .card-modal-overlay {
   position: fixed;
@@ -1371,6 +1382,172 @@ const resetFortune = () => {
 }
 .modal-fade-enter-from .card-modal-content,
 .modal-fade-leave-to .card-modal-content {
+  transform: scale(0.88);
+}
+</style>
+,255,0.65);
+  width: 54px;             /* было 50px */
+  line-height: 1.3;
+}
+
+/* ══ Кельтский крест ═══════════════════════════════════════════════ */
+/* Карта 1 теперь ниже карты 0, контейнер увеличен по высоте               */
+.cc-spread {
+  margin: 0 auto 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.cc-cross {
+  position: relative;
+  width: 290px;
+  height: 520px;   /* карта 68×102, зазоры ~28px: 4 карты + 3 зазора + подпись */
+  flex-shrink: 0;
+}
+.cc-card {
+  width: 68px !important;
+  height: 102px !important;
+}
+.cc-label {
+  font-size: 7.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+  color: rgba(255,255,255,0.65);
+  max-width: 72px;
+  line-height: 1.3;
+  white-space: normal;
+  z-index: 3;
+  position: relative;
+}
+.cc-staff {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  width: 290px;
+}
+
+/* ══ Тапабельные карты ══════════════════════════════════════════════ */
+.card-tappable {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ══ Модал детали карты ═════════════════════════════════════════════ */
+.card-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+.card-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 260px;
+  width: 100%;
+  position: relative;
+}
+
+.card-modal-image-wrap {
+  width: 190px;
+  height: 285px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 200, 87, 0.35),
+    0 0 40px rgba(182, 84, 255, 0.2);
+}
+
+.card-modal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+
+.card-modal-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #4a1d7e, #2a0e4e, #1a0529);
+  border: 1px solid rgba(255, 200, 87, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-modal-placeholder-emoji {
+  font-size: 64px;
+}
+
+.card-modal-position {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+.card-modal-name {
+  font-size: 22px;
+  color: #F5ECFF;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.card-modal-close {
+  margin-top: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Анимация появления/исчезновения модала */
+.modal-fade-enter-active {
+  transition: opacity 0.22s ease;
+}
+.modal-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .card-modal-content {
+  transition: transform 0.22s ease;
+}
+.modal-fade-leave-active .card-modal-content {
+  transition: transform 0.18s ease;
+}
+.modal-fade-enter-from .card-modal-content,
+.modal-fade-leave-to .card-modal-content {
+  transform: scale(0.88);
+}
+</style>
+de-leave-to .card-modal-content {
   transform: scale(0.88);
 }
 </style>
