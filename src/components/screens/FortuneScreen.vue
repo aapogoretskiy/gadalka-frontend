@@ -165,6 +165,8 @@
                 v-for="(card, i) in result.cards" :key="card.id"
                 class="result-card-wrap"
                 :class="{ 'card-visible': visibleCards.has(i) }"
+                :style="flipped.has(i) ? 'cursor:pointer' : ''"
+                @click="flipped.has(i) && openCardModal(card)"
               >
                 <div class="result-card" :class="{ flipped: flipped.has(i) }">
                   <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -180,7 +182,8 @@
                 v-for="(card, i) in result.cards" :key="card.id"
                 class="hs-slot"
                 :class="{ 'card-visible': visibleCards.has(i) }"
-                :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px`"
+                :style="`left:${HORSESHOE_POS[i].x}px;top:${HORSESHOE_POS[i].y}px${flipped.has(i) ? ';cursor:pointer' : ''}`"
+                @click="flipped.has(i) && openCardModal(card)"
               >
                 <div class="result-card hs-card" :class="{ flipped: flipped.has(i) }">
                   <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -200,7 +203,8 @@
                   v-for="(card, i) in result.cards.slice(0, 6)" :key="card.id"
                   class="cc-slot"
                   :class="{ 'card-visible': visibleCards.has(i) }"
-                  :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px`"
+                  :style="`left:${CELTIC_CROSS_POS[i].x}px;top:${CELTIC_CROSS_POS[i].y}px${flipped.has(i) ? ';cursor:pointer' : ''}`"
+                  @click="flipped.has(i) && openCardModal(card)"
                 >
                   <div class="result-card cc-card" :class="{ flipped: flipped.has(i) }">
                     <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -215,6 +219,8 @@
                   v-for="(card, i) in result.cards.slice(6)" :key="card.id"
                   class="cc-staff-slot"
                   :class="{ 'card-visible': visibleCards.has(i + 6) }"
+                  :style="flipped.has(i + 6) ? 'cursor:pointer' : ''"
+                  @click="flipped.has(i + 6) && openCardModal(card)"
                 >
                   <div class="result-card cc-card" :class="{ flipped: flipped.has(i + 6) }">
                     <div class="res-face res-back"><div class="res-back-border"><svg viewBox="0 0 40 56" fill="none" opacity="0.8"><rect x="2" y="2" width="36" height="52" rx="3" stroke="#ffc857" stroke-width="0.8"/><circle cx="20" cy="28" r="10" stroke="#ffc857" stroke-width="0.8"/></svg></div></div>
@@ -300,6 +306,30 @@
 
     </div>
   </div>
+
+  <!-- ══ Модал детали карты ════════════════════════════════════════════════ -->
+  <Transition name="modal-fade">
+    <div v-if="selectedCard" class="card-modal-overlay" @click="closeCardModal">
+      <div class="card-modal-content" @click.stop>
+        <div class="card-modal-image-wrap">
+          <img
+            v-if="selectedCard.imageUrl"
+            :src="selectedCard.imageUrl"
+            :alt="selectedCard.name"
+            class="card-modal-image"
+          />
+          <div v-else class="card-modal-placeholder">
+            <span class="card-modal-placeholder-emoji">{{ posIcon(selectedCard.cardPosition) }}</span>
+          </div>
+        </div>
+        <div class="card-modal-position" :class="`pos-label--${selectedCard.cardPosition.toLowerCase()}`">
+          {{ posLabel(selectedCard.cardPosition) }}
+        </div>
+        <div class="card-modal-name serif">{{ selectedCard.name }}</div>
+        <button class="card-modal-close haptic" @click="closeCardModal">✕</button>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup lang="ts">
@@ -316,6 +346,14 @@ const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverri
 const { isDev } = useDevMode()
 const { balance, hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
+
+// ── Модал детали карты ───────────────────────────────────────────────────────
+const selectedCard = ref<{ imageUrl: string | null; name: string; cardPosition: string } | null>(null)
+const openCardModal = (card: { imageUrl: string | null; name: string; cardPosition: string }) => {
+  selectedCard.value = card
+  hapticFeedback('light')
+}
+const closeCardModal = () => { selectedCard.value = null }
 
 // ── Основное состояние ───────────────────────────────────────────────────────
 const step             = ref(1)
@@ -1226,5 +1264,113 @@ const resetFortune = () => {
   padding-top: 10px;
   border-top: 1px solid rgba(255,255,255,0.12);
   width: 290px;
+}
+
+/* ══ Модал детали карты ═════════════════════════════════════════════════════ */
+.card-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+.card-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 260px;
+  width: 100%;
+  position: relative;
+}
+
+.card-modal-image-wrap {
+  width: 190px;
+  height: 285px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 200, 87, 0.35),
+    0 0 40px rgba(182, 84, 255, 0.2);
+}
+
+.card-modal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+
+.card-modal-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #4a1d7e, #2a0e4e, #1a0529);
+  border: 1px solid rgba(255, 200, 87, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-modal-placeholder-emoji {
+  font-size: 64px;
+}
+
+.card-modal-position {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+.card-modal-name {
+  font-size: 22px;
+  color: #F5ECFF;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.card-modal-close {
+  margin-top: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Анимация появления/исчезновения модала */
+.modal-fade-enter-active {
+  transition: opacity 0.22s ease;
+}
+.modal-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .card-modal-content {
+  transition: transform 0.22s ease;
+}
+.modal-fade-leave-active .card-modal-content {
+  transition: transform 0.18s ease;
+}
+.modal-fade-enter-from .card-modal-content,
+.modal-fade-leave-to .card-modal-content {
+  transform: scale(0.88);
 }
 </style>
