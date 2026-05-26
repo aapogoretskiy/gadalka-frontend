@@ -115,7 +115,7 @@
       <div class="info-block glass">
         <div class="info-row">
           <span class="info-icon">🔁</span>
-          <span>Гадания не сгорают — используйте когда удобно</span>
+          <span>Знаки не сгорают — используйте когда удобно</span>
         </div>
         <div class="info-row">
           <span class="info-icon">✨</span>
