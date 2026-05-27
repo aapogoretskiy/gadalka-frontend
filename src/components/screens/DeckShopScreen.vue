@@ -80,7 +80,7 @@
                 <span v-else class="owned-label">Куплена</span>
               </div>
               <div v-else class="deck-price">
-                {{ theme.free ? 'Бесплатно' : theme.price + ' гаданий' }}
+                {{ theme.free ? 'Бесплатно' : theme.price + ' знаков' }}
               </div>
             </div>
           </div>
@@ -132,7 +132,7 @@
               >
                 <span v-if="isPurchasing" class="btn-spinner"></span>
                 <span v-else>
-                  {{ selected.free ? 'Получить бесплатно' : 'Купить за ' + selected.price + ' гаданий' }}
+                  {{ selected.free ? 'Получить бесплатно' : 'Купить за ' + selected.price + ' знаков' }}
                 </span>
               </button>
             </template>

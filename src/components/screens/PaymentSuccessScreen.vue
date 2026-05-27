@@ -79,9 +79,9 @@ const { balance, refreshBalance } = useBalance()
 
 const balancePlural = computed(() => {
   const n = balance.value
-  if (n === 1) return 'гадание'
-  if (n >= 2 && n <= 4) return 'гадания'
-  return 'гаданий'
+  if (n === 1) return 'знак'
+  if (n >= 2 && n <= 4) return 'знака'
+  return 'знаков'
 })
 
 onMounted(async () => {

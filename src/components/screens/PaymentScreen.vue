@@ -15,7 +15,7 @@
         <div class="balance-info">
           <div class="balance-label">Текущий баланс</div>
           <div class="balance-value serif">
-            {{ balance }} {{ balance === 1 ? 'гадание' : balance < 5 ? 'гадания' : 'гаданий' }}
+            {{ balance }} {{ balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков' }}
           </div>
         </div>
       </div>
@@ -43,13 +43,13 @@
 
             <div class="package-left">
               <div class="package-count serif">{{ product.readingsCount }}</div>
-              <div class="package-unit">гаданий</div>
+              <div class="package-unit">знаков</div>
             </div>
 
             <div class="package-center">
               <div class="package-name">{{ product.name }}</div>
               <div class="package-per-reading">
-                {{ Math.round(product.priceRub / product.readingsCount) }} ₽ за гадание
+                {{ Math.round(product.priceRub / product.readingsCount) }} ₽ за знак
               </div>
             </div>
 
@@ -115,7 +115,7 @@
       <div class="info-block glass">
         <div class="info-row">
           <span class="info-icon">🔁</span>
-          <span>Гадания не сгорают — используйте когда удобно</span>
+          <span>Знаки не сгорают — используйте когда удобно</span>
         </div>
         <div class="info-row">
           <span class="info-icon">✨</span>
