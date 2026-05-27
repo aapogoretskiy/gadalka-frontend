@@ -11,7 +11,7 @@
         </div>
 
         <div class="step-indicator">
-          <div class="step-item done"></div>
+          <div class="step-item current"></div>
           <div class="step-item"></div>
           <div class="step-item"></div>
         </div>
@@ -52,7 +52,7 @@
 
         <div class="step-indicator">
           <div class="step-item done"></div>
-          <div class="step-item done"></div>
+          <div class="step-item current"></div>
           <div class="step-item"></div>
         </div>
 
@@ -578,6 +578,11 @@ const resetFortune = () => {
   border-radius: 3px; overflow: hidden; position: relative;
 }
 .step-item.done::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, #b654ff, #e94aa8);
+  /* нет анимации — полоса уже заполнена статично */
+}
+.step-item.current::after {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(90deg, #b654ff, #e94aa8);
   animation: fill-bar 0.5s ease;
