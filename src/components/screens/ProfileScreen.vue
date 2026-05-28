@@ -12,8 +12,6 @@
         <div class="profile-date" v-if="userBirthdate">{{ userBirthdate }}</div>
       </div>
 
-      <!-- Stats row (временно скрыт — расчёт на бэке не реализован) -->
-
       <!-- Balance card -->
       <div class="balance-card glass haptic" @click="navigate('payment')">
         <div class="balance-icon">🔮</div>
@@ -81,13 +79,13 @@
           <div class="menu-arrow">›</div>
         </button>
 
-        <button class="menu-item glass menu-item--disabled">
+        <button class="menu-item glass haptic" @click="openNotifSheet">
           <div class="menu-icon">🔔</div>
           <div class="menu-body">
             <div class="menu-title">Уведомления</div>
-            <div class="menu-sub">Ежедневная карта в 9:00</div>
+            <div class="menu-sub">{{ notifSubtitle }}</div>
           </div>
-          <ComingSoonBadge />
+          <div class="menu-arrow">›</div>
         </button>
       </div>
 
@@ -96,8 +94,7 @@
         Сбросить профиль
       </button>
 
-      <!-- Edit profile bottom sheet: Teleport внутри root-div,
-           чтобы компонент оставался single-root и Transition в App.vue работал корректно -->
+      <!-- Edit profile bottom sheet -->
       <Teleport to="body">
         <div v-if="editOpen" class="sheet-overlay" @click.self="editOpen = false">
           <div
@@ -145,6 +142,36 @@
           </div>
         </div>
       </Teleport>
+
+      <!-- Notification settings bottom sheet -->
+      <Teleport to="body">
+        <div v-if="notifOpen" class="sheet-overlay" @click.self="notifOpen = false">
+          <div class="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title serif">Уведомления</div>
+
+            <div class="notif-options">
+              <button
+                v-for="opt in notifOptions" :key="opt.value"
+                class="notif-option haptic"
+                :class="{ selected: notifForm === opt.value }"
+                @click="notifForm = opt.value"
+              >
+                <span class="notif-option-icon">{{ opt.icon }}</span>
+                <div class="notif-option-text">
+                  <div class="notif-option-title">{{ opt.label }}</div>
+                  <div class="notif-option-sub">{{ opt.sub }}</div>
+                </div>
+                <div class="notif-option-check" v-if="notifForm === opt.value">✓</div>
+              </button>
+            </div>
+
+            <button class="sheet-save-btn haptic" :disabled="isSavingNotif" @click="saveNotif">
+              {{ isSavingNotif ? 'Сохраняем...' : 'Сохранить' }}
+            </button>
+          </div>
+        </div>
+      </Teleport>
     </div>
   </div>
 </template>
@@ -155,7 +182,7 @@ import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
-import { api, type Goal, type NumerologyTodayResponse } from '@/utils/api'
+import { api, type Goal, type NotificationTime, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
@@ -218,7 +245,6 @@ function onSheetTouchStart(e: TouchEvent) {
 }
 function onSheetTouchMove(e: TouchEvent) {
   const dy = e.touches[0].clientY - swipeStartY
-  // Тянем вниз только если контент уже проскроллен в начало
   if (dy > 0 && swipeStartScrollTop === 0) {
     sheetDragY.value = dy
   }
@@ -245,16 +271,13 @@ const goalOptions: { value: Goal; label: string; emoji: string }[] = [
   { value: 'SELF_CONFIDENCE', label: 'Самооценка', emoji: '🌟' },
 ]
 
-// Когда шит открыт — кнопка «Назад» закрывает его, не уходя с экрана
 watch(editOpen, (open) => {
   setBackOverride?.(open ? () => { editOpen.value = false } : null)
 })
 
 function parseBirthTime(bt: any): string {
   if (!bt) return ''
-  // Строка "HH:MM:SS" или "HH:MM"
   if (typeof bt === 'string') return bt.substring(0, 5)
-  // Объект { hour, minute, ... } (альтернативная сериализация)
   if (typeof bt === 'object' && bt.hour !== undefined)
     return `${String(bt.hour).padStart(2,'0')}:${String(bt.minute).padStart(2,'0')}`
   return ''
@@ -291,6 +314,47 @@ async function saveEdit() {
     isSaving.value = false
   }
 }
+
+// ── Настройка уведомлений ──
+const notifOpen = ref(false)
+const isSavingNotif = ref(false)
+const notifForm = ref<NotificationTime>('EVENING')
+
+const notifOptions: { value: NotificationTime; icon: string; label: string; sub: string }[] = [
+  { value: 'MORNING', icon: '☀️', label: 'Утром',           sub: 'около 9:00' },
+  { value: 'EVENING', icon: '🌙', label: 'Вечером',         sub: 'около 20:00' },
+  { value: 'DISABLED', icon: '🔕', label: 'Не получать',    sub: 'можно включить позже' },
+]
+
+// Подпись под пунктом меню, отражает текущую настройку
+const notifSubtitle = computed(() => {
+  const current = profile.value?.notificationTime
+  if (current === 'MORNING') return 'Напоминание в 9:00'
+  if (current === 'EVENING') return 'Напоминание в 20:00'
+  if (current === 'DISABLED') return 'Выключены'
+  return 'Настроить напоминания'
+})
+
+function openNotifSheet() {
+  notifForm.value = profile.value?.notificationTime ?? 'EVENING'
+  notifOpen.value = true
+}
+
+watch(notifOpen, (open) => {
+  setBackOverride?.(open ? () => { notifOpen.value = false } : null)
+})
+
+async function saveNotif() {
+  if (isSavingNotif.value) return
+  isSavingNotif.value = true
+  try {
+    await updateProfile({ notificationTime: notifForm.value })
+    notifOpen.value = false
+  } catch {
+  } finally {
+    isSavingNotif.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -316,16 +380,6 @@ async function saveEdit() {
 .profile-name  { font-size: 26px; margin-bottom: 4px; }
 .profile-title { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; }
 .profile-date  { font-size: 13px; color: rgba(255,255,255,.45); margin-top: 6px; }
-
-/* Stats */
-.stats-row {
-  display: flex; align-items: center; justify-content: space-around;
-  padding: 16px; margin-bottom: 14px;
-}
-.stat-item { flex: 1; text-align: center; }
-.stat-val   { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
-.stat-label { font-size: 10px; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-.stat-div   { width: 1px; height: 32px; background: rgba(255,255,255,.08); }
 
 /* Balance card */
 .balance-card {
@@ -388,7 +442,7 @@ async function saveEdit() {
   font-family: 'Manrope', sans-serif; cursor: pointer;
 }
 
-/* Edit bottom sheet */
+/* Bottom sheets */
 .sheet-overlay {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
@@ -446,4 +500,30 @@ async function saveEdit() {
   box-shadow: 0 8px 24px rgba(182,84,255,.4);
 }
 .sheet-save-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Notification options */
+.notif-options {
+  display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;
+}
+.notif-option {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; border-radius: 16px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+  cursor: pointer; text-align: left; color: #F5ECFF; transition: all .2s; width: 100%;
+}
+.notif-option.selected {
+  background: linear-gradient(135deg,rgba(182,84,255,.2),rgba(233,74,168,.12));
+  border-color: rgba(182,84,255,.5);
+  box-shadow: 0 4px 20px rgba(182,84,255,.15);
+}
+.notif-option-icon { font-size: 28px; flex-shrink: 0; }
+.notif-option-text { flex: 1; }
+.notif-option-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.notif-option-sub { font-size: 12px; color: rgba(255,255,255,.45); }
+.notif-option-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg,#b654ff,#e94aa8);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; font-weight: 700; flex-shrink: 0;
+}
 </style>

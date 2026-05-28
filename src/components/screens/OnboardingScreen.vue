@@ -10,6 +10,7 @@
           <div class="dot" :class="{ active: step >= 1 }"></div>
           <div class="dot" :class="{ active: step >= 2 }"></div>
           <div class="dot" :class="{ active: step >= 3 }"></div>
+          <div class="dot" :class="{ active: step >= 4 }"></div>
         </div>
       </div>
 
@@ -238,6 +239,7 @@
           <div class="dot active"></div>
           <div class="dot" :class="{ active: step >= 2 }"></div>
           <div class="dot" :class="{ active: step >= 3 }"></div>
+          <div class="dot" :class="{ active: step >= 4 }"></div>
         </div>
       </div>
 
@@ -260,13 +262,86 @@
       </div>
     </div>
 
-    <!-- Step 3: Готово -->
+    <!-- Step 3: Уведомления -->
     <div v-if="step === 3" class="onb-screen">
+      <div class="onb-hero" style="padding-top:40px">
+        <div class="onb-notif-icon">🔔</div>
+        <h2 style="font-size:28px;margin-bottom:8px">Уведомления</h2>
+        <p class="onb-sub">Карты любят напоминать о себе</p>
+        <div class="progress-dots">
+          <div class="dot active"></div>
+          <div class="dot active"></div>
+          <div class="dot" :class="{ active: step >= 3 }"></div>
+          <div class="dot" :class="{ active: step >= 4 }"></div>
+        </div>
+      </div>
+
+      <div class="onb-form">
+        <div class="data-reason-card" style="margin-bottom:20px">
+          <div class="data-reason-header">
+            <span class="data-reason-icon">✦</span>
+            <span class="data-reason-title">Зачем это нужно?</span>
+          </div>
+          <p class="data-reason-body">
+            Мы будем присылать вам напоминание раз в день — чтобы карты всегда были рядом. Вы можете изменить это в любой момент в профиле.
+          </p>
+        </div>
+
+        <div class="notif-options">
+          <button
+            class="notif-option haptic"
+            :class="{ selected: form.notificationTime === 'MORNING' }"
+            @click="form.notificationTime = 'MORNING'"
+          >
+            <span class="notif-option-icon">☀️</span>
+            <div class="notif-option-text">
+              <div class="notif-option-title">Утром</div>
+              <div class="notif-option-sub">около 9:00</div>
+            </div>
+            <div class="notif-option-check" v-if="form.notificationTime === 'MORNING'">✓</div>
+          </button>
+
+          <button
+            class="notif-option haptic"
+            :class="{ selected: form.notificationTime === 'EVENING' }"
+            @click="form.notificationTime = 'EVENING'"
+          >
+            <span class="notif-option-icon">🌙</span>
+            <div class="notif-option-text">
+              <div class="notif-option-title">Вечером</div>
+              <div class="notif-option-sub">около 20:00</div>
+            </div>
+            <div class="notif-option-check" v-if="form.notificationTime === 'EVENING'">✓</div>
+          </button>
+
+          <button
+            class="notif-option haptic"
+            :class="{ selected: form.notificationTime === 'DISABLED' }"
+            @click="form.notificationTime = 'DISABLED'"
+          >
+            <span class="notif-option-icon">🔕</span>
+            <div class="notif-option-text">
+              <div class="notif-option-title">Не получать</div>
+              <div class="notif-option-sub">можно включить позже</div>
+            </div>
+            <div class="notif-option-check" v-if="form.notificationTime === 'DISABLED'">✓</div>
+          </button>
+        </div>
+
+        <button class="onb-btn haptic" @click="step = 4">
+          Далее →
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 4: Готово -->
+    <div v-if="step === 4" class="onb-screen">
       <div class="onb-hero" style="padding-top:32px">
         <div class="celebrate-icon">✨</div>
         <h2 style="font-size:32px;margin-bottom:8px">Всё готово!</h2>
         <p class="onb-sub">Ваш путь начинается</p>
         <div class="progress-dots">
+          <div class="dot active"></div>
           <div class="dot active"></div>
           <div class="dot active"></div>
           <div class="dot active"></div>
@@ -298,7 +373,7 @@
 <script setup lang="ts">
 import { ref, computed, inject } from 'vue'
 import { useUser } from '@/composables/useUser'
-import type { Goal } from '@/utils/api'
+import type { Goal, NotificationTime } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { createProfile, authWithTelegram } = useUser()
@@ -318,6 +393,7 @@ const form = ref({
   birthTime: '',
   birthCity: '',
   goals: [] as Goal[],
+  notificationTime: 'EVENING' as NotificationTime,
 })
 
 const goalOptions: { value: Goal; label: string; emoji: string }[] = [
@@ -371,6 +447,7 @@ const handleFinish = async () => {
       birthCity: form.value.birthCity || undefined,
       goals: form.value.goals.length ? form.value.goals : undefined,
       termsVersion: TERMS_VERSION,
+      notificationTime: form.value.notificationTime,
     })
     navigate?.('home')
   } catch (e: any) {
@@ -411,6 +488,15 @@ const handleFinish = async () => {
   font-size: 52px;
   margin-bottom: 24px;
   animation: glow-pulse 3s ease-in-out infinite;
+}
+.onb-notif-icon {
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a90e9, #7b54ff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 52px;
+  margin-bottom: 24px;
+  box-shadow: 0 0 60px rgba(74,144,233,0.4);
 }
 .celebrate-icon {
   width: 110px; height: 110px;
@@ -536,6 +622,45 @@ const handleFinish = async () => {
 }
 .goal-icon { font-size: 26px; }
 .goal-label { font-size: 13px; font-weight: 500; }
+
+/* Notification options */
+.notif-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.notif-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  text-align: left;
+  color: #F5ECFF;
+  transition: all 0.2s;
+  width: 100%;
+}
+.notif-option.selected {
+  background: linear-gradient(135deg, rgba(182,84,255,0.2), rgba(233,74,168,0.12));
+  border-color: rgba(182,84,255,0.5);
+  box-shadow: 0 4px 20px rgba(182,84,255,0.15);
+}
+.notif-option-icon { font-size: 28px; flex-shrink: 0; }
+.notif-option-text { flex: 1; }
+.notif-option-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.notif-option-sub { font-size: 12px; color: rgba(255,255,255,0.45); }
+.notif-option-check {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; font-weight: 700;
+  flex-shrink: 0;
+}
 
 /* Buttons */
 .onb-btn {

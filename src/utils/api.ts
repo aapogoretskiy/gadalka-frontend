@@ -74,6 +74,9 @@ export interface TelegramAuthResponse {
   readingBalance: number   // баланс знаков на момент входа
 }
 
+// Время уведомлений — должно точно совпадать с enum NotificationTime на бэкенде
+export type NotificationTime = 'MORNING' | 'EVENING' | 'DISABLED'
+
 // GET/POST/PUT /api/user-profiles
 export interface ProfileResponse {
   id: number
@@ -86,6 +89,7 @@ export interface ProfileResponse {
   }
   birthCity?: string
   goals?: Goal[]
+  notificationTime?: NotificationTime
 }
 
 export type Goal = 'LOVE' | 'MONEY' | 'SELF_CONFIDENCE' | 'CAREER' | 'HEALTH'
@@ -96,6 +100,7 @@ export interface CreateProfileRequest {
   birthCity?: string
   goals?: Goal[]
   termsVersion?: string    // версия принятых юридических документов (YYYY-MM-DD)
+  notificationTime?: NotificationTime
 }
 
 export interface UpdateProfileRequest {
@@ -103,6 +108,7 @@ export interface UpdateProfileRequest {
   birthTime?: string
   birthCity?: string
   goals?: Goal[]
+  notificationTime?: NotificationTime
 }
 
 // GET /api/daily-card
@@ -301,7 +307,6 @@ export const api = {
   // Разблокировать полный анализ совместимости за 1 знак
   unlockCompatibility: (id: number) =>
     apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`),
-
 
   // Дневник
   getDiaryHistory: (featureType: FeatureType, from: string, to: string) =>
