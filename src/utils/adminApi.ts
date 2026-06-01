@@ -114,4 +114,46 @@ export const adminApi = {
       giftAmount: giftAmount && giftAmount > 0 ? giftAmount : null,
       userIds: userIds.length > 0 ? userIds : null,
     }),
+
+  // ── Отчёты ────────────────────────────────────────────────────────────────
+
+  /** Получить агрегированный отчёт по метрикам */
+  getReports: () =>
+    adminAxios.get<AdminReports>('/api/admin/reports'),
+}
+
+// ── Типы отчётов ──────────────────────────────────────────────────────────────
+
+export interface AdminReports {
+  users: {
+    total: number
+    newToday: number
+    new7Days: number
+    new30Days: number
+    dau: number
+    wau: number
+  }
+  fortunes: {
+    total: number
+    last7Days: number
+    last30Days: number
+  }
+  payments: {
+    rubKopecksTotal: number
+    rubKopecks7Days: number
+    rubKopecks30Days: number
+    rubPayingUsers: number
+    starsTotal: number
+    stars7Days: number
+    stars30Days: number
+    starsPayingUsers: number
+  }
+  credits: {
+    totalGranted: number
+    totalSpent: number
+    currentInCirculation: number
+    grantedByPayment: number
+    grantedByAdmin: number
+    grantedByBonus: number
+  }
 }

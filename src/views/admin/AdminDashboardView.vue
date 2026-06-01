@@ -22,6 +22,11 @@
         📣 Рассылка
         <span v-if="selectedIds.size > 0" class="tab-badge">{{ selectedIds.size }}</span>
       </button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'reports' }"
+        @click="openReports"
+      >📊 Отчёты</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -206,6 +211,161 @@
       </div>
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ОТЧЁТЫ
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'reports'">
+      <div class="reports-wrap">
+
+        <div class="reports-toolbar">
+          <span class="reports-updated" v-if="reportsUpdatedAt">
+            Обновлено: {{ formatDate(reportsUpdatedAt) }}
+          </span>
+          <button class="btn-ghost" :disabled="reportsLoading" @click="loadReports">
+            {{ reportsLoading ? '⏳ Загрузка...' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <p v-if="reportsError" class="error-msg">{{ reportsError }}</p>
+
+        <template v-if="reports">
+
+          <!-- Пользователи -->
+          <div class="report-group">
+            <h3 class="report-group-title">👤 Пользователи</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(reports.users.total) }}</div>
+                <div class="metric-label">Всего зарегистрировано</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.users.newToday) }}</div>
+                <div class="metric-label">Новых сегодня</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.users.new7Days) }}</div>
+                <div class="metric-label">Новых за 7 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.users.new30Days) }}</div>
+                <div class="metric-label">Новых за 30 дней</div>
+              </div>
+              <div class="metric-card metric-highlight">
+                <div class="metric-value">{{ fmt(reports.users.dau) }}</div>
+                <div class="metric-label">DAU (активны 24ч)</div>
+              </div>
+              <div class="metric-card metric-highlight">
+                <div class="metric-value">{{ fmt(reports.users.wau) }}</div>
+                <div class="metric-label">WAU (активны 7 дн)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Гадания -->
+          <div class="report-group">
+            <h3 class="report-group-title">🔮 Гадания</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(reports.fortunes.total) }}</div>
+                <div class="metric-label">Всего гаданий</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.fortunes.last7Days) }}</div>
+                <div class="metric-label">За 7 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.fortunes.last30Days) }}</div>
+                <div class="metric-label">За 30 дней</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Финансы — Рубли -->
+          <div class="report-group">
+            <h3 class="report-group-title">💳 Платежи — Рубли (Robokassa)</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ rubFormatTotal(reports.payments.rubKopecksTotal) }}</div>
+                <div class="metric-label">Выручка всего</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ rubFormat(reports.payments.rubKopecks7Days) }}</div>
+                <div class="metric-label">За 7 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ rubFormat(reports.payments.rubKopecks30Days) }}</div>
+                <div class="metric-label">За 30 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.payments.rubPayingUsers) }}</div>
+                <div class="metric-label">Платящих пользователей</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Финансы — Stars -->
+          <div class="report-group">
+            <h3 class="report-group-title">⭐ Платежи — Telegram Stars</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(reports.payments.starsTotal) }} ★</div>
+                <div class="metric-label">Stars всего</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.payments.stars7Days) }} ★</div>
+                <div class="metric-label">За 7 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.payments.stars30Days) }} ★</div>
+                <div class="metric-label">За 30 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.payments.starsPayingUsers) }}</div>
+                <div class="metric-label">Stars-плательщиков</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Знаки -->
+          <div class="report-group">
+            <h3 class="report-group-title">✨ Знаки (кредиты)</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(reports.credits.totalGranted) }}</div>
+                <div class="metric-label">Начислено всего</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.credits.totalSpent) }}</div>
+                <div class="metric-label">Потрачено всего</div>
+              </div>
+              <div class="metric-card metric-highlight">
+                <div class="metric-value">{{ fmt(reports.credits.currentInCirculation) }}</div>
+                <div class="metric-label">В обороте сейчас</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.credits.grantedByPayment) }}</div>
+                <div class="metric-label">Через покупку</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.credits.grantedByAdmin) }}</div>
+                <div class="metric-label">Подарки (админ)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.credits.grantedByBonus) }}</div>
+                <div class="metric-label">Бонусы (старт/рефанд)</div>
+              </div>
+            </div>
+          </div>
+
+        </template>
+
+        <div v-else-if="!reportsLoading" class="reports-empty">
+          Нажмите «Обновить» для загрузки данных
+        </div>
+
+      </div>
+    </template>
+
     <!-- ── Детали пользователя (боковая панель) ──────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedUser" class="side-panel">
@@ -314,12 +474,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports } from '@/utils/adminApi'
 
 const router = useRouter()
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -518,6 +678,50 @@ const sendBroadcast = async () => {
   } finally {
     broadcastLoading.value = false
   }
+}
+
+// ── Отчёты ────────────────────────────────────────────────────────────────
+const reports = ref<AdminReports | null>(null)
+const reportsLoading = ref(false)
+const reportsError = ref<string | null>(null)
+const reportsUpdatedAt = ref<string | null>(null)
+
+const loadReports = async () => {
+  reportsLoading.value = true
+  reportsError.value = null
+  try {
+    const res = await adminApi.getReports()
+    reports.value = res.data
+    reportsUpdatedAt.value = new Date().toISOString()
+  } catch {
+    reportsError.value = 'Не удалось загрузить отчёты'
+  } finally {
+    reportsLoading.value = false
+  }
+}
+
+const openReports = () => {
+  activeTab.value = 'reports'
+  // Загружаем автоматически при первом открытии
+  if (!reports.value) loadReports()
+}
+
+// ── Форматирование ────────────────────────────────────────────────────────
+/** Форматирует число с пробелами-разделителями тысяч */
+const fmt = (n: number) => n.toLocaleString('ru-RU')
+
+/** Копейки → рубли с символом */
+const rubFormat = (kopecks: number) => {
+  const rubles = kopecks / 100
+  return rubles.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 })
+}
+
+/** Копейки → рубли для больших сумм (с сокращением тысяч) */
+const rubFormatTotal = (kopecks: number) => {
+  const rubles = kopecks / 100
+  if (rubles >= 1_000_000) return (rubles / 1_000_000).toFixed(1) + ' млн ₽'
+  if (rubles >= 1_000) return (rubles / 1_000).toFixed(1) + ' тыс ₽'
+  return rubFormat(kopecks)
 }
 
 // ── Выход ─────────────────────────────────────────────────────────────────
@@ -1002,6 +1206,78 @@ input[type="checkbox"] {
   inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 40;
+}
+
+/* ── Reports tab ── */
+.reports-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.reports-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.reports-updated {
+  font-size: 12px;
+  color: #475569;
+}
+.reports-empty {
+  text-align: center;
+  color: #475569;
+  font-size: 14px;
+  padding: 40px;
+}
+.report-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.report-group-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.metric-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metric-card.metric-accent {
+  border-color: rgba(99,102,241,0.4);
+  background: rgba(99,102,241,0.07);
+}
+.metric-card.metric-highlight {
+  border-color: rgba(34,197,94,0.35);
+  background: rgba(34,197,94,0.06);
+}
+.metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+  line-height: 1.2;
+}
+.metric-label {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.3;
 }
 
 /* ── Panel transition ── */
