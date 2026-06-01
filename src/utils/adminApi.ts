@@ -99,4 +99,19 @@ export const adminApi = {
   /** Разблокировать пользователя */
   unbanUser: (id: number) =>
     adminAxios.post<{ message: string }>(`/api/admin/users/${id}/unban`),
+
+  // ── Рассылка ──────────────────────────────────────────────────────────────
+
+  /**
+   * Запустить массовую рассылку.
+   * @param message    текст сообщения (Markdown)
+   * @param giftAmount количество знаков (null — не начислять)
+   * @param userIds    список ID пользователей (пусто — рассылка всем)
+   */
+  broadcast: (message: string, giftAmount: number | null, userIds: number[]) =>
+    adminAxios.post<{ message: string }>('/api/admin/broadcast', {
+      message,
+      giftAmount: giftAmount && giftAmount > 0 ? giftAmount : null,
+      userIds: userIds.length > 0 ? userIds : null,
+    }),
 }
