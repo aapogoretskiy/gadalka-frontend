@@ -16,9 +16,7 @@
           <div class="step-item"></div>
         </div>
 
-        <div class="social-proof">🔮 12 847 человек получили ответ сегодня</div>
-
-        <div class="question-area glass">
+<div class="question-area glass">
           <textarea
             v-model="question"
             maxlength="300"
@@ -633,13 +631,6 @@ const resetFortune = () => {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(90deg, #b654ff, #e94aa8);
   animation: fill-bar 0.5s ease;
-}
-
-.social-proof {
-  font-size: 12px;
-  color: rgba(255,255,255,0.5);
-  text-align: center;
-  margin-bottom: 16px;
 }
 
 /* Question textarea */
