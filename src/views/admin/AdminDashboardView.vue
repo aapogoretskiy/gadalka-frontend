@@ -27,6 +27,11 @@
         :class="{ active: activeTab === 'reports' }"
         @click="openReports"
       >📊 Отчёты</button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'referrals' }"
+        @click="openReferralTab"
+      >🔗 Рефералы</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -366,6 +371,124 @@
       </div>
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: РЕФЕРАЛЫ
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'referrals'">
+      <div class="reports-wrap">
+
+        <div class="reports-toolbar">
+          <span class="reports-updated" v-if="referralUpdatedAt">
+            Обновлено: {{ formatDate(referralUpdatedAt) }}
+          </span>
+          <button class="btn-ghost" :disabled="referralLoading" @click="loadReferralStats">
+            {{ referralLoading ? '⏳ Загрузка...' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <p v-if="referralError" class="error-msg">{{ referralError }}</p>
+
+        <template v-if="referralStats">
+
+          <!-- Маркетинговые источники -->
+          <div class="report-group">
+            <h3 class="report-group-title">📣 Маркетинговые источники</h3>
+            <div v-if="referralStats.marketing.length === 0" class="reports-empty">
+              Данных пока нет
+            </div>
+            <div v-else class="ref-table-wrap">
+              <table class="ref-table">
+                <thead>
+                  <tr>
+                    <th>Источник</th>
+                    <th class="num">Кликов</th>
+                    <th class="num">Открытий</th>
+                    <th class="num">Новых</th>
+                    <th class="num">Конверсия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="src in referralStats.marketing" :key="src.source">
+                    <td class="src-code">{{ src.source }}</td>
+                    <td class="num">{{ fmt(src.clicks) }}</td>
+                    <td class="num">{{ fmt(src.appOpens) }}</td>
+                    <td class="num bold">{{ fmt(src.newUsers) }}</td>
+                    <td class="num">
+                      <span class="conv-badge" :class="convClass(src.conversionPct)">
+                        {{ src.conversionPct }}%
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Топ пользователей-рефереров -->
+          <div class="report-group">
+            <h3 class="report-group-title">👤 Топ пользователей по приглашениям</h3>
+            <div v-if="referralStats.topUserReferrers.length === 0" class="reports-empty">
+              Пользовательских рефералов пока нет
+            </div>
+            <div v-else class="referrer-list">
+              <div
+                v-for="referrer in referralStats.topUserReferrers"
+                :key="referrer.userId"
+                class="referrer-card"
+              >
+                <!-- Заголовок реферера -->
+                <div class="referrer-row" @click="toggleReferrerExpand(referrer)">
+                  <div class="referrer-rank">#{{ referralStats.topUserReferrers.indexOf(referrer) + 1 }}</div>
+                  <div class="referrer-info">
+                    <div class="referrer-name">
+                      {{ referrer.firstName || 'Без имени' }}
+                      <span v-if="referrer.username" class="referrer-username">@{{ referrer.username }}</span>
+                    </div>
+                    <div class="referrer-tid">TG: {{ referrer.telegramId }}</div>
+                  </div>
+                  <div class="referrer-count">
+                    <span class="referrer-count-val">{{ referrer.invitedCount }}</span>
+                    <span class="referrer-count-label">приглашён{{ referrer.invitedCount === 1 ? '' : referrer.invitedCount < 5 ? 'о' : 'о' }}</span>
+                  </div>
+                  <div class="referrer-toggle">
+                    {{ expandedReferrerId === referrer.userId ? '▲' : '▼' }}
+                  </div>
+                </div>
+
+                <!-- Раскрывающийся список приглашённых -->
+                <div v-if="expandedReferrerId === referrer.userId" class="invited-list">
+                  <div v-if="invitedLoading === referrer.userId" class="invited-loading">
+                    Загрузка...
+                  </div>
+                  <div v-else-if="!invitedUsers[referrer.userId]?.length" class="invited-loading">
+                    Список пуст
+                  </div>
+                  <div
+                    v-else
+                    v-for="inv in invitedUsers[referrer.userId]"
+                    :key="inv.userId"
+                    class="invited-row"
+                  >
+                    <span class="invited-name">
+                      {{ inv.firstName || '—' }}
+                      <span v-if="inv.username" class="referrer-username">@{{ inv.username }}</span>
+                    </span>
+                    <span class="invited-date">{{ formatDate(inv.createdAt) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </template>
+
+        <div v-else-if="!referralLoading" class="reports-empty">
+          Нажмите «Обновить» для загрузки данных
+        </div>
+
+      </div>
+    </template>
+
     <!-- ── Детали пользователя (боковая панель) ──────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedUser" class="side-panel">
@@ -395,7 +518,11 @@
             </div>
             <div class="info-row" v-if="selectedUser.referralSource">
               <span class="label">Источник</span>
-              <span>{{ selectedUser.referralSource }}</span>
+              <span>{{ referralSourceLabel(selectedUser.referralSource) }}</span>
+            </div>
+            <div class="info-row" v-if="selectedUser.referrerName">
+              <span class="label">Кто пригласил</span>
+              <span class="referrer-name">👤 {{ selectedUser.referrerName }}</span>
             </div>
           </section>
 
@@ -474,12 +601,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type ReferralStats, type TopReferrer, type InvitedUser } from '@/utils/adminApi'
 
 const router = useRouter()
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -706,6 +833,13 @@ const openReports = () => {
   if (!reports.value) loadReports()
 }
 
+/** Человекочитаемый источник регистрации */
+const referralSourceLabel = (source: string) => {
+  if (!source) return '—'
+  if (source.startsWith('ref_')) return '🔗 Реферальная ссылка пользователя'
+  return source
+}
+
 // ── Форматирование ────────────────────────────────────────────────────────
 /** Форматирует число с пробелами-разделителями тысяч */
 const fmt = (n: number) => n.toLocaleString('ru-RU')
@@ -716,12 +850,68 @@ const rubFormat = (kopecks: number) => {
   return rubles.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 })
 }
 
+/** CSS-класс бейджа конверсии по значению */
+const convClass = (pct: number) => {
+  if (pct >= 50) return 'conv-high'
+  if (pct >= 20) return 'conv-mid'
+  return 'conv-low'
+}
+
 /** Копейки → рубли для больших сумм (с сокращением тысяч) */
 const rubFormatTotal = (kopecks: number) => {
   const rubles = kopecks / 100
   if (rubles >= 1_000_000) return (rubles / 1_000_000).toFixed(1) + ' млн ₽'
   if (rubles >= 1_000) return (rubles / 1_000).toFixed(1) + ' тыс ₽'
   return rubFormat(kopecks)
+}
+
+// ── Реферальная аналитика ─────────────────────────────────────────────────
+const referralStats = ref<ReferralStats | null>(null)
+const referralLoading = ref(false)
+const referralError = ref<string | null>(null)
+const referralUpdatedAt = ref<string | null>(null)
+
+// Раскрытые рефереры (показываем список приглашённых)
+const expandedReferrerId = ref<number | null>(null)
+const invitedUsers = ref<Record<number, InvitedUser[]>>({})
+const invitedLoading = ref<number | null>(null)
+
+const loadReferralStats = async () => {
+  referralLoading.value = true
+  referralError.value = null
+  try {
+    const res = await adminApi.getReferralStats()
+    referralStats.value = res.data
+    referralUpdatedAt.value = new Date().toISOString()
+  } catch {
+    referralError.value = 'Не удалось загрузить реферальную аналитику'
+  } finally {
+    referralLoading.value = false
+  }
+}
+
+const openReferralTab = () => {
+  activeTab.value = 'referrals'
+  if (!referralStats.value) loadReferralStats()
+}
+
+const toggleReferrerExpand = async (referrer: TopReferrer) => {
+  if (expandedReferrerId.value === referrer.userId) {
+    expandedReferrerId.value = null
+    return
+  }
+  expandedReferrerId.value = referrer.userId
+  if (!invitedUsers.value[referrer.userId]) {
+    invitedLoading.value = referrer.userId
+    try {
+      const res = await adminApi.getUserInvites(referrer.userId)
+      invitedUsers.value = { ...invitedUsers.value, [referrer.userId]: res.data }
+    } catch {
+      invitedUsers.value = { ...invitedUsers.value, [referrer.userId]: [] }
+    } finally {
+      invitedLoading.value = null
+    }
+  }
 }
 
 // ── Выход ─────────────────────────────────────────────────────────────────
@@ -1105,6 +1295,7 @@ input[type="checkbox"] {
   gap: 8px;
 }
 .label { color: #64748b; flex-shrink: 0; }
+.referrer-name { color: #a5b4fc; }
 
 /* ── Stats ── */
 .stats-row {
@@ -1279,6 +1470,69 @@ input[type="checkbox"] {
   color: #64748b;
   line-height: 1.3;
 }
+
+/* ── Referral tab ── */
+.ref-table-wrap { overflow-x: auto; }
+.ref-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.ref-table thead th {
+  text-align: left; color: #64748b; font-weight: 500;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 8px 10px; border-bottom: 1px solid #1e293b;
+}
+.ref-table thead th.num { text-align: right; }
+.ref-table tbody tr { border-bottom: 1px solid #1e293b; }
+.ref-table tbody tr:hover { background: #1e293b; }
+.ref-table td { padding: 10px 10px; color: #cbd5e1; }
+.ref-table td.num { text-align: right; }
+.ref-table td.bold { font-weight: 700; color: #f1f5f9; }
+.src-code { font-family: monospace; color: #94a3b8; font-size: 12px; }
+
+.conv-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.conv-high { background: rgba(34,197,94,0.15); color: #86efac; }
+.conv-mid  { background: rgba(250,204,21,0.15); color: #fde68a; }
+.conv-low  { background: rgba(148,163,184,0.1); color: #64748b; }
+
+.referrer-list { display: flex; flex-direction: column; gap: 8px; }
+.referrer-card {
+  background: #1e293b; border: 1px solid #334155; border-radius: 10px; overflow: hidden;
+}
+.referrer-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer; transition: background 0.15s;
+}
+.referrer-row:hover { background: #263548; }
+.referrer-rank {
+  width: 28px; text-align: center; font-size: 12px;
+  font-weight: 700; color: #6366f1; flex-shrink: 0;
+}
+.referrer-info { flex: 1; min-width: 0; }
+.referrer-name { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+.referrer-username { font-size: 12px; color: #64748b; font-weight: 400; margin-left: 4px; }
+.referrer-tid { font-size: 11px; color: #475569; font-family: monospace; margin-top: 2px; }
+.referrer-count { text-align: center; flex-shrink: 0; }
+.referrer-count-val { display: block; font-size: 20px; font-weight: 700; color: #a5b4fc; line-height: 1; }
+.referrer-count-label { font-size: 10px; color: #475569; }
+.referrer-toggle { color: #475569; font-size: 12px; flex-shrink: 0; width: 16px; text-align: center; }
+
+.invited-list {
+  border-top: 1px solid #334155;
+  background: rgba(0,0,0,0.15);
+  padding: 8px 0;
+}
+.invited-loading { padding: 10px 16px; font-size: 13px; color: #475569; }
+.invited-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px 8px 56px; font-size: 13px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.invited-row:last-child { border-bottom: none; }
+.invited-name { color: #cbd5e1; }
+.invited-date { color: #475569; font-size: 11px; white-space: nowrap; }
 
 /* ── Panel transition ── */
 .slide-panel-enter-active,

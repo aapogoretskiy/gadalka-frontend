@@ -353,6 +353,10 @@ export const api = {
   // Health check
   health: () =>
     apiClient.get<Record<string, string>>('/api/health'),
+
+  // Реферальная ссылка текущего пользователя
+  getReferralLink: () =>
+    apiClient.get<{ code: string; link: string }>('/api/me/referral'),
 }
 
 export default apiClient

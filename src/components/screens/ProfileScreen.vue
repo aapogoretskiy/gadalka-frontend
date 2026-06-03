@@ -87,7 +87,44 @@
           </div>
           <div class="menu-arrow">›</div>
         </button>
+
+        <button class="menu-item glass haptic menu-item--referral" @click="openReferralSheet">
+          <div class="menu-icon">🎁</div>
+          <div class="menu-body">
+            <div class="menu-title">Пригласи друга</div>
+            <div class="menu-sub">+3 знака за каждого нового пользователя</div>
+          </div>
+          <div class="menu-arrow">›</div>
+        </button>
       </div>
+
+      <!-- Referral sheet -->
+      <Teleport to="body">
+        <div v-if="referralOpen" class="sheet-overlay" @click.self="referralOpen = false">
+          <div class="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title serif">Пригласи друга 🎁</div>
+
+            <div class="referral-body">
+              <p class="referral-desc">
+                Поделись своей ссылкой — когда друг зарегистрируется, ты получишь
+                <strong>3 знака</strong> для новых гаданий ✨
+              </p>
+
+              <div class="referral-link-block">
+                <div class="referral-link-text">{{ referralLink || 'Загрузка...' }}</div>
+                <button class="referral-copy-btn haptic" @click="copyReferralLink">
+                  {{ copied ? '✓ Скопировано' : 'Копировать' }}
+                </button>
+              </div>
+
+              <button class="sheet-save-btn haptic" @click="shareReferralLink">
+                📤 Поделиться в Telegram
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
 
       <!-- Reset profile -->
       <button class="reset-btn haptic" @click="handleReset">
@@ -355,6 +392,63 @@ async function saveNotif() {
     isSavingNotif.value = false
   }
 }
+
+// ── Реферальная ссылка ──
+const referralOpen = ref(false)
+const referralLink = ref('')
+const copied = ref(false)
+
+async function openReferralSheet() {
+  referralOpen.value = true
+  setBackOverride?.(() => { referralOpen.value = false })
+  if (!referralLink.value) {
+    try {
+      const res = await api.getReferralLink()
+      referralLink.value = res.data.link
+    } catch {
+      referralLink.value = ''
+    }
+  }
+}
+
+watch(referralOpen, (open) => {
+  if (!open) setBackOverride?.(null)
+})
+
+async function copyReferralLink() {
+  if (!referralLink.value) return
+  try {
+    await navigator.clipboard.writeText(referralLink.value)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    // Fallback для окружений без clipboard API (некоторые старые Android WebView)
+    const el = document.createElement('textarea')
+    el.value = referralLink.value
+    document.body.appendChild(el)
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  }
+}
+
+function shareReferralLink() {
+  if (!referralLink.value) return
+  const text = encodeURIComponent(
+    'Привет! Я пользуюсь приложением Гадалка — расклады Таро, нумерология и многое другое. ' +
+    'Заходи по моей ссылке 🔮'
+  )
+  const url = encodeURIComponent(referralLink.value)
+  // Telegram Web App API для шаринга
+  const tg = (window as any).Telegram?.WebApp
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(`https://t.me/share/url?url=${url}&text=${text}`)
+  } else {
+    window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank')
+  }
+}
 </script>
 
 <style scoped>
@@ -500,6 +594,41 @@ async function saveNotif() {
   box-shadow: 0 8px 24px rgba(182,84,255,.4);
 }
 .sheet-save-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Referral menu item highlight */
+.menu-item--referral {
+  border-color: rgba(255, 200, 87, 0.2);
+  background: linear-gradient(135deg, rgba(255,200,87,0.06), rgba(182,84,255,0.06));
+}
+.menu-item--referral .menu-title { color: #ffc857; }
+
+/* Referral sheet */
+.referral-body {
+  display: flex; flex-direction: column; gap: 18px; padding-bottom: 4px;
+}
+.referral-desc {
+  font-size: 14px; line-height: 1.65; color: rgba(255,255,255,.7);
+  margin: 0; text-align: center;
+}
+.referral-desc strong { color: #ffc857; }
+.referral-link-block {
+  display: flex; gap: 10px; align-items: center;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px; padding: 12px 14px;
+}
+.referral-link-text {
+  flex: 1; font-size: 12px; color: rgba(255,255,255,.55);
+  word-break: break-all; line-height: 1.4;
+  font-family: monospace;
+}
+.referral-copy-btn {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 10px;
+  background: rgba(182,84,255,.2); border: 1px solid rgba(182,84,255,.4);
+  color: #c084fc; font-size: 12px; font-weight: 600;
+  font-family: 'Manrope', sans-serif; cursor: pointer; white-space: nowrap;
+  transition: background .2s;
+}
+.referral-copy-btn:active { background: rgba(182,84,255,.35); }
 
 /* Notification options */
 .notif-options {

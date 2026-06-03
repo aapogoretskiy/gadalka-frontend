@@ -31,6 +31,7 @@ export interface AdminUserSummary {
 export interface AdminUserDetails extends AdminUserSummary {
   lastName: string
   referralSource: string
+  referrerName: string
   balance: number
   totalSpent: number
   totalGranted: number
@@ -108,6 +109,16 @@ export const adminApi = {
    * @param giftAmount количество знаков (null — не начислять)
    * @param userIds    список ID пользователей (пусто — рассылка всем)
    */
+  // ── Реферальная аналитика ─────────────────────────────────────────────────
+
+  getReferralStats: () =>
+    adminAxios.get<ReferralStats>('/api/admin/referral-stats'),
+
+  getUserInvites: (userId: number) =>
+    adminAxios.get<InvitedUser[]>(`/api/admin/users/${userId}/invites`),
+
+  // ── Рассылка ──────────────────────────────────────────────────────────────
+
   broadcast: (message: string, giftAmount: number | null, userIds: number[]) =>
     adminAxios.post<{ message: string }>('/api/admin/broadcast', {
       message,
@@ -123,6 +134,35 @@ export const adminApi = {
 }
 
 // ── Типы отчётов ──────────────────────────────────────────────────────────────
+
+export interface MarketingSource {
+  source: string
+  clicks: number
+  appOpens: number
+  newUsers: number
+  conversionPct: number
+}
+
+export interface TopReferrer {
+  userId: number
+  telegramId: number
+  firstName: string
+  username: string
+  invitedCount: number
+}
+
+export interface InvitedUser {
+  userId: number
+  telegramId: number
+  firstName: string
+  username: string
+  createdAt: string
+}
+
+export interface ReferralStats {
+  marketing: MarketingSource[]
+  topUserReferrers: TopReferrer[]
+}
 
 export interface AdminReports {
   users: {
