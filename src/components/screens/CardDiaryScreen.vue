@@ -286,7 +286,7 @@ async function unlockFromDiary() {
 
 function isCompatUnlocked(entry: DiaryEntryDto | null): boolean {
   if (!entry || entry.featureType !== 'COMPATIBILITY') return false
-  return isDev.value || unlockedIds.value.has(entry.data?.id)
+  return isDev.value || entry.data?.unlocked || unlockedIds.value.has(entry.data?.id)
 }
 
 const isLoading = ref(false)
