@@ -193,7 +193,7 @@
 
             <!-- Есть гадания — можно открыть -->
             <button v-if="hasCredits || isDev" class="paywall-btn haptic" @click="unlockPremium">
-              🔮 Открыть за 1 знак
+              🔮 Открыть за 2 знака
             </button>
 
             <!-- Нет гаданий — ведём на пополнение -->
