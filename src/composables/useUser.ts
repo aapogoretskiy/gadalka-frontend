@@ -28,14 +28,14 @@ export function useUser() {
     isAuthLoading.value = true
     try {
       const response = await api.authTelegram(initData)
-      const { user, jwtToken, readingBalance } = response.data
+      const { user, jwtToken, readingBalance, isNewUser } = response.data
 
       // Сохраняем токен в localStorage — он будет автоматически добавляться
       // к каждому запросу через axios interceptor в api.ts
       localStorage.setItem('jwt_token', jwtToken)
       telegramUser.value = user
       setBalance(readingBalance)
-      return true
+      return { isNewUser }
     } catch {
       return false
     } finally {

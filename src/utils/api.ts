@@ -72,6 +72,7 @@ export interface TelegramAuthResponse {
   user: TelegramUserDto
   jwtToken: string
   readingBalance: number   // баланс знаков на момент входа
+  isNewUser: boolean       // true если пользователь зарегистрировался впервые
 }
 
 // Время уведомлений — должно точно совпадать с enum NotificationTime на бэкенде
@@ -205,6 +206,7 @@ export interface PaymentProduct {
   code: string           // "pack_3", "pack_7", "pack_15"
   name: string           // "3 знака"
   readingsCount: number  // сколько знаков даёт пакет
+  bonusCredits: number   // бонусные знаки сверх пакета (0 или 2 для pack_15)
   priceRub: number       // цена в рублях
   priceStars: number     // цена в Telegram Stars
 }
@@ -304,7 +306,7 @@ export const api = {
   getCompatibility: (data: CompatibilityRequest) =>
     apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data),
 
-  // Разблокировать полный анализ совместимости за 1 знак
+  // Разблокировать полный анализ совместимости за 2 знака
   unlockCompatibility: (id: number) =>
     apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`),
 

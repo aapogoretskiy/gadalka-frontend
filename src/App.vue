@@ -38,6 +38,7 @@ import { ref, computed, onMounted, provide, watch } from 'vue'
 import WebApp from '@twa-dev/sdk'
 import { useTelegram } from './composables/useTelegram'
 import { useUser } from './composables/useUser'
+import { useToast } from './composables/useToast'
 
 // Screens
 import HomeScreen          from './components/screens/HomeScreen.vue'
@@ -58,6 +59,7 @@ import ToastContainer from './components/ui/ToastContainer.vue'
 
 const { hapticFeedback } = useTelegram()
 const { authWithTelegram, fetchProfile, hasProfile } = useUser()
+const { addToast } = useToast()
 
 const currentRoute   = ref<string>('onboarding')
 const previousRoute  = ref<string>('')
@@ -197,6 +199,9 @@ onMounted(async () => {
 
   const authed = await authWithTelegram()
   if (authed) {
+    if (authed.isNewUser) {
+      addToast('Добро пожаловать! Вам начислено 5 знаков в подарок 🔮', 'success')
+    }
     try { await fetchProfile() } catch {}
     if (hasProfile.value) {
       navigate('home')

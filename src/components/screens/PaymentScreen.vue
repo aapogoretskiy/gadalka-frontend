@@ -39,7 +39,7 @@
             @click="selectedCode = product.code"
           >
             <!-- Бейдж "Выгодно" для среднего пакета -->
-            <div v-if="product.code === 'pack_7'" class="popular-badge">Выгодно</div>
+            <div v-if="product.code === 'PACK_7'" class="popular-badge">Выгодно</div>
 
             <div class="package-left">
               <div class="package-count serif">{{ product.readingsCount }}</div>
@@ -47,9 +47,12 @@
             </div>
 
             <div class="package-center">
-              <div class="package-name">{{ product.name }}</div>
+              <div class="package-name">
+                {{ product.name }}
+                <span v-if="product.bonusCredits > 0" class="bonus-badge">+{{ product.bonusCredits }} в подарок</span>
+              </div>
               <div class="package-per-reading">
-                {{ Math.round(product.priceRub / product.readingsCount) }} ₽ за знак
+                {{ Math.round(product.priceRub / (product.readingsCount + product.bonusCredits)) }} ₽ за знак
               </div>
             </div>
 
@@ -327,8 +330,20 @@ async function payWithStars() {
 .package-unit { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; }
 
 .package-center { flex: 1; }
-.package-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.package-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .package-per-reading { font-size: 11px; color: rgba(255,255,255,.45); }
+
+.bonus-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  background: linear-gradient(135deg, rgba(112,224,168,0.2), rgba(71,184,150,0.15));
+  border: 1px solid rgba(112,224,168,0.4);
+  color: #70e0a8;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
 
 .package-right { text-align: right; flex-shrink: 0; }
 .package-price-rub { font-size: 16px; font-weight: 700; color: #ffc857; }
