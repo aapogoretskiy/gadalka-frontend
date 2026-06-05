@@ -53,6 +53,7 @@ import HistoryScreen       from './components/screens/HistoryScreen.vue'
 import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
 import FortuneScreen          from './components/screens/FortuneScreen.vue'
 import PaymentScreen          from './components/screens/PaymentScreen.vue'
+import FeedbackScreen         from './components/screens/FeedbackScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
@@ -84,6 +85,7 @@ const currentScreen = computed(() => {
     fortune:           FortuneScreen,
     payment:           PaymentScreen,
     profile:           ProfileScreen,
+    feedback:          FeedbackScreen,
     diary:         CardDiaryScreen,
     history:       HistoryScreen,
     shop:          DeckShopScreen,

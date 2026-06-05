@@ -32,6 +32,14 @@
         :class="{ active: activeTab === 'referrals' }"
         @click="openReferralTab"
       >🔗 Рефералы</button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'tickets' }"
+        @click="openTicketsTab"
+      >
+        🎫 Заявки
+        <span v-if="openTicketsCount > 0" class="tab-badge tab-badge--warn">{{ openTicketsCount }}</span>
+      </button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -489,6 +497,170 @@
       </div>
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ЗАЯВКИ
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'tickets'">
+      <div class="reports-wrap">
+
+        <!-- Тулбар: фильтр + обновить -->
+        <div class="reports-toolbar">
+          <div class="tickets-filter">
+            <button
+              class="filter-btn"
+              :class="{ active: ticketsStatusFilter === 'OPEN' }"
+              @click="setTicketFilter('OPEN')"
+            >Открытые</button>
+            <button
+              class="filter-btn"
+              :class="{ active: ticketsStatusFilter === '' }"
+              @click="setTicketFilter('')"
+            >Все</button>
+          </div>
+          <button class="btn-ghost" :disabled="ticketsLoading" @click="loadTickets(0)">
+            {{ ticketsLoading ? '⏳' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <!-- Таблица заявок -->
+        <div class="table-wrap" style="padding:0">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Пользователь</th>
+                <th>Обращение</th>
+                <th>Дата</th>
+                <th>Статус</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="ticketsLoading">
+                <td colspan="6" class="loading-row">Загрузка...</td>
+              </tr>
+              <tr v-else-if="tickets.length === 0">
+                <td colspan="6" class="empty-row">Заявок нет</td>
+              </tr>
+              <tr
+                v-for="ticket in tickets"
+                :key="ticket.id"
+                class="user-row"
+                @click="openTicketDetails(ticket.id)"
+              >
+                <td class="mono">#{{ ticket.id }}</td>
+                <td>{{ ticket.userName || '—' }}</td>
+                <td class="ticket-preview">{{ ticket.descriptionPreview }}</td>
+                <td>{{ formatDate(ticket.createdAt) }}</td>
+                <td>
+                  <span class="badge" :class="ticket.status === 'OPEN' ? 'badge-open' : 'badge-closed'">
+                    {{ ticket.status === 'OPEN' ? 'Открыта' : 'Закрыта' }}
+                  </span>
+                </td>
+                <td class="arrow">›</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Пагинация -->
+        <div class="pagination">
+          <button :disabled="ticketsPage === 0" @click="loadTickets(ticketsPage - 1)">← Назад</button>
+          <span>Страница {{ ticketsPage + 1 }} из {{ ticketsTotalPages }}</span>
+          <button :disabled="ticketsPage >= ticketsTotalPages - 1" @click="loadTickets(ticketsPage + 1)">Вперёд →</button>
+        </div>
+
+      </div>
+    </template>
+
+    <!-- ── Детали заявки (боковая панель) ────────────────────── -->
+    <Transition name="slide-panel">
+      <div v-if="selectedTicket" class="side-panel">
+        <div class="panel-header">
+          <h2>Заявка #{{ selectedTicket.id }}</h2>
+          <button class="btn-ghost" @click="selectedTicket = null">✕</button>
+        </div>
+
+        <div class="panel-body">
+
+          <!-- Пользователь -->
+          <section class="info-section">
+            <h3>Пользователь</h3>
+            <div class="info-row">
+              <span class="label">Имя</span>
+              <span>{{ selectedTicket.user.firstName || '—' }}</span>
+            </div>
+            <div class="info-row" v-if="selectedTicket.user.username">
+              <span class="label">Username</span>
+              <span>@{{ selectedTicket.user.username }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Telegram ID</span>
+              <span class="mono">{{ selectedTicket.user.telegramId }}</span>
+            </div>
+          </section>
+
+          <!-- Текст обращения -->
+          <section class="info-section">
+            <h3>Текст обращения</h3>
+            <div class="ticket-full-text">{{ selectedTicket.description }}</div>
+          </section>
+
+          <!-- Мета -->
+          <section class="info-section">
+            <div class="info-row">
+              <span class="label">Создана</span>
+              <span>{{ formatDate(selectedTicket.createdAt) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Статус</span>
+              <span class="badge" :class="selectedTicket.status === 'OPEN' ? 'badge-open' : 'badge-closed'">
+                {{ selectedTicket.status === 'OPEN' ? 'Открыта' : 'Закрыта' }}
+              </span>
+            </div>
+            <div class="info-row" v-if="selectedTicket.status === 'CLOSED'">
+              <span class="label">Закрыта</span>
+              <span>{{ formatDate(selectedTicket.closedAt) }}</span>
+            </div>
+            <div class="info-row" v-if="selectedTicket.creditsGifted > 0">
+              <span class="label">Подарено знаков</span>
+              <span style="color:#86efac">{{ selectedTicket.creditsGifted }}</span>
+            </div>
+          </section>
+
+          <!-- Закрытие заявки (только если открыта) -->
+          <section v-if="selectedTicket.status === 'OPEN'" class="info-section">
+            <h3>Закрыть заявку</h3>
+            <label class="bc-toggle-row">
+              <input type="checkbox" v-model="closeWithGift" />
+              <span>Подарить знаки в качестве компенсации</span>
+            </label>
+            <div v-if="closeWithGift" class="gift-row" style="margin-top:8px">
+              <input
+                v-model.number="closeGiftAmount"
+                type="number"
+                min="1"
+                max="1000"
+                placeholder="Кол-во знаков"
+              />
+            </div>
+            <button
+              class="btn-danger"
+              style="background:rgba(99,102,241,0.1);color:#a5b4fc;border-color:rgba(99,102,241,0.3);margin-top:4px"
+              :disabled="closeLoading || (closeWithGift && (!closeGiftAmount || closeGiftAmount <= 0))"
+              @click="closeTicket"
+            >
+              {{ closeLoading ? '...' : '✓ Закрыть заявку' }}
+            </button>
+            <p v-if="closeSuccess" class="success-msg">{{ closeSuccess }}</p>
+            <p v-if="closeError" class="error-msg">{{ closeError }}</p>
+          </section>
+
+        </div>
+      </div>
+    </Transition>
+    <div v-if="selectedTicket" class="overlay" @click="selectedTicket = null" />
+
     <!-- ── Детали пользователя (боковая панель) ──────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedUser" class="side-panel">
@@ -601,12 +773,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type ReferralStats, type TopReferrer, type InvitedUser } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails } from '@/utils/adminApi'
 
 const router = useRouter()
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -914,6 +1086,88 @@ const toggleReferrerExpand = async (referrer: TopReferrer) => {
   }
 }
 
+// ── Заявки обратной связи ─────────────────────────────────────────────────
+const tickets = ref<AdminTicketSummary[]>([])
+const ticketsLoading = ref(false)
+const ticketsPage = ref(0)
+const ticketsTotalPages = ref(1)
+const ticketsStatusFilter = ref<'OPEN' | ''>('OPEN')
+const openTicketsCount = ref(0)
+
+const selectedTicket = ref<AdminTicketDetails | null>(null)
+const closeWithGift = ref(false)
+const closeGiftAmount = ref<number | null>(null)
+const closeLoading = ref(false)
+const closeSuccess = ref<string | null>(null)
+const closeError = ref<string | null>(null)
+
+const loadTickets = async (page = 0) => {
+  ticketsLoading.value = true
+  try {
+    const res = await adminApi.getTickets(ticketsStatusFilter.value || undefined, page, 20)
+    tickets.value = res.data.content
+    ticketsTotalPages.value = res.data.totalPages || 1
+    ticketsPage.value = res.data.number
+  } catch {
+    tickets.value = []
+  } finally {
+    ticketsLoading.value = false
+  }
+}
+
+/** Загрузить количество открытых заявок для бейджа на вкладке */
+const loadOpenTicketsCount = async () => {
+  try {
+    const res = await adminApi.getTickets('OPEN', 0, 1)
+    openTicketsCount.value = res.data.totalElements
+  } catch { /* не критично */ }
+}
+
+const setTicketFilter = (f: 'OPEN' | '') => {
+  ticketsStatusFilter.value = f
+  loadTickets(0)
+}
+
+const openTicketsTab = () => {
+  activeTab.value = 'tickets'
+  loadTickets(0)
+  loadOpenTicketsCount()
+}
+
+const openTicketDetails = async (id: number) => {
+  closeSuccess.value = null
+  closeError.value = null
+  closeWithGift.value = false
+  closeGiftAmount.value = null
+  try {
+    const res = await adminApi.getTicket(id)
+    selectedTicket.value = res.data
+  } catch { /* ignore */ }
+}
+
+const closeTicket = async () => {
+  if (!selectedTicket.value) return
+  closeLoading.value = true
+  closeSuccess.value = null
+  closeError.value = null
+  try {
+    const gift = closeWithGift.value ? closeGiftAmount.value : null
+    await adminApi.closeTicket(selectedTicket.value.id, gift)
+    // Перезагружаем детали и список
+    const res = await adminApi.getTicket(selectedTicket.value.id)
+    selectedTicket.value = res.data
+    closeSuccess.value = gift && gift > 0
+      ? `Заявка закрыта, пользователю подарено ${gift} знаков`
+      : 'Заявка закрыта'
+    loadTickets(ticketsPage.value)
+    loadOpenTicketsCount()
+  } catch (e: any) {
+    closeError.value = e.response?.data?.message || 'Ошибка при закрытии заявки'
+  } finally {
+    closeLoading.value = false
+  }
+}
+
 // ── Выход ─────────────────────────────────────────────────────────────────
 const logout = async () => {
   try { await adminApi.logout() } catch { /* ignore */ }
@@ -997,6 +1251,7 @@ onMounted(() => loadUsers(0))
   min-width: 20px;
   text-align: center;
 }
+.tab-badge--warn { background: #f59e0b; }
 
 /* ── Search ── */
 .search-bar {
@@ -1390,6 +1645,51 @@ input[type="checkbox"] {
 
 .success-msg { font-size: 13px; color: #86efac; margin: 4px 0 0; }
 .error-msg   { font-size: 13px; color: #fca5a5; margin: 4px 0 0; }
+
+/* ── Tickets tab ── */
+.badge-open   { background: rgba(250,204,21,0.15); color: #fde68a; }
+.badge-closed { background: rgba(148,163,184,0.1); color: #64748b; }
+
+.ticket-preview {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #94a3b8;
+  font-size: 13px;
+}
+.ticket-full-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #cbd5e1;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tickets-filter {
+  display: flex;
+  gap: 6px;
+}
+.filter-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #64748b;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn:hover { color: #e2e8f0; }
+.filter-btn.active {
+  background: rgba(99,102,241,0.12);
+  border-color: #6366f1;
+  color: #a5b4fc;
+}
 
 /* ── Overlay ── */
 .overlay {

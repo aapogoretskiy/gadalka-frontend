@@ -359,6 +359,15 @@ export const api = {
   // Реферальная ссылка текущего пользователя
   getReferralLink: () =>
     apiClient.get<{ code: string; link: string }>('/api/me/referral'),
+
+  // Обратная связь
+  // skipGlobalError: true — показываем кастомное сообщение при лимите (400)
+  submitFeedback: (description: string) =>
+    apiClient.post<{ id: number; status: string; createdAt: string }>(
+      '/api/feedback',
+      { description },
+      { skipGlobalError: true },
+    ),
 }
 
 export default apiClient

@@ -131,6 +131,62 @@ export const adminApi = {
   /** Получить агрегированный отчёт по метрикам */
   getReports: () =>
     adminAxios.get<AdminReports>('/api/admin/reports'),
+
+  // ── Заявки обратной связи ─────────────────────────────────────────────────
+
+  /** Список заявок. status: 'OPEN' | 'CLOSED' | undefined (все) */
+  getTickets: (status?: string, page = 0, size = 20) =>
+    adminAxios.get<AdminTicketsPage>('/api/admin/tickets', {
+      params: { page, size, ...(status ? { status } : {}) },
+    }),
+
+  /** Детальная информация об одной заявке */
+  getTicket: (id: number) =>
+    adminAxios.get<AdminTicketDetails>(`/api/admin/tickets/${id}`),
+
+  /**
+   * Закрыть заявку.
+   * @param creditsToGift 0 или null — закрыть без подарка
+   */
+  closeTicket: (id: number, creditsToGift?: number | null) =>
+    adminAxios.post<{ message: string; ticketId: number; creditsGifted: number }>(
+      `/api/admin/tickets/${id}/close`,
+      { creditsToGift: creditsToGift && creditsToGift > 0 ? creditsToGift : null },
+    ),
+}
+
+// ── Типы заявок ───────────────────────────────────────────────────────────────
+
+export interface AdminTicketSummary {
+  id: number
+  userId: number
+  userName: string
+  status: 'OPEN' | 'CLOSED'
+  createdAt: string
+  descriptionPreview: string
+}
+
+export interface AdminTicketDetails {
+  id: number
+  description: string
+  status: 'OPEN' | 'CLOSED'
+  createdAt: string
+  closedAt: string
+  creditsGifted: number
+  user: {
+    id: number
+    telegramId: number
+    username: string
+    firstName: string
+  }
+}
+
+export interface AdminTicketsPage {
+  content: AdminTicketSummary[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
 }
 
 // ── Типы отчётов ──────────────────────────────────────────────────────────────

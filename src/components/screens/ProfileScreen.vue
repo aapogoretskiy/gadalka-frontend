@@ -96,6 +96,15 @@
           </div>
           <div class="menu-arrow">›</div>
         </button>
+
+        <button class="menu-item glass haptic" @click="navigate?.('feedback')">
+          <div class="menu-icon">💬</div>
+          <div class="menu-body">
+            <div class="menu-title">Обратная связь</div>
+            <div class="menu-sub">Сообщить о проблеме или пожелании</div>
+          </div>
+          <div class="menu-arrow">›</div>
+        </button>
       </div>
 
       <!-- Referral sheet -->
