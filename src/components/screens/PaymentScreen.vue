@@ -314,7 +314,7 @@ async function payWithStars() {
 
 .popular-badge {
   position: absolute;
-  top: 10px; right: 10px;
+  top: 10px; left: 10px;
   padding: 2px 8px;
   background: linear-gradient(135deg, #ffc857, #e9914a);
   color: #1a0529;
