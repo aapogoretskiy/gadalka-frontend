@@ -1220,7 +1220,11 @@ onMounted(() => loadUsers(0))
   gap: 0;
   border-bottom: 1px solid #1e293b;
   padding: 0 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
   background: transparent;
   border: none;
@@ -1229,12 +1233,14 @@ onMounted(() => loadUsers(0))
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  padding: 12px 16px;
+  padding: 12px 12px;
   margin-bottom: -1px;
   display: flex;
   align-items: center;
   gap: 6px;
   transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .tab:hover { color: #e2e8f0; }
 .tab.active {

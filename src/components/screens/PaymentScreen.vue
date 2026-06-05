@@ -38,8 +38,7 @@
             :class="{ selected: selectedCode === product.code }"
             @click="selectedCode = product.code"
           >
-            <!-- Бейдж "Выгодно" для среднего пакета -->
-            <div v-if="product.code === 'PACK_7'" class="popular-badge">Выгодно</div>
+            <div v-if="product.code === 'PACK_15'" class="popular-badge">Выгодно</div>
 
             <div class="package-left">
               <div class="package-count serif">{{ product.readingsCount }}</div>
