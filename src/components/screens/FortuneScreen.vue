@@ -388,9 +388,9 @@ const categories = [
 ]
 
 const spreads: { type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[] = [
-  { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 2 },
-  { type: 'HORSESHOE',    name: 'Подкова',         cardCount: 7,  desc: 'Углублённый анализ ситуации',   cost: 4 },
-  { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: 6 },
+  { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 3 },
+  { type: 'HORSESHOE',    name: 'Подкова',         cardCount: 7,  desc: 'Углублённый анализ ситуации',   cost: 6 },
+  { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: 9 },
 ]
 
 // Подкова: контейнер 350×278px, карта 50×75px

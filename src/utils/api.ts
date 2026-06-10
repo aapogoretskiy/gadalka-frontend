@@ -306,7 +306,7 @@ export const api = {
   getCompatibility: (data: CompatibilityRequest) =>
     apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data),
 
-  // Разблокировать полный анализ совместимости за 2 знака
+  // Разблокировать полный анализ совместимости за 3 знака
   unlockCompatibility: (id: number) =>
     apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`),
 

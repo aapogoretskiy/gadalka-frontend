@@ -191,12 +191,12 @@
             <div class="paywall-title serif">Полный анализ</div>
             <div class="paywall-sub">Интерпретация и разбор по 5 категориям</div>
 
-            <!-- Есть гадания — можно открыть -->
-            <button v-if="hasCredits || isDev" class="paywall-btn haptic" @click="unlockPremium">
-              🔮 Открыть за 2 знака
+            <!-- Хватает знаков — можно открыть -->
+            <button v-if="canUnlock || isDev" class="paywall-btn haptic" @click="unlockPremium">
+              🔮 Открыть за {{ UNLOCK_COST }} знака
             </button>
 
-            <!-- Нет гаданий — ведём на пополнение -->
+            <!-- Знаков не хватает — ведём на пополнение -->
             <button v-else class="paywall-btn paywall-btn--buy haptic" @click="navigate('payment')">
               Купить гадания →
             </button>
@@ -229,8 +229,13 @@ import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
 const { isDev } = useDevMode()
-const { hasCredits, refreshBalance } = useBalance()
+const { balance, refreshBalance } = useBalance()
 const { addToast } = useToast()
+
+// Стоимость разблокировки полного анализа (синхронизирована с бэкендом: CompatibilityService.COMPATIBILITY_UNLOCK_COST)
+const UNLOCK_COST = 3
+// Кнопка разблокировки доступна только если знаков хватает на полную стоимость
+const canUnlock = computed(() => (balance.value ?? 0) >= UNLOCK_COST)
 const tipDismissed = ref(localStorage.getItem('compatTipDismissed') === 'true')
 
 const fakeCategories = [
@@ -310,7 +315,7 @@ async function unlockPremium() {
     await refreshBalance()
     hapticFeedback.success()
   } catch {
-    addToast('Не удалось списать знак. Попробуйте ещё раз.')
+    addToast('Не удалось списать знаки. Попробуйте ещё раз.')
   }
 }
 
