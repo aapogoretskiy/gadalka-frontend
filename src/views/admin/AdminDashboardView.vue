@@ -727,18 +727,18 @@
               <label class="range-label">С</label>
               <input
                 v-model="rangeFrom"
-                type="date"
+                type="datetime-local"
+                step="1"
                 class="range-date-input"
-                :max="rangeTo || undefined"
               />
             </div>
             <div class="range-field">
               <label class="range-label">По</label>
               <input
                 v-model="rangeTo"
-                type="date"
+                type="datetime-local"
+                step="1"
                 class="range-date-input"
-                :min="rangeFrom || undefined"
               />
             </div>
           </div>
@@ -1660,11 +1660,14 @@ const loadRangeReport = async () => {
   }
 }
 
-/** YYYY-MM-DD → DD.MM.YYYY для отображения периода */
+/** ISO datetime → DD.MM.YYYY HH:mm:ss для отображения периода */
 const formatDateShort = (iso: string) => {
   if (!iso) return '—'
-  const [y, m, d] = iso.split('-')
-  return `${d}.${m}.${y}`
+  return new Date(iso).toLocaleString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    timeZone: 'Europe/Moscow',
+  })
 }
 
 // ── Выход ─────────────────────────────────────────────────────────────────
