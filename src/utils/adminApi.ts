@@ -178,6 +178,14 @@ export const adminApi = {
   getReports: () =>
     adminAxios.get<AdminReports>('/api/admin/reports'),
 
+  /**
+   * Получить отчёт за произвольный диапазон дат.
+   * @param from начало диапазона в формате YYYY-MM-DD
+   * @param to   конец диапазона в формате YYYY-MM-DD
+   */
+  getRangeReport: (from: string, to: string) =>
+    adminAxios.get<RangeReport>('/api/admin/reports/range', { params: { from, to } }),
+
   // ── Заявки обратной связи ─────────────────────────────────────────────────
 
   /** Список заявок. status: 'OPEN' | 'CLOSED' | undefined (все) */
@@ -264,6 +272,35 @@ export interface InvitedUser {
 export interface ReferralStats {
   marketing: MarketingSource[]
   topUserReferrers: TopReferrer[]
+}
+
+// ── Тип отчёта за диапазон ────────────────────────────────────────────────────
+
+export interface RangeReport {
+  from: string
+  to: string
+  newUsers: number
+  fortunes: {
+    total: number
+    threeCard: number
+    horseshoe: number
+    celticCross: number
+  }
+  compatibility: number
+  actions: {
+    total: number
+    compatibility: number
+    threeCard: number
+    horseshoe: number
+    celticCross: number
+  }
+  returningUsers: number
+  payments: {
+    rubKopecks: number
+    rubTransactions: number
+    stars: number
+    starsTransactions: number
+  }
 }
 
 export interface AdminReports {

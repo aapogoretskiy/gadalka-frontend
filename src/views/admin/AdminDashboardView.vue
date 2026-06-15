@@ -40,6 +40,11 @@
         🎫 Заявки
         <span v-if="openTicketsCount > 0" class="tab-badge tab-badge--warn">{{ openTicketsCount }}</span>
       </button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'range' }"
+        @click="activeTab = 'range'"
+      >📅 Диапазон</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -709,6 +714,174 @@
       </div>
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ОТЧЁТ ЗА ДИАПАЗОН
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'range'">
+      <div class="reports-wrap">
+
+        <!-- Выбор диапазона -->
+        <div class="range-toolbar">
+          <div class="range-inputs">
+            <div class="range-field">
+              <label class="range-label">С</label>
+              <input
+                v-model="rangeFrom"
+                type="date"
+                class="range-date-input"
+                :max="rangeTo || undefined"
+              />
+            </div>
+            <div class="range-field">
+              <label class="range-label">По</label>
+              <input
+                v-model="rangeTo"
+                type="date"
+                class="range-date-input"
+                :min="rangeFrom || undefined"
+              />
+            </div>
+          </div>
+          <button
+            class="btn-primary"
+            :disabled="rangeLoading || !rangeFrom || !rangeTo"
+            @click="loadRangeReport"
+          >
+            {{ rangeLoading ? '⏳ Загрузка...' : '📊 Сформировать' }}
+          </button>
+        </div>
+
+        <p v-if="rangeError" class="error-msg">{{ rangeError }}</p>
+
+        <template v-if="rangeReport">
+
+          <!-- Заголовок периода -->
+          <div class="range-period-title">
+            Период: {{ formatDateShort(rangeReport.from) }} — {{ formatDateShort(rangeReport.to) }}
+          </div>
+
+          <!-- Новые пользователи -->
+          <div class="report-group">
+            <h3 class="report-group-title">👤 Новые пользователи</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(rangeReport.newUsers) }}</div>
+                <div class="metric-label">Зарегистрировалось за период</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Гадания -->
+          <div class="report-group">
+            <h3 class="report-group-title">🔮 Гадания</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(rangeReport.fortunes.total) }}</div>
+                <div class="metric-label">Всего гаданий</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.fortunes.threeCard) }}</div>
+                <div class="metric-label">Три карты</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.fortunes.horseshoe) }}</div>
+                <div class="metric-label">Подкова</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.fortunes.celticCross) }}</div>
+                <div class="metric-label">Кельтский крест</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Совместимость -->
+          <div class="report-group">
+            <h3 class="report-group-title">💞 Совместимость</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(rangeReport.compatibility) }}</div>
+                <div class="metric-label">Расчётов за период</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Действия -->
+          <div class="report-group">
+            <h3 class="report-group-title">⚡ Действия</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(rangeReport.actions.total) }}</div>
+                <div class="metric-label">Всего действий</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.compatibility) }}</div>
+                <div class="metric-label">Совместимость</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.threeCard) }}</div>
+                <div class="metric-label">Три карты</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.horseshoe) }}</div>
+                <div class="metric-label">Подкова</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.celticCross) }}</div>
+                <div class="metric-label">Кельтский крест</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Повторные посещения -->
+          <div class="report-group">
+            <h3 class="report-group-title">🔄 Повторные посещения</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-highlight">
+                <div class="metric-value">{{ fmt(rangeReport.returningUsers) }}</div>
+                <div class="metric-label">Пользователей вернулось более 1 раза</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Платежи — Рубли -->
+          <div class="report-group">
+            <h3 class="report-group-title">💳 Платежи — Рубли (Robokassa)</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ rubFormatTotal(rangeReport.payments.rubKopecks) }}</div>
+                <div class="metric-label">Выручка за период</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.payments.rubTransactions) }}</div>
+                <div class="metric-label">Транзакций</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Платежи — Stars -->
+          <div class="report-group">
+            <h3 class="report-group-title">⭐ Платежи — Telegram Stars</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(rangeReport.payments.stars) }} ★</div>
+                <div class="metric-label">Stars за период</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.payments.starsTransactions) }}</div>
+                <div class="metric-label">Транзакций</div>
+              </div>
+            </div>
+          </div>
+
+        </template>
+
+        <div v-else-if="!rangeLoading" class="reports-empty">
+          Выберите диапазон дат и нажмите «Сформировать»
+        </div>
+
+      </div>
+    </template>
+
     <!-- ── Детали заявки (боковая панель) ────────────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedTicket" class="side-panel">
@@ -978,12 +1151,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction } from '@/utils/adminApi'
 
 const router = useRouter()
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -1464,6 +1637,34 @@ const closeTicket = async () => {
   } finally {
     closeLoading.value = false
   }
+}
+
+// ── Отчёт за диапазон ─────────────────────────────────────────────────────
+const rangeFrom = ref('')
+const rangeTo = ref('')
+const rangeReport = ref<RangeReport | null>(null)
+const rangeLoading = ref(false)
+const rangeError = ref<string | null>(null)
+
+const loadRangeReport = async () => {
+  if (!rangeFrom.value || !rangeTo.value) return
+  rangeLoading.value = true
+  rangeError.value = null
+  try {
+    const res = await adminApi.getRangeReport(rangeFrom.value, rangeTo.value)
+    rangeReport.value = res.data
+  } catch (e: any) {
+    rangeError.value = e.response?.data?.message || 'Не удалось загрузить отчёт'
+  } finally {
+    rangeLoading.value = false
+  }
+}
+
+/** YYYY-MM-DD → DD.MM.YYYY для отображения периода */
+const formatDateShort = (iso: string) => {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-')
+  return `${d}.${m}.${y}`
 }
 
 // ── Выход ─────────────────────────────────────────────────────────────────
@@ -2332,6 +2533,53 @@ input[type="checkbox"] {
   padding: 6px 8px;
   line-height: 1.5;
   word-break: break-word;
+}
+
+/* ── Range report tab ── */
+.range-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.range-inputs {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.range-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.range-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+.range-date-input {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  padding: 9px 12px;
+  outline: none;
+  cursor: pointer;
+  min-width: 160px;
+}
+.range-date-input:focus { border-color: #6366f1; }
+.range-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+.range-period-title {
+  font-size: 13px;
+  color: #64748b;
+  font-style: italic;
+  margin-top: -16px;
 }
 
 /* ── Broadcast photo url input ── */
