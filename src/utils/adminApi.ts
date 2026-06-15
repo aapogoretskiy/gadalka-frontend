@@ -130,13 +130,37 @@ export const adminApi = {
 
   // ── Рассылка ──────────────────────────────────────────────────────────────
 
-  broadcast: (message: string, giftAmount: number | null, userIds: number[], photoUrl?: string | null) =>
-    adminAxios.post<{ message: string }>('/api/admin/broadcast', {
+  /**
+   * Запустить массовую рассылку.
+   * Отправляется как multipart/form-data: JSON-часть "data" + опциональный файл "photo".
+   *
+   * @param message     текст сообщения
+   * @param giftAmount  количество знаков (null — не начислять)
+   * @param userIds     список ID пользователей (пусто — все или только админы)
+   * @param onlyAdmins  если true — рассылка только администраторам
+   * @param photo       файл изображения (null — только текст)
+   */
+  broadcast: (
+    message: string,
+    giftAmount: number | null,
+    userIds: number[],
+    onlyAdmins: boolean,
+    photo?: File | null,
+  ) => {
+    const form = new FormData()
+    form.append('data', new Blob([JSON.stringify({
       message,
       giftAmount: giftAmount && giftAmount > 0 ? giftAmount : null,
       userIds: userIds.length > 0 ? userIds : null,
-      photoUrl: photoUrl && photoUrl.trim() ? photoUrl.trim() : null,
-    }),
+      onlyAdmins,
+    })], { type: 'application/json' }))
+    if (photo) {
+      form.append('photo', photo)
+    }
+    return adminAxios.post<{ message: string }>('/api/admin/broadcast', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 
   /** Lazy-история действий пользователя (гадания, совместимость, нумерология, карта дня) */
   getUserActions: (id: number, limit = 30) =>

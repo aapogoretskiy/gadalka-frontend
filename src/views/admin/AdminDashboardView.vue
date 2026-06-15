@@ -152,7 +152,18 @@
               <span class="bc-recipient">Выбранным пользователям ({{ selectedIds.size }})</span>
               <button class="btn-ghost-sm" @click="selectedIds.clear()">Сбросить выбор</button>
             </template>
-            <span v-else class="bc-recipient all">Всем зарегистрированным пользователям</span>
+            <template v-else>
+              <button
+                class="bc-recipient-btn"
+                :class="{ active: broadcastTarget === 'all' }"
+                @click="broadcastTarget = 'all'"
+              >Всем зарегистрированным пользователям</button>
+              <button
+                class="bc-recipient-btn"
+                :class="{ active: broadcastTarget === 'admins' }"
+                @click="broadcastTarget = 'admins'"
+              >👤 Только администраторам</button>
+            </template>
           </div>
         </section>
 
@@ -193,16 +204,25 @@
           </div>
         </section>
 
-        <!-- Фото URL -->
+        <!-- Фото -->
         <section class="bc-section">
-          <h3 class="bc-label">Фото <span class="bc-hint">(необязательно — URL изображения)</span></h3>
-          <input
-            v-model="broadcastPhotoUrl"
-            type="url"
-            class="bc-number-input"
-            style="width:100%"
-            placeholder="https://example.com/image.jpg"
-          />
+          <h3 class="bc-label">Фото <span class="bc-hint">(необязательно)</span></h3>
+          <label class="bc-file-label">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              class="bc-file-input"
+              @change="onPhotoSelected"
+            />
+            <span class="bc-file-btn">📎 Выбрать изображение</span>
+            <span v-if="broadcastPhoto" class="bc-file-name">{{ broadcastPhoto.name }}</span>
+            <span v-else class="bc-file-hint">Файл не выбран</span>
+          </label>
+          <!-- Превью выбранного фото -->
+          <div v-if="broadcastPhotoPreview" class="bc-photo-preview">
+            <img :src="broadcastPhotoPreview" alt="Превью" />
+            <button class="bc-photo-remove" @click="removePhoto">✕</button>
+          </div>
         </section>
 
         <!-- Подарок знаков -->
@@ -233,6 +253,7 @@
           >
             <span v-if="broadcastLoading">⏳ Запуск рассылки...</span>
             <span v-else-if="selectedIds.size > 0">📣 Отправить выбранным ({{ selectedIds.size }})</span>
+            <span v-else-if="broadcastTarget === 'admins'">📣 Отправить администраторам</span>
             <span v-else>📣 Отправить всем</span>
           </button>
         </section>
@@ -1115,12 +1136,31 @@ const templates: Template[] = [
 
 const activeTemplate = ref<string>('custom')
 const broadcastMessage = ref('')
-const broadcastPhotoUrl = ref('')
+const broadcastPhoto = ref<File | null>(null)
+const broadcastPhotoPreview = ref<string | null>(null)
+const broadcastTarget = ref<'all' | 'admins'>('all')
 const withGift = ref(false)
 const broadcastGiftAmount = ref<number | null>(null)
 const broadcastLoading = ref(false)
 const broadcastSuccess = ref<string | null>(null)
 const broadcastError = ref<string | null>(null)
+
+const onPhotoSelected = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0] ?? null
+  broadcastPhoto.value = file
+  if (broadcastPhotoPreview.value) {
+    URL.revokeObjectURL(broadcastPhotoPreview.value)
+  }
+  broadcastPhotoPreview.value = file ? URL.createObjectURL(file) : null
+}
+
+const removePhoto = () => {
+  broadcastPhoto.value = null
+  if (broadcastPhotoPreview.value) {
+    URL.revokeObjectURL(broadcastPhotoPreview.value)
+    broadcastPhotoPreview.value = null
+  }
+}
 
 const applyTemplate = (tpl: Template) => {
   activeTemplate.value = tpl.id
@@ -1135,11 +1175,17 @@ const sendBroadcast = async () => {
 
   const userIds = Array.from(selectedIds.value)
   const giftAmt = withGift.value ? broadcastGiftAmount.value : null
+  const onlyAdmins = selectedIds.value.size === 0 && broadcastTarget.value === 'admins'
 
   try {
-    const res = await adminApi.broadcast(broadcastMessage.value, giftAmt, userIds, broadcastPhotoUrl.value || null)
+    const res = await adminApi.broadcast(
+      broadcastMessage.value,
+      giftAmt,
+      userIds,
+      onlyAdmins,
+      broadcastPhoto.value,
+    )
     broadcastSuccess.value = res.data.message + '. Рассылка идёт в фоне — это может занять несколько минут.'
-    // После успеха сбрасываем выбор
     selectedIds.value = new Set()
   } catch (e: any) {
     broadcastError.value = e.response?.data?.message || 'Ошибка при запуске рассылки'
@@ -2132,5 +2178,90 @@ input[type="checkbox"] {
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 11px;
+}
+
+/* ── Recipient buttons ── */
+.bc-recipient-btn {
+  font-size: 14px;
+  color: #94a3b8;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bc-recipient-btn:hover { color: #e2e8f0; border-color: #6366f1; }
+.bc-recipient-btn.active {
+  color: #818cf8;
+  border-color: rgba(99,102,241,0.5);
+  background: rgba(99,102,241,0.08);
+}
+
+/* ── File upload ── */
+.bc-file-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+.bc-file-input {
+  display: none;
+}
+.bc-file-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.bc-file-label:hover .bc-file-btn {
+  border-color: #6366f1;
+  color: #e2e8f0;
+}
+.bc-file-name {
+  font-size: 13px;
+  color: #a5b4fc;
+  word-break: break-all;
+}
+.bc-file-hint {
+  font-size: 12px;
+  color: #475569;
+}
+
+/* ── Photo preview ── */
+.bc-photo-preview {
+  position: relative;
+  display: inline-block;
+  margin-top: 4px;
+}
+.bc-photo-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  display: block;
+}
+.bc-photo-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.6);
+  border: none;
+  border-radius: 50%;
+  color: #e2e8f0;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 </style>
