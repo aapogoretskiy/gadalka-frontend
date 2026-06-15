@@ -931,12 +931,24 @@
                 v-for="(action, idx) in userActions"
                 :key="idx"
                 class="action-item"
-                :class="{ 'action-item--expandable': action.interpretation }"
+                :class="{
+                  'action-item--expandable': action.interpretation,
+                  'action-item--positive': action.feedbackRating === 'POSITIVE',
+                  'action-item--negative': action.feedbackRating === 'NEGATIVE',
+                }"
               >
-                <div class="action-label">{{ action.label }}</div>
+                <div class="action-label">
+                  {{ action.label }}
+                  <span v-if="action.feedbackRating === 'POSITIVE'" class="feedback-badge feedback-badge--pos">👍</span>
+                  <span v-else-if="action.feedbackRating === 'NEGATIVE'" class="feedback-badge feedback-badge--neg">👎</span>
+                </div>
                 <div class="action-meta">
                   <span class="action-details">{{ action.details }}</span>
                   <span class="action-date">{{ formatDate(action.date) }}</span>
+                </div>
+                <!-- Комментарий к отрицательной оценке -->
+                <div v-if="action.feedbackRating === 'NEGATIVE' && action.feedbackComment" class="feedback-comment">
+                  💬 {{ action.feedbackComment }}
                 </div>
                 <!-- Блок интерпретации -->
                 <template v-if="action.interpretation">
@@ -2268,6 +2280,58 @@ input[type="checkbox"] {
 }
 .action-expand-btn:hover {
   color: #a5b4fc;
+}
+
+/* ── Action feedback ── */
+.action-item--positive {
+  border-left: 3px solid #22c55e;
+  padding-left: 9px;
+}
+.action-item--negative {
+  border-left: 3px solid #ef4444;
+  padding-left: 9px;
+}
+.feedback-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.feedback-comment {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 6px;
+  padding: 6px 8px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* ── Action feedback ── */
+.action-item--positive {
+  border-left: 3px solid #22c55e;
+  padding-left: 9px;
+}
+.action-item--negative {
+  border-left: 3px solid #ef4444;
+  padding-left: 9px;
+}
+.feedback-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.feedback-comment {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 6px;
+  padding: 6px 8px;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 /* ── Broadcast photo url input ── */

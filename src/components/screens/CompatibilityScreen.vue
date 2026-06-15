@@ -205,6 +205,13 @@
           </div>
         </div>
 
+        <!-- Фидбэк — только после разблокировки полного анализа -->
+        <ActionFeedbackWidget
+          v-if="isPremiumUnlocked && result.id"
+          action-type="COMPATIBILITY"
+          :action-id="result.id"
+        />
+
         <div class="result-actions" style="margin-top: 8px">
           <button class="action-btn secondary haptic" @click="reset">
             Новый расчёт
@@ -225,6 +232,7 @@ import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
+import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()

@@ -290,6 +290,13 @@
           <div class="summary-body">{{ result.interpretation }}</div>
         </div>
 
+        <!-- Фидбэк на расклад (только на новом результате с id) -->
+        <ActionFeedbackWidget
+          v-if="result.id"
+          action-type="FORTUNE"
+          :action-id="result.id"
+        />
+
         <!-- Actions -->
         <div class="actions-row">
           <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
@@ -337,6 +344,7 @@ import { api } from '@/utils/api'
 import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
 import { useDevMode } from '@/composables/useDevMode'
+import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 

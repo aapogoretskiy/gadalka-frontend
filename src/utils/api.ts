@@ -360,12 +360,27 @@ export const api = {
   getReferralLink: () =>
     apiClient.get<{ code: string; link: string }>('/api/me/referral'),
 
-  // Обратная связь
+  // Обратная связь (тикеты поддержки)
   // skipGlobalError: true — показываем кастомное сообщение при лимите (400)
   submitFeedback: (description: string) =>
     apiClient.post<{ id: number; status: string; createdAt: string }>(
       '/api/feedback',
       { description },
+      { skipGlobalError: true },
+    ),
+
+  // Оценка платного действия (👍/👎)
+  // type: 'FORTUNE' | 'COMPATIBILITY'
+  // skipGlobalError: true — виджет сам обрабатывает ошибку (не мешаем UI)
+  submitActionFeedback: (
+    type: 'FORTUNE' | 'COMPATIBILITY',
+    actionId: number,
+    rating: 'POSITIVE' | 'NEGATIVE',
+    comment?: string,
+  ) =>
+    apiClient.post<void>(
+      `/api/action-feedback/${type}/${actionId}`,
+      { rating, comment: comment ?? null },
       { skipGlobalError: true },
     ),
 }

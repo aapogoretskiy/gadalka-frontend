@@ -42,11 +42,16 @@ export interface AdminUserDetails extends AdminUserSummary {
 }
 
 export interface UserAction {
+  id: number
   type: string
   label: string
   date: string
   details: string
   interpretation: string | null
+  /** null если пользователь не оставлял оценку */
+  feedbackRating: 'POSITIVE' | 'NEGATIVE' | null
+  /** null если нет комментария */
+  feedbackComment: string | null
 }
 
 export interface AdminUsersPage {
