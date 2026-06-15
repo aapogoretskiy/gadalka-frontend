@@ -45,6 +45,7 @@ export interface UserAction {
   label: string
   date: string
   details: string
+  interpretation: string | null
 }
 
 export interface AdminUsersPage {

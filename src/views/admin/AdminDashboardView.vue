@@ -869,12 +869,25 @@
                 v-for="(action, idx) in userActions"
                 :key="idx"
                 class="action-item"
+                :class="{ 'action-item--expandable': action.interpretation }"
               >
                 <div class="action-label">{{ action.label }}</div>
                 <div class="action-meta">
                   <span class="action-details">{{ action.details }}</span>
                   <span class="action-date">{{ formatDate(action.date) }}</span>
                 </div>
+                <!-- Блок интерпретации -->
+                <template v-if="action.interpretation">
+                  <div v-if="expandedActions.has(idx)" class="action-interpretation">
+                    {{ action.interpretation }}
+                  </div>
+                  <button
+                    class="action-expand-btn"
+                    @click="toggleActionExpand(idx)"
+                  >
+                    {{ expandedActions.has(idx) ? '▲ Скрыть ответ' : '▼ Читать ответ' }}
+                  </button>
+                </template>
               </div>
             </div>
           </section>
@@ -975,6 +988,7 @@ const openDetails = async (id: number) => {
     userActions.value = []
     userActionsLoading.value = false
     actionsLoaded.value = false
+    expandedActions.value = new Set()
   } catch {
     // ignore
   }
@@ -984,6 +998,7 @@ const openDetails = async (id: number) => {
 const userActions = ref<UserAction[]>([])
 const userActionsLoading = ref(false)
 const actionsLoaded = ref(false)
+const expandedActions = ref(new Set<number>())
 
 const loadUserActions = async () => {
   if (!selectedUser.value) return
@@ -992,12 +1007,23 @@ const loadUserActions = async () => {
     const res = await adminApi.getUserActions(selectedUser.value.id)
     userActions.value = res.data
     actionsLoaded.value = true
+    expandedActions.value = new Set()
   } catch {
     userActions.value = []
     actionsLoaded.value = true
   } finally {
     userActionsLoading.value = false
   }
+}
+
+const toggleActionExpand = (idx: number) => {
+  const next = new Set(expandedActions.value)
+  if (next.has(idx)) {
+    next.delete(idx)
+  } else {
+    next.add(idx)
+  }
+  expandedActions.value = next
 }
 
 // ── Подарок ───────────────────────────────────────────────────────────────
@@ -2070,6 +2096,32 @@ input[type="checkbox"] {
   color: #475569;
   text-align: center;
   padding: 16px 0;
+}
+.action-item--expandable {
+  cursor: default;
+}
+.action-interpretation {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid #334155;
+  padding-top: 8px;
+}
+.action-expand-btn {
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: #6366f1;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  display: block;
+}
+.action-expand-btn:hover {
+  color: #a5b4fc;
 }
 
 /* ── Broadcast photo url input ── */
