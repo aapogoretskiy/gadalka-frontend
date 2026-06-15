@@ -28,6 +28,7 @@ export interface AdminUserSummary {
   banned: boolean
   premium: boolean
   visitCount: number
+  totalActionsCount: number
 }
 
 export interface AdminUserDetails extends AdminUserSummary {
@@ -90,10 +91,10 @@ export const adminApi = {
 
   // ── Пользователи ──────────────────────────────────────────────────────────
 
-  /** Список пользователей с пагинацией и опциональным поиском */
-  getUsers: (page = 0, size = 20, search?: string) =>
+  /** Список пользователей с пагинацией, поиском и сортировкой */
+  getUsers: (page = 0, size = 20, search?: string, sortBy = 'createdAt', sortDir = 'desc') =>
     adminAxios.get<AdminUsersPage>('/api/admin/users', {
-      params: { page, size, ...(search ? { search } : {}) },
+      params: { page, size, sortBy, sortDir, ...(search ? { search } : {}) },
     }),
 
   /** Детальная информация об одном пользователе */

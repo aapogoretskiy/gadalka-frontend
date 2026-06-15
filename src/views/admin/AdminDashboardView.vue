@@ -47,7 +47,7 @@
     ══════════════════════════════════════════════════════════ -->
     <template v-if="activeTab === 'users'">
 
-      <!-- Поиск + счётчик выбранных -->
+      <!-- Поиск + кнопки -->
       <div class="search-bar">
         <input
           v-model="searchQuery"
@@ -55,6 +55,14 @@
           placeholder="Telegram ID или @username..."
           @input="onSearchInput"
         />
+        <button
+          v-if="!isDefaultSort"
+          class="btn-reset-sort"
+          @click="resetSort"
+          title="Вернуть сортировку по умолчанию (дата регистрации ↓)"
+        >
+          ↺ Сбросить сортировку
+        </button>
         <button
           v-if="selectedIds.size > 0"
           class="btn-broadcast"
@@ -79,21 +87,34 @@
                 />
               </th>
               <th>TG ID</th>
-              <th>Username</th>
-              <th>Имя</th>
-              <th>Регистрация</th>
-              <th>Активен</th>
-              <th>Визитов</th>
+              <th class="th-sortable" @click="setSort('username')">
+                Username <span class="sort-icon">{{ sortIcon('username') }}</span>
+              </th>
+              <th class="th-sortable" @click="setSort('firstName')">
+                Имя <span class="sort-icon">{{ sortIcon('firstName') }}</span>
+              </th>
+              <th class="th-sortable" @click="setSort('createdAt')">
+                Регистрация <span class="sort-icon">{{ sortIcon('createdAt') }}</span>
+              </th>
+              <th class="th-sortable" @click="setSort('lastActiveAt')">
+                Активен <span class="sort-icon">{{ sortIcon('lastActiveAt') }}</span>
+              </th>
+              <th class="th-sortable" @click="setSort('visitCount')">
+                Визитов <span class="sort-icon">{{ sortIcon('visitCount') }}</span>
+              </th>
+              <th class="th-sortable" @click="setSort('totalActionsCount')">
+                Действий <span class="sort-icon">{{ sortIcon('totalActionsCount') }}</span>
+              </th>
               <th>Статус</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="9" class="loading-row">Загрузка...</td>
+              <td colspan="10" class="loading-row">Загрузка...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="9" class="empty-row">Пользователи не найдены</td>
+              <td colspan="10" class="empty-row">Пользователи не найдены</td>
             </tr>
             <tr
               v-for="user in users"
@@ -118,6 +139,7 @@
               <td @click="openDetails(user.id)">{{ formatDate(user.createdAt) }}</td>
               <td @click="openDetails(user.id)">{{ user.lastActiveAt ? formatDate(user.lastActiveAt) : '—' }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.visitCount }}</td>
+              <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalActionsCount }}</td>
               <td @click="openDetails(user.id)">
                 <span class="badge" :class="user.banned ? 'badge-ban' : 'badge-ok'">
                   {{ user.banned ? 'Забанен' : 'Активен' }}
@@ -940,10 +962,40 @@ const totalPages = ref(1)
 const searchQuery = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
+// ── Сортировка ────────────────────────────────────────────────────────────
+const sortBy = ref('createdAt')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+const isDefaultSort = computed(() => sortBy.value === 'createdAt' && sortDir.value === 'desc')
+
+/** Переключить сортировку по полю: повторный клик — меняет направление */
+const setSort = (field: string) => {
+  if (sortBy.value === field) {
+    sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    sortBy.value = field
+    sortDir.value = 'desc'
+  }
+  loadUsers(0)
+}
+
+/** Иконка для заголовка: ↓ активная убывающая, ↑ активная возрастающая, ⇅ неактивная */
+const sortIcon = (field: string): string => {
+  if (sortBy.value !== field) return '⇅'
+  return sortDir.value === 'desc' ? '↓' : '↑'
+}
+
+/** Сброс сортировки к дефолту */
+const resetSort = () => {
+  sortBy.value = 'createdAt'
+  sortDir.value = 'desc'
+  loadUsers(0)
+}
+
 const loadUsers = async (page = 0) => {
   loading.value = true
   try {
-    const res = await adminApi.getUsers(page, 20, searchQuery.value || undefined)
+    const res = await adminApi.getUsers(page, 20, searchQuery.value || undefined, sortBy.value, sortDir.value)
     users.value = res.data.content
     totalPages.value = res.data.totalPages || 1
     currentPage.value = res.data.number
@@ -1520,6 +1572,22 @@ onMounted(() => loadUsers(0))
   white-space: nowrap;
 }
 
+.btn-reset-sort {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-reset-sort:hover {
+  color: #e2e8f0;
+  border-color: #6366f1;
+}
+
 /* ── Table ── */
 .table-wrap {
   overflow-x: auto;
@@ -1541,6 +1609,19 @@ thead th {
   border-bottom: 1px solid #1e293b;
 }
 .th-check { width: 36px; padding: 8px 4px 8px 12px; }
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.th-sortable:hover { color: #cbd5e1; }
+.sort-icon {
+  display: inline-block;
+  width: 14px;
+  color: #475569;
+  font-size: 11px;
+  margin-left: 2px;
+}
 
 tbody tr {
   border-bottom: 1px solid #1e293b;
