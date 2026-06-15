@@ -275,6 +275,11 @@ export interface AdminReports {
     last7Days: number
     last30Days: number
   }
+  compatibility: {
+    total: number
+    last7Days: number
+    last30Days: number
+  }
   actionsToday: {
     total: number
     threeCard: number

@@ -356,6 +356,25 @@
             </div>
           </div>
 
+          <!-- Совместимость -->
+          <div class="report-group">
+            <h3 class="report-group-title">💞 Совместимость</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(reports.compatibility.total) }}</div>
+                <div class="metric-label">Всего расчётов</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.compatibility.last7Days) }}</div>
+                <div class="metric-label">За 7 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.compatibility.last30Days) }}</div>
+                <div class="metric-label">За 30 дней</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Действия за 24 часа -->
           <div class="report-group">
             <h3 class="report-group-title">⚡ Действия за 24 часа</h3>
