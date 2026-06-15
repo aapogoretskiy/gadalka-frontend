@@ -83,16 +83,17 @@
               <th>Имя</th>
               <th>Регистрация</th>
               <th>Активен</th>
+              <th>Визитов</th>
               <th>Статус</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="8" class="loading-row">Загрузка...</td>
+              <td colspan="9" class="loading-row">Загрузка...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="8" class="empty-row">Пользователи не найдены</td>
+              <td colspan="9" class="empty-row">Пользователи не найдены</td>
             </tr>
             <tr
               v-for="user in users"
@@ -110,9 +111,13 @@
               </td>
               <td class="mono" @click="openDetails(user.id)">{{ user.telegramId }}</td>
               <td @click="openDetails(user.id)">{{ user.username ? '@' + user.username : '—' }}</td>
-              <td @click="openDetails(user.id)">{{ user.firstName || '—' }}</td>
+              <td @click="openDetails(user.id)">
+                {{ user.firstName || '—' }}
+                <span v-if="user.premium" class="premium-star" title="Telegram Premium">⭐</span>
+              </td>
               <td @click="openDetails(user.id)">{{ formatDate(user.createdAt) }}</td>
               <td @click="openDetails(user.id)">{{ user.lastActiveAt ? formatDate(user.lastActiveAt) : '—' }}</td>
+              <td @click="openDetails(user.id)" class="mono visit-count">{{ user.visitCount }}</td>
               <td @click="openDetails(user.id)">
                 <span class="badge" :class="user.banned ? 'badge-ban' : 'badge-ok'">
                   {{ user.banned ? 'Забанен' : 'Активен' }}
@@ -172,17 +177,32 @@
 
         <!-- Текст -->
         <section class="bc-section">
-          <h3 class="bc-label">Текст сообщения <span class="bc-hint">(поддерживает Markdown)</span></h3>
+          <h3 class="bc-label">
+            Текст сообщения
+            <span class="bc-hint">(Markdown) — используйте <code class="bc-code">{name}</code> для имени получателя</span>
+          </h3>
           <textarea
             v-model="broadcastMessage"
             class="bc-textarea"
             rows="6"
-            placeholder="Введите текст сообщения..."
+            placeholder="Введите текст сообщения... Используйте {name} для персонализации"
             @input="activeTemplate = 'custom'"
           />
           <div class="char-count" :class="{ warn: broadcastMessage.length > 3800 }">
             {{ broadcastMessage.length }} / 4096
           </div>
+        </section>
+
+        <!-- Фото URL -->
+        <section class="bc-section">
+          <h3 class="bc-label">Фото <span class="bc-hint">(необязательно — URL изображения)</span></h3>
+          <input
+            v-model="broadcastPhotoUrl"
+            type="url"
+            class="bc-number-input"
+            style="width:100%"
+            placeholder="https://example.com/image.jpg"
+          />
         </section>
 
         <!-- Подарок знаков -->
@@ -289,6 +309,60 @@
               <div class="metric-card">
                 <div class="metric-value">{{ fmt(reports.fortunes.last30Days) }}</div>
                 <div class="metric-label">За 30 дней</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Действия за 24 часа -->
+          <div class="report-group">
+            <h3 class="report-group-title">⚡ Действия за 24 часа</h3>
+            <div class="metrics-grid">
+              <div class="metric-card metric-accent">
+                <div class="metric-value">{{ fmt(reports.actionsToday.total) }}</div>
+                <div class="metric-label">Всего действий</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.threeCard) }}</div>
+                <div class="metric-label">Расклад 3 карты</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.horseshoe) }}</div>
+                <div class="metric-label">Подкова</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.celticCross) }}</div>
+                <div class="metric-label">Кельтский крест</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.compatibility) }}</div>
+                <div class="metric-label">Совместимость</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.numerology) }}</div>
+                <div class="metric-label">Нумерология</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.dailyCard) }}</div>
+                <div class="metric-label">Карта дня</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Повторные посещения -->
+          <div class="report-group">
+            <h3 class="report-group-title">🔄 Повторные посещения</h3>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.returningUsers.returning1Day) }}</div>
+                <div class="metric-label">Вернулись за 24ч</div>
+              </div>
+              <div class="metric-card metric-highlight">
+                <div class="metric-value">{{ fmt(reports.returningUsers.returning7Days) }}</div>
+                <div class="metric-label">Вернулись за 7 дней</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.returningUsers.returning30Days) }}</div>
+                <div class="metric-label">Вернулись за 30 дней</div>
               </div>
             </div>
           </div>
@@ -688,6 +762,21 @@
               <span class="label">Последняя активность</span>
               <span>{{ selectedUser.lastActiveAt ? formatDate(selectedUser.lastActiveAt) : 'Нет данных' }}</span>
             </div>
+            <div class="info-row">
+              <span class="label">Визитов</span>
+              <span>{{ selectedUser.visitCount }}</span>
+            </div>
+            <div class="info-row" v-if="selectedUser.birthDate">
+              <span class="label">Возраст</span>
+              <span>{{ calcAge(selectedUser.birthDate) !== null ? calcAge(selectedUser.birthDate) + ' лет' : '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Premium</span>
+              <span>
+                <span v-if="selectedUser.premium" class="badge badge-premium">⭐ Premium</span>
+                <span v-else class="label">—</span>
+              </span>
+            </div>
             <div class="info-row" v-if="selectedUser.referralSource">
               <span class="label">Источник</span>
               <span>{{ referralSourceLabel(selectedUser.referralSource) }}</span>
@@ -760,6 +849,35 @@
               {{ banLoading ? '...' : '✅ Разблокировать' }}
             </button>
           </section>
+
+          <!-- История действий (lazy) -->
+          <section class="info-section">
+            <h3>История действий</h3>
+            <button
+              v-if="!actionsLoaded"
+              class="btn-ghost"
+              :disabled="userActionsLoading"
+              @click="loadUserActions"
+            >
+              {{ userActionsLoading ? '⏳ Загрузка...' : '📋 Загрузить историю' }}
+            </button>
+            <div v-else-if="userActions.length === 0" class="actions-empty">
+              Действий не найдено
+            </div>
+            <div v-else class="actions-list">
+              <div
+                v-for="(action, idx) in userActions"
+                :key="idx"
+                class="action-item"
+              >
+                <div class="action-label">{{ action.label }}</div>
+                <div class="action-meta">
+                  <span class="action-details">{{ action.details }}</span>
+                  <span class="action-date">{{ formatDate(action.date) }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </Transition>
@@ -773,7 +891,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -853,8 +971,32 @@ const openDetails = async (id: number) => {
     giftAmount.value = null
     giftSuccess.value = null
     giftError.value = null
+    // Сбрасываем историю действий при открытии нового пользователя
+    userActions.value = []
+    userActionsLoading.value = false
+    actionsLoaded.value = false
   } catch {
     // ignore
+  }
+}
+
+// ── История действий (lazy) ───────────────────────────────────────────────
+const userActions = ref<UserAction[]>([])
+const userActionsLoading = ref(false)
+const actionsLoaded = ref(false)
+
+const loadUserActions = async () => {
+  if (!selectedUser.value) return
+  userActionsLoading.value = true
+  try {
+    const res = await adminApi.getUserActions(selectedUser.value.id)
+    userActions.value = res.data
+    actionsLoaded.value = true
+  } catch {
+    userActions.value = []
+    actionsLoaded.value = true
+  } finally {
+    userActionsLoading.value = false
   }
 }
 
@@ -947,6 +1089,7 @@ const templates: Template[] = [
 
 const activeTemplate = ref<string>('custom')
 const broadcastMessage = ref('')
+const broadcastPhotoUrl = ref('')
 const withGift = ref(false)
 const broadcastGiftAmount = ref<number | null>(null)
 const broadcastLoading = ref(false)
@@ -968,7 +1111,7 @@ const sendBroadcast = async () => {
   const giftAmt = withGift.value ? broadcastGiftAmount.value : null
 
   try {
-    const res = await adminApi.broadcast(broadcastMessage.value, giftAmt, userIds)
+    const res = await adminApi.broadcast(broadcastMessage.value, giftAmt, userIds, broadcastPhotoUrl.value || null)
     broadcastSuccess.value = res.data.message + '. Рассылка идёт в фоне — это может занять несколько минут.'
     // После успеха сбрасываем выбор
     selectedIds.value = new Set()
@@ -1181,6 +1324,19 @@ const formatDate = (iso: string) => {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
+}
+
+/** Возраст в годах по дате рождения (YYYY-MM-DD). null если дата не задана. */
+const calcAge = (birthDate: string): number | null => {
+  if (!birthDate) return null
+  const today = new Date()
+  const birth = new Date(birthDate)
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age >= 0 ? age : null
 }
 
 onMounted(() => loadUsers(0))
@@ -1848,5 +2004,81 @@ input[type="checkbox"] {
 .slide-panel-enter-from,
 .slide-panel-leave-to {
   transform: translateX(100%);
+}
+
+/* ── Premium badge ── */
+.premium-star {
+  font-size: 12px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.badge-premium {
+  background: rgba(250, 204, 21, 0.12);
+  color: #fde68a;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ── Visit count cell ── */
+.visit-count {
+  color: #94a3b8;
+}
+
+/* ── User actions (lazy history) ── */
+.actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.action-item {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.action-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+.action-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.action-details {
+  font-size: 12px;
+  color: #64748b;
+  flex: 1;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.action-date {
+  font-size: 11px;
+  color: #475569;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.actions-empty {
+  font-size: 13px;
+  color: #475569;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* ── Broadcast photo url input ── */
+.bc-code {
+  font-family: monospace;
+  background: rgba(99,102,241,0.15);
+  color: #a5b4fc;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
 }
 </style>

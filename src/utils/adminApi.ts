@@ -26,6 +26,8 @@ export interface AdminUserSummary {
   createdAt: string
   lastActiveAt: string
   banned: boolean
+  premium: boolean
+  visitCount: number
 }
 
 export interface AdminUserDetails extends AdminUserSummary {
@@ -35,6 +37,14 @@ export interface AdminUserDetails extends AdminUserSummary {
   balance: number
   totalSpent: number
   totalGranted: number
+  birthDate: string   // YYYY-MM-DD или пустая строка если профиль не создан
+}
+
+export interface UserAction {
+  type: string
+  label: string
+  date: string
+  details: string
 }
 
 export interface AdminUsersPage {
@@ -119,12 +129,17 @@ export const adminApi = {
 
   // ── Рассылка ──────────────────────────────────────────────────────────────
 
-  broadcast: (message: string, giftAmount: number | null, userIds: number[]) =>
+  broadcast: (message: string, giftAmount: number | null, userIds: number[], photoUrl?: string | null) =>
     adminAxios.post<{ message: string }>('/api/admin/broadcast', {
       message,
       giftAmount: giftAmount && giftAmount > 0 ? giftAmount : null,
       userIds: userIds.length > 0 ? userIds : null,
+      photoUrl: photoUrl && photoUrl.trim() ? photoUrl.trim() : null,
     }),
+
+  /** Lazy-история действий пользователя (гадания, совместимость, нумерология, карта дня) */
+  getUserActions: (id: number, limit = 30) =>
+    adminAxios.get<UserAction[]>(`/api/admin/users/${id}/actions`, { params: { limit } }),
 
   // ── Отчёты ────────────────────────────────────────────────────────────────
 
@@ -233,6 +248,20 @@ export interface AdminReports {
     total: number
     last7Days: number
     last30Days: number
+  }
+  actionsToday: {
+    total: number
+    threeCard: number
+    horseshoe: number
+    celticCross: number
+    compatibility: number
+    numerology: number
+    dailyCard: number
+  }
+  returningUsers: {
+    returning1Day: number
+    returning7Days: number
+    returning30Days: number
   }
   payments: {
     rubKopecksTotal: number
