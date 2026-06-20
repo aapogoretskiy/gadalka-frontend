@@ -45,6 +45,11 @@
         :class="{ active: activeTab === 'range' }"
         @click="activeTab = 'range'"
       >📅 Диапазон</button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'prices' }"
+        @click="openPricesTab"
+      >⚙️ Цены</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -110,16 +115,19 @@
               <th class="th-sortable" @click="setSort('totalActionsCount')">
                 Действий <span class="sort-icon">{{ sortIcon('totalActionsCount') }}</span>
               </th>
+              <th class="th-sortable" @click="setSort('totalSpent')">
+                Потрачено знаков <span class="sort-icon">{{ sortIcon('totalSpent') }}</span>
+              </th>
               <th>Статус</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="10" class="loading-row">Загрузка...</td>
+              <td colspan="11" class="loading-row">Загрузка...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="10" class="empty-row">Пользователи не найдены</td>
+              <td colspan="11" class="empty-row">Пользователи не найдены</td>
             </tr>
             <tr
               v-for="user in users"
@@ -145,6 +153,7 @@
               <td @click="openDetails(user.id)">{{ user.lastActiveAt ? formatDate(user.lastActiveAt) : '—' }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.visitCount }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalActionsCount }}</td>
+              <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalSpent }}</td>
               <td @click="openDetails(user.id)">
                 <span class="badge" :class="user.banned ? 'badge-ban' : 'badge-ok'">
                   {{ user.banned ? 'Забанен' : 'Активен' }}
@@ -411,6 +420,10 @@
               <div class="metric-card">
                 <div class="metric-value">{{ fmt(reports.actionsToday.dailyCard) }}</div>
                 <div class="metric-label">Карта дня</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.numerologyWeek) }}</div>
+                <div class="metric-label">Расклад на неделю</div>
               </div>
             </div>
           </div>
@@ -829,6 +842,10 @@
                 <div class="metric-value">{{ fmt(rangeReport.actions.celticCross) }}</div>
                 <div class="metric-label">Кельтский крест</div>
               </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.numerologyWeek) }}</div>
+                <div class="metric-label">Расклад на неделю</div>
+              </div>
             </div>
           </div>
 
@@ -877,6 +894,74 @@
 
         <div v-else-if="!rangeLoading" class="reports-empty">
           Выберите диапазон дат и нажмите «Сформировать»
+        </div>
+
+      </div>
+    </template>
+
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ЦЕНЫ НА ФУНКЦИИ
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'prices'">
+      <div class="reports-wrap">
+
+        <div class="reports-toolbar">
+          <span class="reports-updated">Стоимость указана в знаках. Изменения применяются мгновенно, без деплоя.</span>
+          <button class="btn-ghost" :disabled="pricesLoading" @click="loadFeatureCosts">
+            {{ pricesLoading ? '⏳ Загрузка...' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <p v-if="pricesError" class="error-msg">{{ pricesError }}</p>
+
+        <template v-if="featureCosts">
+          <div class="report-group">
+            <h3 class="report-group-title">🔮 Расклады Таро</h3>
+            <div class="prices-form">
+              <div class="price-field">
+                <label class="price-label">Три карты</label>
+                <input v-model.number="featureCosts.threeCard" type="number" min="1" class="price-input" />
+              </div>
+              <div class="price-field">
+                <label class="price-label">Подкова</label>
+                <input v-model.number="featureCosts.horseshoe" type="number" min="1" class="price-input" />
+              </div>
+              <div class="price-field">
+                <label class="price-label">Кельтский крест</label>
+                <input v-model.number="featureCosts.celticCross" type="number" min="1" class="price-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="report-group">
+            <h3 class="report-group-title">💞 Совместимость и нумерология</h3>
+            <div class="prices-form">
+              <div class="price-field">
+                <label class="price-label">Разблокировка совместимости</label>
+                <input v-model.number="featureCosts.compatibilityUnlock" type="number" min="1" class="price-input" />
+              </div>
+              <div class="price-field">
+                <label class="price-label">Расклад на неделю</label>
+                <input v-model.number="featureCosts.numerologyWeek" type="number" min="1" class="price-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="report-group">
+            <button
+              class="btn-primary"
+              :disabled="pricesSaving"
+              @click="saveFeatureCosts"
+            >
+              {{ pricesSaving ? '⏳ Сохранение...' : '💾 Сохранить цены' }}
+            </button>
+            <p v-if="pricesSuccess" class="success-msg">{{ pricesSuccess }}</p>
+            <p v-if="pricesSaveError" class="error-msg">{{ pricesSaveError }}</p>
+          </div>
+        </template>
+
+        <div v-else-if="!pricesLoading" class="reports-empty">
+          Нажмите «Обновить» для загрузки текущих цен
         </div>
 
       </div>
@@ -1151,12 +1236,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts } from '@/utils/adminApi'
 
 const router = useRouter()
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -1668,6 +1753,49 @@ const formatDateShort = (iso: string) => {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
     timeZone: 'Europe/Moscow',
   })
+}
+
+// ── Цены платных функций ──────────────────────────────────────────────────
+const featureCosts = ref<FeatureCosts | null>(null)
+const pricesLoading = ref(false)
+const pricesSaving = ref(false)
+const pricesError = ref<string | null>(null)
+const pricesSaveError = ref<string | null>(null)
+const pricesSuccess = ref<string | null>(null)
+
+const loadFeatureCosts = async () => {
+  pricesLoading.value = true
+  pricesError.value = null
+  pricesSuccess.value = null
+  try {
+    const res = await adminApi.getFeatureCosts()
+    featureCosts.value = res.data
+  } catch {
+    pricesError.value = 'Не удалось загрузить цены'
+  } finally {
+    pricesLoading.value = false
+  }
+}
+
+const saveFeatureCosts = async () => {
+  if (!featureCosts.value) return
+  pricesSaving.value = true
+  pricesSaveError.value = null
+  pricesSuccess.value = null
+  try {
+    const res = await adminApi.updateFeatureCosts(featureCosts.value)
+    featureCosts.value = res.data
+    pricesSuccess.value = 'Цены обновлены'
+  } catch (e: any) {
+    pricesSaveError.value = e.response?.data?.message || 'Ошибка при сохранении цен'
+  } finally {
+    pricesSaving.value = false
+  }
+}
+
+const openPricesTab = () => {
+  activeTab.value = 'prices'
+  if (!featureCosts.value) loadFeatureCosts()
 }
 
 // ── Выход ─────────────────────────────────────────────────────────────────
@@ -2653,30 +2781,34 @@ input[type="checkbox"] {
 .bc-photo-preview {
   position: relative;
   display: inline-block;
-  margin-top: 4px;
 }
-.bc-photo-preview img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 8px;
-  border: 1px solid #334155;
-  display: block;
-}
-.bc-photo-remove {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(0,0,0,0.6);
-  border: none;
-  border-radius: 50%;
-  color: #e2e8f0;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-  cursor: pointer;
+
+/* ── Цены платных функций ── */
+.prices-form {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  flex-wrap: wrap;
+  gap: 16px;
 }
+.price-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+.price-label {
+  font-size: 13px;
+  color: #94a3b8;
+}
+.price-input {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+.price-input:focus { border-color: #6366f1; }
 </style>

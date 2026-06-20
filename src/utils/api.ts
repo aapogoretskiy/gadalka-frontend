@@ -179,6 +179,29 @@ export interface CompatibilityResponse {
   categories?: CompatibilityCategoryScore[]
 }
 
+// GET /api/numerology/week
+export interface NumerologyWeekDayDto {
+  date: string             // format: date (YYYY-MM-DD)
+  dayOfWeek: string         // "Пн" … "Вс"
+  dayCode: number
+  dayCodeTitle: string
+  resonanceScore: number    // 0–100, насколько код дня резонирует с числом жизненного пути
+  resonanceLabel: string    // "Благоприятный" | "Нейтральный" | "Будьте внимательнее"
+}
+
+export interface NumerologyWeekResponse {
+  id: number
+  weekStart: string
+  weekEnd: string
+  weekNumber: number
+  weekNumberTitle: string
+  weekDescription: string
+  days: NumerologyWeekDayDto[]
+  bestDay: NumerologyWeekDayDto
+  challengingDay: NumerologyWeekDayDto
+  weeklyAffirmation: string
+}
+
 // GET /api/numerology/today
 export interface NumerologyTodayResponse {
   id: number
@@ -230,7 +253,7 @@ export interface PaymentConfig {
 }
 
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY'
+export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -320,6 +343,11 @@ export const api = {
   // Нумерология дня
   getNumerologyToday: () =>
     apiClient.get<NumerologyTodayResponse>('/api/numerology/today'),
+
+  // Нумерология недели (платно — 3 знака; повторный вызов в течение действующих 7 дней бесплатен)
+  // skipGlobalError: true — 402 (мало знаков) и 422 (нет даты рождения) обрабатываем сами в виджете
+  getNumerologyWeek: () =>
+    apiClient.get<NumerologyWeekResponse>('/api/numerology/week', { skipGlobalError: true }),
 
   // Платежи
   getProducts: () =>

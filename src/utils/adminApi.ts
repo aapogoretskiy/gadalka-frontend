@@ -29,6 +29,7 @@ export interface AdminUserSummary {
   premium: boolean
   visitCount: number
   totalActionsCount: number
+  totalSpent: number
 }
 
 export interface AdminUserDetails extends AdminUserSummary {
@@ -60,6 +61,14 @@ export interface AdminUsersPage {
   totalPages: number
   number: number  // текущая страница
   size: number
+}
+
+export interface FeatureCosts {
+  threeCard: number
+  horseshoe: number
+  celticCross: number
+  compatibilityUnlock: number
+  numerologyWeek: number
 }
 
 export interface AdminSessionResponse {
@@ -207,6 +216,16 @@ export const adminApi = {
       `/api/admin/tickets/${id}/close`,
       { creditsToGift: creditsToGift && creditsToGift > 0 ? creditsToGift : null },
     ),
+
+  // ── Стоимость платных функций ───────────────────────────────────────────
+
+  /** Текущая стоимость платных функций в знаках */
+  getFeatureCosts: () =>
+    adminAxios.get<FeatureCosts>('/api/admin/feature-costs'),
+
+  /** Обновить стоимость всех платных функций сразу */
+  updateFeatureCosts: (costs: FeatureCosts) =>
+    adminAxios.put<FeatureCosts>('/api/admin/feature-costs', costs),
 }
 
 // ── Типы заявок ───────────────────────────────────────────────────────────────
@@ -293,6 +312,7 @@ export interface RangeReport {
     threeCard: number
     horseshoe: number
     celticCross: number
+    numerologyWeek: number
   }
   returningUsers: number
   payments: {
@@ -330,6 +350,7 @@ export interface AdminReports {
     compatibility: number
     numerology: number
     dailyCard: number
+    numerologyWeek: number
   }
   returningUsers: {
     returning1Day: number
