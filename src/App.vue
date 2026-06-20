@@ -50,7 +50,6 @@ import CompatibilityScreen from './components/screens/CompatibilityScreen.vue'
 import ProfileScreen       from './components/screens/ProfileScreen.vue'
 import OnboardingScreen    from './components/screens/OnboardingScreen.vue'
 import CardDiaryScreen     from './components/screens/CardDiaryScreen.vue'
-import HistoryScreen       from './components/screens/HistoryScreen.vue'
 import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
 import FortuneScreen          from './components/screens/FortuneScreen.vue'
 import PaymentScreen          from './components/screens/PaymentScreen.vue'
@@ -89,7 +88,6 @@ const currentScreen = computed(() => {
     profile:           ProfileScreen,
     feedback:          FeedbackScreen,
     diary:         CardDiaryScreen,
-    history:       HistoryScreen,
     shop:          DeckShopScreen,
   }
   return screens[currentRoute.value] || HomeScreen

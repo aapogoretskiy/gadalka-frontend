@@ -160,6 +160,50 @@
           </div>
         </template>
 
+        <!-- NUMEROLOGY_WEEK -->
+        <template v-if="selected.featureType === 'NUMEROLOGY_WEEK'">
+          <div class="modal-type-label">🗓 Расклад на неделю</div>
+          <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
+          <div class="modal-numerology-hero">
+            <div class="modal-day-code">{{ selected.data?.weekNumber }}</div>
+            <div class="modal-day-title serif">{{ selected.data?.weekNumberTitle }}</div>
+          </div>
+          <div v-if="selected.data?.weekDescription" class="modal-section">
+            <div class="modal-section-label">⚡ Энергия недели</div>
+            <div class="modal-section-body">{{ selected.data.weekDescription }}</div>
+          </div>
+          <div v-if="selected.data?.mainTheme" class="modal-section">
+            <div class="modal-section-label">✦ Главная тема</div>
+            <div class="modal-section-body">{{ selected.data.mainTheme }}</div>
+          </div>
+          <div v-if="selected.data?.peakDays?.length" class="modal-section">
+            <div class="modal-section-label">☀️ Пиковые дни</div>
+            <div v-for="pd in selected.data.peakDays" :key="pd.date" class="modal-section-body" style="margin-bottom:8px;">
+              <b>{{ formatDate(pd.date) }}</b> — {{ pd.label }}. {{ pd.advice }}
+            </div>
+          </div>
+          <div v-if="selected.data?.whatToStrengthen" class="modal-section">
+            <div class="modal-section-label">✅ Что усилить</div>
+            <div class="modal-section-body">{{ selected.data.whatToStrengthen }}</div>
+          </div>
+          <div v-if="selected.data?.whatToAvoid" class="modal-section">
+            <div class="modal-section-label">⚠️ Чего избегать</div>
+            <div class="modal-section-body">{{ selected.data.whatToAvoid }}</div>
+          </div>
+          <div v-if="selected.data?.relationships" class="modal-section">
+            <div class="modal-section-label">💗 Отношения</div>
+            <div class="modal-section-body">{{ selected.data.relationships }}</div>
+          </div>
+          <div v-if="selected.data?.finance" class="modal-section">
+            <div class="modal-section-label">💰 Финансы</div>
+            <div class="modal-section-body">{{ selected.data.finance }}</div>
+          </div>
+          <div v-if="selected.data?.weeklyAffirmation" class="modal-section modal-section--affirmation">
+            <div class="modal-section-label">✦ Аффирмация</div>
+            <div class="modal-section-body modal-affirmation-text serif">"{{ selected.data.weeklyAffirmation }}"</div>
+          </div>
+        </template>
+
         <!-- COMPATIBILITY -->
         <template v-if="selected.featureType === 'COMPATIBILITY'">
           <div class="modal-type-label">💕 Совместимость</div>
@@ -302,6 +346,7 @@ const tabs: { value: TabValue; label: string }[] = [
   { value: 'DAILY_CARD',     label: 'Карта дня' },
   { value: 'COMPATIBILITY',  label: 'Совместимость' },
   { value: 'NUMEROLOGY_DAY', label: 'Числа' },
+  { value: 'NUMEROLOGY_WEEK', label: 'Неделя' },
 ]
 
 const FORTUNE_TYPES: FeatureType[] = ['THREE_CARD', 'HORSESHOE', 'CELTIC_CROSS']
@@ -324,16 +369,17 @@ async function loadAll() {
   error.value = ''
   const { from, to } = dateRange()
   try {
-    const [r1, r2, r3, r4, r5, r6] = await Promise.allSettled([
+    const [r1, r2, r3, r4, r5, r6, r7] = await Promise.allSettled([
       api.getDiaryHistory('THREE_CARD', from, to),
       api.getDiaryHistory('HORSESHOE', from, to),
       api.getDiaryHistory('CELTIC_CROSS', from, to),
       api.getDiaryHistory('COMPATIBILITY', from, to),
       api.getDiaryHistory('DAILY_CARD', from, to),
       api.getDiaryHistory('NUMEROLOGY_DAY', from, to),
+      api.getDiaryHistory('NUMEROLOGY_WEEK', from, to),
     ])
     const entries: DiaryEntryDto[] = []
-    for (const r of [r1, r2, r3, r4, r5, r6]) {
+    for (const r of [r1, r2, r3, r4, r5, r6, r7]) {
       if (r.status === 'fulfilled') entries.push(...r.value.data.entries)
     }
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -348,16 +394,18 @@ async function loadAll() {
 const openEntry = (entry: DiaryEntryDto) => { selected.value = entry }
 
 function entryIcon(entry: DiaryEntryDto): string {
-  if (entry.featureType === 'DAILY_CARD')     return '✨'
-  if (entry.featureType === 'COMPATIBILITY')  return '💕'
-  if (entry.featureType === 'NUMEROLOGY_DAY') return '🔢'
+  if (entry.featureType === 'DAILY_CARD')      return '✨'
+  if (entry.featureType === 'COMPATIBILITY')   return '💕'
+  if (entry.featureType === 'NUMEROLOGY_DAY')  return '🔢'
+  if (entry.featureType === 'NUMEROLOGY_WEEK') return '🗓'
   return '🔮'
 }
 
 function entryBg(entry: DiaryEntryDto): string {
-  if (entry.featureType === 'DAILY_CARD')     return 'linear-gradient(135deg, #0a1a4e, #1a2b6e)'
-  if (entry.featureType === 'COMPATIBILITY')  return 'linear-gradient(135deg, #4e0a2e, #6e1a4a)'
-  if (entry.featureType === 'NUMEROLOGY_DAY') return 'linear-gradient(135deg, #2a1a00, #4a3200)'
+  if (entry.featureType === 'DAILY_CARD')      return 'linear-gradient(135deg, #0a1a4e, #1a2b6e)'
+  if (entry.featureType === 'COMPATIBILITY')   return 'linear-gradient(135deg, #4e0a2e, #6e1a4a)'
+  if (entry.featureType === 'NUMEROLOGY_DAY')  return 'linear-gradient(135deg, #2a1a00, #4a3200)'
+  if (entry.featureType === 'NUMEROLOGY_WEEK') return 'linear-gradient(135deg, #1a0036, #3a0a4e)'
   return 'linear-gradient(135deg, #3a1b6e, #1a0b2e)'
 }
 
@@ -377,6 +425,9 @@ function entryTitle(entry: DiaryEntryDto): string {
   }
   if (entry.featureType === 'NUMEROLOGY_DAY') {
     return d.dayCode != null ? `Код дня — ${d.dayCode}` : 'Число дня'
+  }
+  if (entry.featureType === 'NUMEROLOGY_WEEK') {
+    return d.weekNumber != null ? `Неделя числа ${d.weekNumber}` : 'Расклад на неделю'
   }
   // Все расклады (THREE_CARD, HORSESHOE, CELTIC_CROSS): показываем вопрос
   if (d.question) return truncate(d.question, 60)
@@ -402,7 +453,18 @@ function entryKeywords(entry: DiaryEntryDto): string[] {
     if (d.moonPhase)    kws.push(d.moonPhase)
     return kws
   }
+  if (entry.featureType === 'NUMEROLOGY_WEEK') {
+    const kws: string[] = []
+    if (d.weekNumberTitle) kws.push(d.weekNumberTitle)
+    if (d.weekStart && d.weekEnd) kws.push(`${formatShort(d.weekStart)}–${formatShort(d.weekEnd)}`)
+    return kws
+  }
   return []
+}
+
+function formatShort(iso: string): string {
+  const [, m, dd] = iso.split('-')
+  return `${dd}.${m}`
 }
 
 function entryNote(entry: DiaryEntryDto): string {
@@ -411,6 +473,7 @@ function entryNote(entry: DiaryEntryDto): string {
   if (entry.featureType === 'DAILY_CARD')     return truncate(d.meaning || d.advice || '', 100)
   if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label || '', 100)
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
+  if (entry.featureType === 'NUMEROLOGY_WEEK') return truncate(d.mainTheme || d.weekDescription || '', 100)
   // Все расклады: если заголовок уже показывает вопрос — в note показываем карты; иначе — интерпретацию
   if (d.question) {
     const cards = d.cards as Array<{ name: string }>

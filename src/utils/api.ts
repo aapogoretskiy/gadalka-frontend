@@ -189,6 +189,13 @@ export interface NumerologyWeekDayDto {
   resonanceLabel: string    // "Благоприятный" | "Нейтральный" | "Будьте внимательнее"
 }
 
+export interface NumerologyWeekPeakDayDto {
+  date: string
+  dayOfWeek: string
+  label: string
+  advice: string
+}
+
 export interface NumerologyWeekResponse {
   id: number
   weekStart: string
@@ -200,6 +207,13 @@ export interface NumerologyWeekResponse {
   bestDay: NumerologyWeekDayDto
   challengingDay: NumerologyWeekDayDto
   weeklyAffirmation: string
+  // Может быть null/undefined для раскладов, созданных до появления этих полей
+  mainTheme?: string | null
+  peakDays?: NumerologyWeekPeakDayDto[] | null
+  whatToStrengthen?: string | null
+  whatToAvoid?: string | null
+  relationships?: string | null
+  finance?: string | null
 }
 
 // GET /api/numerology/today
@@ -349,6 +363,11 @@ export const api = {
   getNumerologyWeek: () =>
     apiClient.get<NumerologyWeekResponse>('/api/numerology/week', { skipGlobalError: true }),
 
+  // Тихая проверка уже оплаченного расклада на неделю — НЕ создаёт новый и НЕ списывает знаки.
+  // 404, если на эту неделю расклада ещё нет (нормальный случай, не показываем ошибку).
+  getNumerologyWeekCurrent: () =>
+    apiClient.get<NumerologyWeekResponse>('/api/numerology/week/current', { skipGlobalError: true }),
+
   // Платежи
   getProducts: () =>
     apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
@@ -398,10 +417,10 @@ export const api = {
     ),
 
   // Оценка платного действия (👍/👎)
-  // type: 'FORTUNE' | 'COMPATIBILITY'
+  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK'
   // skipGlobalError: true — виджет сам обрабатывает ошибку (не мешаем UI)
   submitActionFeedback: (
-    type: 'FORTUNE' | 'COMPATIBILITY',
+    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK',
     actionId: number,
     rating: 'POSITIVE' | 'NEGATIVE',
     comment?: string,

@@ -38,6 +38,27 @@
           <p class="detail-body">{{ weekResult.weekDescription }}</p>
         </div>
 
+        <!-- Главная тема -->
+        <div v-if="weekResult.mainTheme" class="detail-card glass">
+          <h4 class="serif detail-title">Главная тема</h4>
+          <p class="detail-body">{{ weekResult.mainTheme }}</p>
+        </div>
+
+        <!-- Три пиковых дня -->
+        <div v-if="weekResult.peakDays?.length" class="detail-card glass">
+          <h4 class="serif detail-title">☀️ Три пиковых дня</h4>
+          <div v-for="pd in weekResult.peakDays" :key="pd.date" class="peak-day-row">
+            <p class="peak-day-head"><b>{{ longDate(pd.date) }}, {{ ruDowFull(pd.dayOfWeek) }}</b> — {{ pd.label }}.</p>
+            <p class="peak-day-advice">{{ pd.advice }}</p>
+          </div>
+        </div>
+
+        <!-- Что усилить -->
+        <div v-if="weekResult.whatToStrengthen" class="detail-card glass">
+          <h4 class="serif detail-title">✅ Что усилить</h4>
+          <p class="detail-body">{{ weekResult.whatToStrengthen }}</p>
+        </div>
+
         <!-- 7 дней -->
         <div class="week-days">
           <div v-for="d in weekResult.days" :key="d.date" class="week-day-card glass">
@@ -58,11 +79,39 @@
           <p class="detail-body">{{ shortDate(weekResult.challengingDay.date) }} ({{ weekResult.challengingDay.dayOfWeek }}) — {{ weekResult.challengingDay.dayCodeTitle }}</p>
         </div>
 
+        <!-- Чего избегать (на уровне недели) -->
+        <div v-if="weekResult.whatToAvoid" class="detail-card glass detail-card--warn">
+          <h4 class="serif detail-title">⚠️ Чего избегать</h4>
+          <p class="detail-body">{{ weekResult.whatToAvoid }}</p>
+        </div>
+
+        <!-- Отношения / Финансы -->
+        <div v-if="weekResult.relationships" class="detail-card glass">
+          <h4 class="serif detail-title">💗 Отношения</h4>
+          <p class="detail-body">{{ weekResult.relationships }}</p>
+        </div>
+        <div v-if="weekResult.finance" class="detail-card glass">
+          <h4 class="serif detail-title">💰 Финансы</h4>
+          <p class="detail-body">{{ weekResult.finance }}</p>
+        </div>
+
         <div class="affirmation-card gradient-card">
           <div class="aff-label">✦ Аффирмация недели</div>
           <div class="aff-text serif">"{{ weekResult.weeklyAffirmation }}"</div>
         </div>
+
+        <!-- Фидбэк на расклад -->
+        <ActionFeedbackWidget
+          v-if="weekResult.id"
+          action-type="NUMEROLOGY_WEEK"
+          :action-id="weekResult.id"
+        />
       </template>
+
+      <!-- ══ Тихая проверка при открытии экрана ═════════════════════════ -->
+      <div v-else-if="checkingExisting" class="loader-wrap loader-wrap--silent">
+        <div class="loading-spinner-sm"></div>
+      </div>
 
       <!-- ══ Пейволл ═════════════════════════════════════════════════ -->
       <div v-else class="week-paywall glass">
@@ -85,10 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyWeekResponse } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { hapticFeedback } from '@/utils/telegram'
+import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -101,6 +151,24 @@ const canAffordWeek = computed(() => (balance.value ?? 0) >= WEEK_COST)
 const weekResult   = ref<NumerologyWeekResponse | null>(null)
 const weekLoading  = ref(false)
 const weekErrorMsg = ref('')
+
+// ── Тихая проверка при открытии экрана ──────────────────────────────────────
+// Если расклад на эту неделю уже куплен — бэкенд (NumerologyWeekService.getWeek)
+// вернёт сохранённый результат бесплатно. Показываем его сразу, без лоадера
+// «сложного расчёта» — это не новая покупка, а просто открытие уже готового расклада.
+// Пейволл показываем только если запрос НЕ удался (расклада ещё нет — 402/422/любая ошибка).
+const checkingExisting = ref(true)
+
+onMounted(async () => {
+  try {
+    const res = await api.getNumerologyWeekCurrent()
+    weekResult.value = res.data
+  } catch {
+    // 404 — расклада на эту неделю ещё нет, остаёмся на пейволле. Это нормальный случай.
+  } finally {
+    checkingExisting.value = false
+  }
+})
 
 // ── Искусственная задержка лоадера ──────────────────────────────────────────
 // Расчёт на бэкенде алгоритмический и почти мгновенный — но мы хотим, чтобы
@@ -161,6 +229,23 @@ async function getWeeklyAnalysis() {
 function shortDate(iso: string): string {
   const [, m, d] = iso.split('-')
   return `${d}.${m}`
+}
+
+const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+
+// Дата вида "23 апреля" из ISO-строки YYYY-MM-DD
+function longDate(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return `${parseInt(d, 10)} ${MONTHS_RU[parseInt(m, 10) - 1]}`
+}
+
+const DOW_FULL: Record<string, string> = {
+  'Пн': 'понедельник', 'Вт': 'вторник', 'Ср': 'среда', 'Чт': 'четверг',
+  'Пт': 'пятница', 'Сб': 'субботу', 'Вс': 'воскресенье',
+}
+
+function ruDowFull(short: string): string {
+  return DOW_FULL[short] ?? short
 }
 
 function resonanceClass(label: string): string {
@@ -230,6 +315,32 @@ function resonanceClass(label: string): string {
 .detail-card { padding: 18px 20px; margin-bottom: 10px; }
 .detail-title { font-size: 17px; margin-bottom: 7px; color: #ffc857; }
 .detail-body  { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.75); }
+
+/* Карточка-предупреждение ("Чего избегать") — лёгкий розовый акцент вместо стандартного золотого */
+.detail-card--warn .detail-title { color: #e94aa8; }
+.detail-card--warn { border-color: rgba(233,74,168,0.25); }
+
+/* Три пиковых дня */
+.peak-day-row { margin-bottom: 12px; }
+.peak-day-row:last-child { margin-bottom: 0; }
+.peak-day-head {
+  font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.85); margin-bottom: 3px;
+}
+.peak-day-advice {
+  font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.65);
+}
+
+/* Тихая проверка существующего расклада при открытии экрана — компактный лоадер без текста */
+.loader-wrap--silent {
+  min-height: 40vh; padding: 20px 0;
+}
+.loading-spinner-sm {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: #ffc857;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Affirmation */
 .affirmation-card { padding: 20px; margin-bottom: 20px; }
