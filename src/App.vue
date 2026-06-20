@@ -45,6 +45,7 @@ import HomeScreen          from './components/screens/HomeScreen.vue'
 import TarotDeckScreen     from './components/screens/TarotDeckScreen.vue'
 import TarotDayDetailedScreen from './components/screens/TarotDayDetailedScreen.vue'
 import NumerologyScreen    from './components/screens/NumerologyScreen.vue'
+import WeekSpreadScreen    from './components/screens/WeekSpreadScreen.vue'
 import CompatibilityScreen from './components/screens/CompatibilityScreen.vue'
 import ProfileScreen       from './components/screens/ProfileScreen.vue'
 import OnboardingScreen    from './components/screens/OnboardingScreen.vue'
@@ -81,6 +82,7 @@ const currentScreen = computed(() => {
     tarot:         TarotDeckScreen,
     'tarot-day':   TarotDayDetailedScreen,
     numerology:    NumerologyScreen,
+    'numerology-week': WeekSpreadScreen,
     compatibility: CompatibilityScreen,
     fortune:           FortuneScreen,
     payment:           PaymentScreen,

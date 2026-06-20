@@ -87,7 +87,7 @@
             v-for="p in periods" :key="p.label"
             class="period-card haptic"
             :class="{ selected: selectedPeriod === p.label }"
-            @click="selectedPeriod = p.label"
+            @click="selectPeriod(p.label)"
           >
             <div v-if="p.popular" class="period-badge">ХИТ</div>
             <div class="period-icon">{{ p.icon }}</div>
@@ -96,70 +96,8 @@
           </div>
         </div>
 
-        <!-- Неделя: платный расклад -->
-        <template v-if="selectedPeriod === 'Неделя'">
-
-          <template v-if="weekResult">
-            <!-- Число недели -->
-            <div class="num-hero gradient-card">
-              <div class="num-mega">{{ weekResult.weekNumber }}</div>
-              <div class="num-label">Число недели</div>
-              <div class="num-short serif">{{ weekResult.weekNumberTitle }}</div>
-            </div>
-            <div class="detail-card glass">
-              <h4 class="serif detail-title">⚡ Энергия недели</h4>
-              <p class="detail-body">{{ weekResult.weekDescription }}</p>
-            </div>
-
-            <!-- 7 дней -->
-            <div class="week-days">
-              <div v-for="d in weekResult.days" :key="d.date" class="week-day-card glass">
-                <div class="week-day-dow">{{ d.dayOfWeek }}</div>
-                <div class="week-day-date">{{ shortDate(d.date) }}</div>
-                <div class="week-day-code">{{ d.dayCode }}</div>
-                <div class="week-day-title">{{ d.dayCodeTitle }}</div>
-                <div class="week-day-resonance" :class="resonanceClass(d.resonanceLabel)">{{ d.resonanceLabel }}</div>
-              </div>
-            </div>
-
-            <div class="detail-card glass">
-              <h4 class="serif detail-title">🌟 Лучший день</h4>
-              <p class="detail-body">{{ shortDate(weekResult.bestDay.date) }} ({{ weekResult.bestDay.dayOfWeek }}) — {{ weekResult.bestDay.dayCodeTitle }}</p>
-            </div>
-            <div class="detail-card glass">
-              <h4 class="serif detail-title">⚠️ Будьте внимательнее</h4>
-              <p class="detail-body">{{ shortDate(weekResult.challengingDay.date) }} ({{ weekResult.challengingDay.dayOfWeek }}) — {{ weekResult.challengingDay.dayCodeTitle }}</p>
-            </div>
-
-            <div class="affirmation-card gradient-card">
-              <div class="aff-label">✦ Аффирмация недели</div>
-              <div class="aff-text serif">"{{ weekResult.weeklyAffirmation }}"</div>
-            </div>
-          </template>
-
-          <!-- Пейволл -->
-          <div v-else class="week-paywall glass">
-            <div class="paywall-lock">🔒</div>
-            <div class="paywall-title serif">Расклад на неделю</div>
-            <div class="paywall-sub">7 дней вперёд, число недели, лучший и сложный день, аффирмация недели</div>
-
-            <div v-if="weekErrorMsg" class="week-error">{{ weekErrorMsg }}</div>
-
-            <button v-if="weekLoading" class="action-btn" disabled>
-              <span class="loading-spinner"></span>
-            </button>
-            <button v-else-if="canAffordWeek" class="action-btn haptic" @click="getWeeklyAnalysis">
-              🔮 Открыть за {{ WEEK_COST }} знака
-            </button>
-            <button v-else class="action-btn action-btn--buy haptic" @click="navigate('payment')">
-              Купить знаки →
-            </button>
-          </div>
-
-        </template>
-
-        <!-- Месяц / Год: пока недоступно -->
-        <button v-else class="action-btn action-btn--disabled" disabled>
+        <!-- Месяц / Год: пока недоступно. Неделя уводит на отдельный экран (см. selectPeriod) -->
+        <button v-if="selectedPeriod !== 'Неделя'" class="action-btn action-btn--disabled" disabled>
           <span>Получить глубокий анализ</span>
           <ComingSoonBadge />
         </button>
@@ -171,11 +109,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
-import { api, type NumerologyTodayResponse, type NumerologyWeekResponse } from '@/utils/api'
-import { useBalance } from '@/composables/useBalance'
-import { hapticFeedback } from '@/utils/telegram'
+import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -203,50 +139,13 @@ const periods = [
   { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', popular: false },
 ]
 
-// ── Недельный расклад (платно) ──────────────────────────────────────────────
-// Стоимость синхронизирована с бэкендом: NumerologyWeekService.WEEK_COST (= стоимость расклада «3 карты»)
-const WEEK_COST = 3
-
-const { balance, refreshBalance } = useBalance()
-const canAffordWeek = computed(() => (balance.value ?? 0) >= WEEK_COST)
-
-const weekResult   = ref<NumerologyWeekResponse | null>(null)
-const weekLoading  = ref(false)
-const weekErrorMsg = ref('')
-
-async function getWeeklyAnalysis() {
-  if (weekLoading.value) return
-  weekLoading.value = true
-  weekErrorMsg.value = ''
-  try {
-    const res = await api.getNumerologyWeek()
-    weekResult.value = res.data
-    await refreshBalance()
-    hapticFeedback.success()
-  } catch (err: any) {
-    if (err.response?.status === 402) {
-      weekErrorMsg.value = 'Недостаточно знаков для этого расклада.'
-      await refreshBalance()
-    } else if (err.response?.status === 422) {
-      weekErrorMsg.value = 'Укажите дату рождения в профиле, чтобы рассчитать расклад.'
-    } else {
-      weekErrorMsg.value = 'Не удалось получить расклад. Попробуйте ещё раз.'
-    }
-  } finally {
-    weekLoading.value = false
+// Неделя — отдельный экран (см. WeekSpreadScreen.vue), остальные периоды
+// пока недоступны и просто переключают выбранную карточку.
+function selectPeriod(label: string) {
+  selectedPeriod.value = label
+  if (label === 'Неделя') {
+    navigate?.('numerology-week')
   }
-}
-
-// Короткая дата вида "ДД.ММ" из ISO-строки YYYY-MM-DD
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split('-')
-  return `${d}.${m}`
-}
-
-function resonanceClass(label: string): string {
-  if (label === 'Благоприятный') return 'res-good'
-  if (label === 'Нейтральный') return 'res-neutral'
-  return 'res-warn'
 }
 </script>
 
@@ -355,33 +254,4 @@ function resonanceClass(label: string): string {
   box-shadow: none;
 }
 
-/* Недельный пейволл */
-.week-paywall {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 32px 24px; text-align: center; gap: 6px;
-}
-.paywall-lock  { font-size: 32px; margin-bottom: 4px; }
-.paywall-title { font-size: 20px; margin-bottom: 2px; }
-.paywall-sub   { font-size: 13px; color: rgba(255,255,255,.55); line-height: 1.5; margin-bottom: 16px; }
-.week-error    { font-size: 12px; color: #ff8a8a; margin-bottom: 10px; }
-
-/* Дни недели */
-.week-days {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-  margin-bottom: 14px;
-}
-.week-day-card {
-  padding: 10px 4px; text-align: center; border-radius: 12px;
-}
-.week-day-dow   { font-size: 10px; color: rgba(255,255,255,.5); text-transform: uppercase; font-weight: 600; }
-.week-day-date  { font-size: 9px; color: rgba(255,255,255,.4); margin-bottom: 4px; }
-.week-day-code  { font-size: 20px; font-weight: 600; font-family: 'Cormorant Garamond', serif; color: #ffc857; }
-.week-day-title { font-size: 8.5px; color: rgba(255,255,255,.6); line-height: 1.2; min-height: 20px; margin: 2px 0 4px; }
-.week-day-resonance {
-  font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em;
-  padding: 2px 4px; border-radius: 6px;
-}
-.res-good    { background: rgba(112,224,168,.18); color: #70e0a8; }
-.res-neutral { background: rgba(255,200,87,.18);  color: #ffc857; }
-.res-warn    { background: rgba(233,74,108,.18);  color: #e94a6c; }
 </style>
