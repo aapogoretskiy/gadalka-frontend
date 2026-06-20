@@ -33,6 +33,18 @@
           <div class="num-label">Число недели</div>
           <div class="num-short serif">{{ weekResult.weekNumberTitle }}</div>
         </div>
+
+        <!-- 7 дней -->
+        <div class="week-days">
+          <div v-for="d in weekResult.days" :key="d.date" class="week-day-card glass">
+            <div class="week-day-dow">{{ d.dayOfWeek }}</div>
+            <div class="week-day-date">{{ shortDate(d.date) }}</div>
+            <div class="week-day-code">{{ d.dayCode }}</div>
+            <div class="week-day-title">{{ d.dayCodeTitle }}</div>
+            <div class="week-day-resonance" :class="resonanceClass(d.resonanceLabel)">{{ d.resonanceLabel }}</div>
+          </div>
+        </div>
+
         <div class="detail-card glass">
           <h4 class="serif detail-title">⚡ Энергия недели</h4>
           <p class="detail-body">{{ weekResult.weekDescription }}</p>
@@ -57,17 +69,6 @@
         <div v-if="weekResult.whatToStrengthen" class="detail-card glass">
           <h4 class="serif detail-title">✅ Что усилить</h4>
           <p class="detail-body">{{ weekResult.whatToStrengthen }}</p>
-        </div>
-
-        <!-- 7 дней -->
-        <div class="week-days">
-          <div v-for="d in weekResult.days" :key="d.date" class="week-day-card glass">
-            <div class="week-day-dow">{{ d.dayOfWeek }}</div>
-            <div class="week-day-date">{{ shortDate(d.date) }}</div>
-            <div class="week-day-code">{{ d.dayCode }}</div>
-            <div class="week-day-title">{{ d.dayCodeTitle }}</div>
-            <div class="week-day-resonance" :class="resonanceClass(d.resonanceLabel)">{{ d.resonanceLabel }}</div>
-          </div>
         </div>
 
         <div class="detail-card glass">

@@ -86,9 +86,10 @@
           <div
             v-for="p in periods" :key="p.label"
             class="period-card haptic"
-            :class="{ selected: selectedPeriod === p.label }"
+            :class="{ selected: selectedPeriod === p.label, 'period-card--new': p.isNew }"
             @click="selectPeriod(p.label)"
           >
+            <div v-if="p.isNew" class="period-ribbon">✨ Новинка</div>
             <div v-if="p.popular" class="period-badge">ХИТ</div>
             <div class="period-icon">{{ p.icon }}</div>
             <div class="period-title serif">{{ p.label }}</div>
@@ -134,9 +135,9 @@ onMounted(async () => {
 
 const selectedPeriod = ref('Месяц')
 const periods = [
-  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней', popular: false },
-  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ',  popular: false },
-  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', popular: false },
+  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней', popular: false, isNew: true },
+  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ',  popular: false, isNew: false },
+  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', popular: false, isNew: false },
 ]
 
 // Неделя — отдельный экран (см. WeekSpreadScreen.vue), остальные периоды
@@ -214,7 +215,7 @@ function selectPeriod(label: string) {
 .section-title  { font-size:20px; }
 
 /* Period grid */
-.period-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px; }
+.period-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px; padding-top:11px; }
 .period-card {
   padding:14px 8px; text-align:center; cursor:pointer;
   background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
@@ -223,6 +224,23 @@ function selectPeriod(label: string) {
 .period-card.selected {
   background: linear-gradient(135deg, rgba(255,200,87,.2), rgba(233,74,168,.1));
   border-color: rgba(255,200,87,.4);
+}
+.period-card--new {
+  overflow: visible;
+  border-color: rgba(182,84,255,.55);
+  box-shadow: 0 0 0 1px rgba(182,84,255,.35), 0 0 18px rgba(182,84,255,.35);
+}
+.period-ribbon {
+  position: absolute;
+  top: -11px; left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff; font-size: 9px; font-weight: 700;
+  padding: 3px 9px; border-radius: 8px;
+  letter-spacing: .03em;
+  box-shadow: 0 4px 10px rgba(182,84,255,.5);
+  z-index: 1;
 }
 .period-badge {
   position:absolute; top:5px; right:5px;
