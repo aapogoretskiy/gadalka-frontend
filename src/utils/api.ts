@@ -285,6 +285,19 @@ export interface DiaryHistoryResponse {
   entries: DiaryEntryDto[]
 }
 
+// GET /api/question-presets
+export interface QuestionPresetDto {
+  id: number
+  questionText: string
+}
+
+export interface QuestionCategoryDto {
+  id: number
+  code: string          // love | money | work | life | health — совпадает с FortuneRequest.category
+  name: string
+  presets: QuestionPresetDto[]
+}
+
 // GET /api/themes
 export interface ThemeDto {
   id: number
@@ -386,6 +399,11 @@ export const api = {
 
   createRobokassaPayment: (data: CreatePaymentRequest) =>
     apiClient.post<CreatePaymentResponse>('/api/v1/payments/robokassa/create', data),
+
+  // Пресеты вопросов по категориям (экран "О чём спросить карты?")
+  // Данные почти статичны — composable useQuestionPresets кэширует результат.
+  getQuestionPresets: () =>
+    apiClient.get<QuestionCategoryDto[]>('/api/question-presets'),
 
   // Темы карт (магазин колод)
   getThemes: () =>

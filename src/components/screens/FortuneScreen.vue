@@ -16,23 +16,45 @@
           <div class="step-item"></div>
         </div>
 
-<div class="question-area glass">
+<div class="category-chips scrollbar-hide" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">
+          <button
+            v-for="c in categories" :key="c.value"
+            class="chip haptic"
+            :class="{ selected: selectedCategory === c.value }"
+            @click="selectCategory(c.value)"
+          >{{ c.emoji }} {{ c.label }}</button>
+        </div>
+
+        <!-- Список заготовленных вопросов для выбранной категории -->
+        <Transition name="presets-fade">
+          <div v-if="selectedCategory" class="presets-block">
+            <div v-if="presetsLoading && currentPresets.length === 0" class="presets-loading">Загружаем вопросы...</div>
+            <template v-else-if="currentPresets.length">
+              <div class="presets-title">Вопросы о {{ currentCategoryLabel }}</div>
+              <button
+                v-for="(p, i) in currentPresets" :key="p.id"
+                class="preset-row haptic"
+                @click="selectPreset(p.questionText)"
+              >
+                <span class="preset-num">{{ i + 1 }}</span>
+                <span class="preset-text">{{ p.questionText }}</span>
+                <span class="preset-arrow">›</span>
+              </button>
+            </template>
+          </div>
+        </Transition>
+
+        <div v-if="selectedCategory" class="own-question-hint">или задайте свой вопрос ↓</div>
+
+        <div class="question-area glass">
           <textarea
+            ref="questionTextareaRef"
             v-model="question"
             maxlength="300"
             placeholder="Задайте свой вопрос..."
             @input="charCount = question.length"
           ></textarea>
           <div class="char-count">{{ charCount }}/300</div>
-        </div>
-
-        <div class="category-chips scrollbar-hide" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:20px">
-          <button
-            v-for="c in categories" :key="c.value"
-            class="chip haptic"
-            :class="{ selected: selectedCategory === c.value }"
-            @click="selectedCategory = selectedCategory === c.value ? '' : c.value"
-          >{{ c.emoji }} {{ c.label }}</button>
         </div>
 
         <button class="fortune-btn haptic" :disabled="question.length < 10" @click="step = 2">
@@ -339,7 +361,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, watch } from 'vue'
+import { ref, inject, watch, computed, nextTick } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
@@ -347,12 +369,14 @@ import { useDevMode } from '@/composables/useDevMode'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
+import { useQuestionPresets } from '@/composables/useQuestionPresets'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { isDev } = useDevMode()
 const { balance, hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
+const { fetchQuestionPresets, getPresetsByCode, isLoading: presetsLoading } = useQuestionPresets()
 
 // ── Модал детали карты ───────────────────────────────────────────────────────
 const selectedCard = ref<{ imageUrl: string | null; name: string; cardPosition: string } | null>(null)
@@ -379,6 +403,7 @@ const flipped          = ref(new Set<number>())
 const openAccordions   = ref(new Set<number>())
 const msgIdx           = ref(0)
 const progress         = ref(0)
+const questionTextareaRef = ref<HTMLTextAreaElement | null>(null)
 
 // ── Анимация ─────────────────────────────────────────────────────────────────
 const FAN_CARD_COUNT = 7
@@ -394,6 +419,13 @@ const categories = [
   { value: 'life',   label: 'Ситуация', emoji: '🎯' },
   { value: 'health', label: 'Здоровье', emoji: '🌿' },
 ]
+
+// Пресеты вопросов для текущей выбранной категории (love/money/work/life/health)
+const currentPresets = computed(() => getPresetsByCode(selectedCategory.value))
+const currentCategoryLabel = computed(() => {
+  const c = categories.find(c => c.value === selectedCategory.value)
+  return c ? c.label.toLowerCase() : ''
+})
 
 const spreads: { type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[] = [
   { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 3 },
@@ -560,6 +592,31 @@ const toggleAccordion = (i: number) => {
 const posLabel = (p: string) => positionLabels[p] ?? p
 const posIcon  = (p: string) => positionIcons[p] ?? '🔮'
 
+// Клик по чипу категории — повторный клик снимает выбор (как и раньше).
+// При первом включении любой категории подгружаем (и кэшируем) пресеты вопросов с бэка.
+const selectCategory = (value: string) => {
+  if (selectedCategory.value === value) {
+    selectedCategory.value = ''
+    return
+  }
+  selectedCategory.value = value
+  hapticFeedback('light')
+  fetchQuestionPresets()
+}
+
+// Клик по готовому вопросу — подставляем его текст в textarea и плавно
+// скроллим/фокусируемся на ней, чтобы пользователь видел куда попал текст.
+// Список пресетов не закрывается — можно выбрать другой вопрос.
+const selectPreset = (text: string) => {
+  question.value = text
+  charCount.value = text.length
+  hapticFeedback('light')
+  nextTick(() => {
+    questionTextareaRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    questionTextareaRef.value?.focus()
+  })
+}
+
 const startFortune = async () => {
   step.value = 3
   error.value = ''
@@ -640,6 +697,42 @@ const resetFortune = () => {
   background: linear-gradient(90deg, #b654ff, #e94aa8);
   animation: fill-bar 0.5s ease;
 }
+
+/* ══ Пресеты вопросов по категориям ════════════════════════════════════════ */
+.presets-block { margin-bottom: 14px; }
+.presets-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+  color: rgba(255,255,255,.5); font-weight: 700; margin-bottom: 8px;
+}
+.presets-loading { font-size: 13px; color: rgba(255,255,255,.5); padding: 10px 2px; }
+.preset-row {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; margin-bottom: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  color: #F5ECFF; font-family: 'Manrope', sans-serif;
+  font-size: 13px; line-height: 1.4; text-align: left;
+  cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.preset-row:active, .preset-row:hover {
+  background: rgba(182,84,255,0.12);
+  border-color: rgba(182,84,255,0.3);
+}
+.preset-num {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.preset-text { flex: 1; }
+.preset-arrow { flex-shrink: 0; opacity: .4; font-size: 16px; }
+.own-question-hint {
+  text-align: center; font-size: 12px; color: rgba(255,255,255,.45);
+  margin-bottom: 10px;
+}
+.presets-fade-enter-active, .presets-fade-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
+.presets-fade-enter-from, .presets-fade-leave-to { opacity: 0; transform: translateY(-6px); }
 
 /* Question textarea */
 .question-area {
