@@ -361,7 +361,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, watch, computed, nextTick } from 'vue'
+import { ref, inject, watch, computed, nextTick, onMounted } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
@@ -419,6 +419,13 @@ const categories = [
   { value: 'life',   label: 'Ситуация', emoji: '🎯' },
   { value: 'health', label: 'Здоровье', emoji: '🌿' },
 ]
+
+// Пресеты вопросов одинаковы для всех категорий (бэк отдаёт сразу весь список,
+// фильтрация по category.code происходит на фронте) — поэтому грузим их один раз
+// при заходе на экран, а не при каждом клике по чипу категории.
+onMounted(() => {
+  fetchQuestionPresets()
+})
 
 // Пресеты вопросов для текущей выбранной категории (love/money/work/life/health)
 const currentPresets = computed(() => getPresetsByCode(selectedCategory.value))
@@ -593,7 +600,8 @@ const posLabel = (p: string) => positionLabels[p] ?? p
 const posIcon  = (p: string) => positionIcons[p] ?? '🔮'
 
 // Клик по чипу категории — повторный клик снимает выбор (как и раньше).
-// При первом включении любой категории подгружаем (и кэшируем) пресеты вопросов с бэка.
+// Сами пресеты загружаются один раз при заходе на экран (см. onMounted) —
+// данные одни и те же для всех категорий, повторный запрос на каждый клик не нужен.
 const selectCategory = (value: string) => {
   if (selectedCategory.value === value) {
     selectedCategory.value = ''
@@ -601,7 +609,6 @@ const selectCategory = (value: string) => {
   }
   selectedCategory.value = value
   hapticFeedback('light')
-  fetchQuestionPresets()
 }
 
 // Клик по готовому вопросу — подставляем его текст в textarea и плавно
