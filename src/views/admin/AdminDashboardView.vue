@@ -74,6 +74,14 @@
           ↺ Сбросить сортировку
         </button>
         <button
+          class="btn-toggle-inactive"
+          :class="{ active: hideInactive }"
+          @click="toggleHideInactive"
+          title="Скрыть пользователей без действий или с одним визитом"
+        >
+          {{ hideInactive ? '👁️ Показать всех' : '🙈 Скрыть неактивных' }}
+        </button>
+        <button
           v-if="selectedIds.size > 0"
           class="btn-broadcast"
           @click="goToBroadcast"
@@ -563,21 +571,29 @@
                 <thead>
                   <tr>
                     <th>Источник</th>
-                    <th class="num">Кликов</th>
                     <th class="num">Открытий</th>
                     <th class="num">Новых</th>
-                    <th class="num">Конверсия</th>
+                    <th class="num">Доход, ₽</th>
+                    <th class="num">% от ₽</th>
+                    <th class="num">Доход, ★</th>
+                    <th class="num">% от ★</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="src in referralStats.marketing" :key="src.source">
                     <td class="src-code">{{ src.source }}</td>
-                    <td class="num">{{ fmt(src.clicks) }}</td>
                     <td class="num">{{ fmt(src.appOpens) }}</td>
                     <td class="num bold">{{ fmt(src.newUsers) }}</td>
+                    <td class="num">{{ rubValueFormat(src.revenueRub) }}</td>
                     <td class="num">
-                      <span class="conv-badge" :class="convClass(src.conversionPct)">
-                        {{ src.conversionPct }}%
+                      <span class="conv-badge" :class="convClass(src.pctRubRevenue)">
+                        {{ src.pctRubRevenue }}%
+                      </span>
+                    </td>
+                    <td class="num">{{ fmt(src.revenueStars) }} ★</td>
+                    <td class="num">
+                      <span class="conv-badge" :class="convClass(src.pctStarsRevenue)">
+                        {{ src.pctStarsRevenue }}%
                       </span>
                     </td>
                   </tr>
@@ -1257,6 +1273,16 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 
 const isDefaultSort = computed(() => sortBy.value === 'createdAt' && sortDir.value === 'desc')
 
+// ── Фильтр неактивных пользователей ─────────────────────────────────────────
+// Неактивный = totalActionsCount === 0 ИЛИ visitCount <= 1
+// (зарегистрировался, но не сделал ни одного действия / не вернулся после первого визита)
+const hideInactive = ref(false)
+
+const toggleHideInactive = () => {
+  hideInactive.value = !hideInactive.value
+  loadUsers(0)
+}
+
 /** Переключить сортировку по полю: повторный клик — меняет направление */
 const setSort = (field: string) => {
   if (sortBy.value === field) {
@@ -1284,7 +1310,7 @@ const resetSort = () => {
 const loadUsers = async (page = 0) => {
   loading.value = true
   try {
-    const res = await adminApi.getUsers(page, 20, searchQuery.value || undefined, sortBy.value, sortDir.value)
+    const res = await adminApi.getUsers(page, 20, searchQuery.value || undefined, sortBy.value, sortDir.value, hideInactive.value)
     users.value = res.data.content
     totalPages.value = res.data.totalPages || 1
     currentPage.value = res.data.number
@@ -1575,6 +1601,11 @@ const fmt = (n: number) => n.toLocaleString('ru-RU')
 /** Копейки → рубли с символом */
 const rubFormat = (kopecks: number) => {
   const rubles = kopecks / 100
+  return rubles.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 })
+}
+
+/** Рубли (уже в основной единице, не копейки) → строка с символом валюты */
+const rubValueFormat = (rubles: number) => {
   return rubles.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 })
 }
 
@@ -1948,6 +1979,27 @@ onMounted(() => loadUsers(0))
 }
 .btn-reset-sort:hover {
   color: #e2e8f0;
+  border-color: #6366f1;
+}
+
+.btn-toggle-inactive {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.btn-toggle-inactive:hover {
+  color: #e2e8f0;
+  border-color: #6366f1;
+}
+.btn-toggle-inactive.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
   border-color: #6366f1;
 }
 

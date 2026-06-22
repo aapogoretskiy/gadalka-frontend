@@ -105,10 +105,10 @@ export const adminApi = {
 
   // ── Пользователи ──────────────────────────────────────────────────────────
 
-  /** Список пользователей с пагинацией, поиском и сортировкой */
-  getUsers: (page = 0, size = 20, search?: string, sortBy = 'createdAt', sortDir = 'desc') =>
+  /** Список пользователей с пагинацией, поиском, сортировкой и фильтром неактивных */
+  getUsers: (page = 0, size = 20, search?: string, sortBy = 'createdAt', sortDir = 'desc', hideInactive = false) =>
     adminAxios.get<AdminUsersPage>('/api/admin/users', {
-      params: { page, size, sortBy, sortDir, ...(search ? { search } : {}) },
+      params: { page, size, sortBy, sortDir, hideInactive, ...(search ? { search } : {}) },
     }),
 
   /** Детальная информация об одном пользователе */
@@ -266,10 +266,12 @@ export interface AdminTicketsPage {
 
 export interface MarketingSource {
   source: string
-  clicks: number
   appOpens: number
   newUsers: number
-  conversionPct: number
+  revenueRub: number
+  pctRubRevenue: number
+  revenueStars: number
+  pctStarsRevenue: number
 }
 
 export interface TopReferrer {
@@ -376,3 +378,4 @@ export interface AdminReports {
     grantedByBonus: number
   }
 }
+
