@@ -60,8 +60,18 @@
       <!-- Meaning (shown after flip) -->
       <div v-if="isFlipped && dailyCard && !cardLoading" class="meaning-card glass">
         <div class="meaning-label">✦ Значение</div>
-        <div class="meaning-title serif">{{ dailyCard.name }}</div>
-        <div class="meaning-body">{{ dailyCard.meaning }}</div>
+        <div class="meaning-title serif">{{ dailyCard.insightTitle || dailyCard.name }}</div>
+        <div class="meaning-body">{{ dailyCard.descriptionParagraph1 || dailyCard.meaning }}</div>
+        <div v-if="dailyCard.descriptionParagraph2" class="meaning-body">{{ dailyCard.descriptionParagraph2 }}</div>
+        <div v-if="dailyCard.keywords && dailyCard.keywords.length" class="keywords-block">
+          <div class="meaning-label">Ключевые энергии</div>
+          <div class="keywords">
+            <template v-for="(kw, idx) in dailyCard.keywords" :key="kw">
+              <span class="keyword">{{ kw }}</span>
+              <span v-if="idx < dailyCard.keywords.length - 1" class="kw-sep">•</span>
+            </template>
+          </div>
+        </div>
         <div v-if="dailyCard.advice" class="meaning-advice">
           <div class="advice-label">💡 Совет</div>
           <div class="meaning-body">{{ dailyCard.advice }}</div>
@@ -187,6 +197,7 @@ onMounted(() => {
 .meaning-title { font-size:26px; margin-bottom:10px; }
 .meaning-body  { font-size:14px; line-height:1.6; color:rgba(255,255,255,.8); margin-bottom:8px; }
 
+.keywords-block { margin-top: 14px; }
 .keywords { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:10px; }
 .keyword  { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,200,87,.8); font-weight:600; }
 .kw-sep   { color:rgba(255,255,255,.3); margin:0 4px; }

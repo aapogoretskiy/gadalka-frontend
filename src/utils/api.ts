@@ -120,6 +120,10 @@ export interface DailyCardResponse {
   advice: string
   imageUrl?: string
   date: string             // format: date
+  insightTitle?: string
+  descriptionParagraph1?: string
+  descriptionParagraph2?: string
+  keywords?: string[]
 }
 
 // GET /api/fortune
@@ -298,6 +302,18 @@ export interface QuestionCategoryDto {
   presets: QuestionPresetDto[]
 }
 
+// GET /api/feature-costs — актуальная стоимость платных функций в знаках.
+// Запрашивается заново при каждом заходе на экран с платным контентом,
+// чтобы цена на экране совпадала с тем, что реально списывается (цены настраиваются
+// в админ-панели без деплоя и могут поменяться в любой момент).
+export interface FeatureCostsResponse {
+  threeCard: number
+  horseshoe: number
+  celticCross: number
+  compatibilityUnlock: number
+  numerologyWeek: number
+}
+
 // GET /api/themes
 export interface ThemeDto {
   id: number
@@ -420,6 +436,10 @@ export const api = {
   // Health check
   health: () =>
     apiClient.get<Record<string, string>>('/api/health'),
+
+  // Актуальная стоимость платных функций (расклады, совместимость, нумерология недели)
+  getFeatureCosts: () =>
+    apiClient.get<FeatureCostsResponse>('/api/feature-costs'),
 
   // Реферальная ссылка текущего пользователя
   getReferralLink: () =>
