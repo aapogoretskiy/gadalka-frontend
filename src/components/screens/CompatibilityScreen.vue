@@ -224,11 +224,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { api, type CompatibilityResponse } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
+import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { useToast } from '@/composables/useToast'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
@@ -238,12 +239,18 @@ const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
 const { isDev } = useDevMode()
 const { balance, refreshBalance } = useBalance()
+const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const { addToast } = useToast()
 
-// Стоимость разблокировки полного анализа (синхронизирована с бэкендом: CompatibilityService.COMPATIBILITY_UNLOCK_COST)
-const UNLOCK_COST = 3
+// Стоимость разблокировки полного анализа берётся с бэка (настраивается в админке).
+// Реактивна: при изменении цены экран обновится сам. Бэк: CompatibilityService.COMPATIBILITY_UNLOCK_COST
+const UNLOCK_COST = computed(() => featureCosts.value.compatibilityUnlock)
 // Кнопка разблокировки доступна только если знаков хватает на полную стоимость
-const canUnlock = computed(() => (balance.value ?? 0) >= UNLOCK_COST)
+const canUnlock = computed(() => (balance.value ?? 0) >= UNLOCK_COST.value)
+// Подтягиваем свежую цену при каждом заходе на экран
+onMounted(() => {
+  loadFeatureCosts()
+})
 const tipDismissed = ref(localStorage.getItem('compatTipDismissed') === 'true')
 
 const fakeCategories = [

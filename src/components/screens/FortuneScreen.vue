@@ -370,6 +370,7 @@ import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { useQuestionPresets } from '@/composables/useQuestionPresets'
+import { useFeatureCosts } from '@/composables/useFeatureCosts'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
@@ -377,6 +378,8 @@ const { isDev } = useDevMode()
 const { balance, hasCredits, refreshBalance } = useBalance()
 const { addToast } = useToast()
 const { fetchQuestionPresets, getPresetsByCode, isLoading: presetsLoading } = useQuestionPresets()
+// Актуальная стоимость раскладов берётся с бэка (настраивается в админке) — см. useFeatureCosts
+const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 
 // ── Модал детали карты ───────────────────────────────────────────────────────
 const selectedCard = ref<{ imageUrl: string | null; name: string; cardPosition: string } | null>(null)
@@ -425,6 +428,8 @@ const categories = [
 // при заходе на экран, а не при каждом клике по чипу категории.
 onMounted(() => {
   fetchQuestionPresets()
+  // Подтягиваем свежие цены раскладов при каждом заходе на экран
+  loadFeatureCosts()
 })
 
 // Пресеты вопросов для текущей выбранной категории (love/money/work/life/health)
@@ -434,11 +439,13 @@ const currentCategoryLabel = computed(() => {
   return c ? c.label.toLowerCase() : ''
 })
 
-const spreads: { type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[] = [
-  { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: 3 },
-  { type: 'HORSESHOE',    name: 'Подкова',         cardCount: 7,  desc: 'Углублённый анализ ситуации',   cost: 6 },
-  { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: 9 },
-]
+// Цена (cost) приходит реактивно из useFeatureCosts — поэтому spreads это computed,
+// а не статичный массив: при изменении цены в админке экран обновится сам.
+const spreads = computed<{ type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[]>(() => [
+  { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: featureCosts.value.threeCard },
+  { type: 'HORSESHOE',    name: 'Подкова',         cardCount: 7,  desc: 'Углублённый анализ ситуации',   cost: featureCosts.value.horseshoe },
+  { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: featureCosts.value.celticCross },
+])
 
 // Подкова: контейнер 350×278px, карта 50×75px
 // Шаг 50px (карта 50px → нулевой горизонтальный зазор, как и раньше)

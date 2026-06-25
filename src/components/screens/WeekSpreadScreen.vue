@@ -138,16 +138,18 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyWeekResponse } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
+import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 
-// Стоимость синхронизирована с бэкендом: NumerologyWeekService.WEEK_COST (= стоимость расклада «3 карты»)
-const WEEK_COST = 3
+// Стоимость берётся с бэка (настраивается в админке), реактивна. Бэк: NumerologyWeekService.WEEK_COST
+const { featureCosts, loadFeatureCosts } = useFeatureCosts()
+const WEEK_COST = computed(() => featureCosts.value.numerologyWeek)
 
 const { balance, refreshBalance } = useBalance()
-const canAffordWeek = computed(() => (balance.value ?? 0) >= WEEK_COST)
+const canAffordWeek = computed(() => (balance.value ?? 0) >= WEEK_COST.value)
 
 const weekResult   = ref<NumerologyWeekResponse | null>(null)
 const weekLoading  = ref(false)
@@ -161,6 +163,8 @@ const weekErrorMsg = ref('')
 const checkingExisting = ref(true)
 
 onMounted(async () => {
+  // Свежая цена при каждом заходе на экран (не блокирует проверку существующего расклада)
+  loadFeatureCosts()
   try {
     const res = await api.getNumerologyWeekCurrent()
     weekResult.value = res.data
