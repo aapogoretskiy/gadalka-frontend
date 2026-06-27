@@ -3,7 +3,10 @@
 
     <!-- ── Шапка ─────────────────────────────────────────────── -->
     <header class="dash-header">
-      <h1>🔮 Админ-панель</h1>
+      <div class="dash-header-left">
+        <h1>🔮 Админ-панель</h1>
+        <span v-if="!isAdmin" class="role-badge">👁 Режим просмотра</span>
+      </div>
       <button class="btn-ghost" @click="logout">Выйти</button>
     </header>
 
@@ -15,6 +18,7 @@
         @click="activeTab = 'users'"
       >Пользователи</button>
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'broadcast' }"
         @click="activeTab = 'broadcast'"
@@ -46,6 +50,7 @@
         @click="activeTab = 'range'"
       >📅 Диапазон</button>
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'prices' }"
         @click="openPricesTab"
@@ -82,7 +87,7 @@
           {{ hideInactive ? '👁️ Показать всех' : '🙈 Скрыть неактивных' }}
         </button>
         <button
-          v-if="selectedIds.size > 0"
+          v-if="selectedIds.size > 0 && isAdmin"
           class="btn-broadcast"
           @click="goToBroadcast"
         >
@@ -1038,8 +1043,8 @@
             </div>
           </section>
 
-          <!-- Закрытие заявки (только если открыта) -->
-          <section v-if="selectedTicket.status === 'OPEN'" class="info-section">
+          <!-- Закрытие заявки (только если открыта и пользователь — ADMIN) -->
+          <section v-if="selectedTicket.status === 'OPEN' && isAdmin" class="info-section">
             <h3>Закрыть заявку</h3>
             <label class="bc-toggle-row">
               <input type="checkbox" v-model="closeWithGift" />
@@ -1143,7 +1148,7 @@
           </section>
 
           <!-- Подарок -->
-          <section class="info-section">
+          <section v-if="isAdmin" class="info-section">
             <h3>Подарить знаки</h3>
             <div class="gift-row">
               <input
@@ -1166,7 +1171,7 @@
           </section>
 
           <!-- Бан -->
-          <section class="info-section">
+          <section v-if="isAdmin" class="info-section">
             <h3>Управление доступом</h3>
             <button
               v-if="!selectedUser.banned"
@@ -1255,6 +1260,12 @@ import { useRouter } from 'vue-router'
 import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts } from '@/utils/adminApi'
 
 const router = useRouter()
+
+// ── Роль текущего пользователя ────────────────────────────────────────────
+// Загружается при монтировании из /api/admin/auth/me
+// ADMIN — полный доступ, MODERATOR — только чтение
+const userRole = ref<'ADMIN' | 'MODERATOR'>('ADMIN')
+const isAdmin = computed(() => userRole.value === 'ADMIN')
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
 const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices'>('users')
@@ -1857,7 +1868,17 @@ const calcAge = (birthDate: string): number | null => {
   return age >= 0 ? age : null
 }
 
-onMounted(() => loadUsers(0))
+onMounted(async () => {
+  // Определяем роль — чтобы скрыть или показать элементы управления
+  try {
+    const res = await adminApi.checkSession()
+    if (res.data.role) {
+      userRole.value = res.data.role
+    }
+  } catch { /* при ошибке остаётся ADMIN по умолчанию — безопасно, т.к. бэк всё равно блокирует */ }
+
+  loadUsers(0)
+})
 </script>
 
 <style scoped>
@@ -1882,10 +1903,23 @@ onMounted(() => loadUsers(0))
   top: 0;
   z-index: 10;
 }
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .dash-header h1 {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
+}
+.role-badge {
+  font-size: 12px;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  padding: 3px 8px;
 }
 
 /* ── Tabs ── */

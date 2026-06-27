@@ -74,6 +74,7 @@ export interface FeatureCosts {
 export interface AdminSessionResponse {
   authenticated: boolean
   telegramId?: number
+  role?: 'ADMIN' | 'MODERATOR'
 }
 
 // Данные, которые Telegram Login Widget передаёт в callback
