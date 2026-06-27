@@ -86,6 +86,16 @@
         >
           {{ hideInactive ? '👁️ Показать всех' : '🙈 Скрыть неактивных' }}
         </button>
+        <select
+          v-model="selectedSource"
+          class="source-select"
+          @change="onSourceChange"
+          title="Фильтр по источнику регистрации"
+        >
+          <option :value="null">Все источники</option>
+          <option value="__organic__">Без источника (органика)</option>
+          <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+        </select>
         <button
           v-if="selectedIds.size > 0 && isAdmin"
           class="btn-broadcast"
@@ -131,16 +141,17 @@
               <th class="th-sortable" @click="setSort('totalSpent')">
                 Потрачено знаков <span class="sort-icon">{{ sortIcon('totalSpent') }}</span>
               </th>
+              <th>Источник</th>
               <th>Статус</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="11" class="loading-row">Загрузка...</td>
+              <td colspan="12" class="loading-row">Загрузка...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="11" class="empty-row">Пользователи не найдены</td>
+              <td colspan="12" class="empty-row">Пользователи не найдены</td>
             </tr>
             <tr
               v-for="user in users"
@@ -167,6 +178,12 @@
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.visitCount }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalActionsCount }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalSpent }}</td>
+              <td @click="openDetails(user.id)" class="source-cell">
+                <span v-if="user.referralSource" class="source-badge" :title="user.referralSource">
+                  {{ user.referralSource.startsWith('ref_') ? '🔗 Реферал' : user.referralSource }}
+                </span>
+                <span v-else class="source-badge source-badge--organic">органика</span>
+              </td>
               <td @click="openDetails(user.id)">
                 <span class="badge" :class="user.banned ? 'badge-ban' : 'badge-ok'">
                   {{ user.banned ? 'Забанен' : 'Активен' }}
@@ -324,9 +341,24 @@
           <span class="reports-updated" v-if="reportsUpdatedAt">
             Обновлено: {{ formatDate(reportsUpdatedAt) }}
           </span>
+          <select
+            v-model="reportsSource"
+            class="source-select"
+            @change="loadReports"
+            title="Фильтр по источнику регистрации"
+          >
+            <option :value="null">Все источники</option>
+            <option value="__organic__">Без источника (органика)</option>
+            <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+          </select>
           <button class="btn-ghost" :disabled="reportsLoading" @click="loadReports">
             {{ reportsLoading ? '⏳ Загрузка...' : '🔄 Обновить' }}
           </button>
+        </div>
+
+        <div v-if="reportsSource" class="source-filter-badge">
+          Фильтр: <strong>{{ sourceLabel(reportsSource) }}</strong>
+          <button class="source-filter-clear" @click="reportsSource = null; loadReports()">✕</button>
         </div>
 
         <p v-if="reportsError" class="error-msg">{{ reportsError }}</p>
@@ -774,6 +806,14 @@
                 step="1"
                 class="range-date-input"
               />
+            </div>
+            <div class="range-field">
+              <label class="range-label">Источник</label>
+              <select v-model="rangeSource" class="source-select">
+                <option :value="null">Все</option>
+                <option value="__organic__">Без источника</option>
+                <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+              </select>
             </div>
           </div>
           <button
@@ -1294,6 +1334,38 @@ const toggleHideInactive = () => {
   loadUsers(0)
 }
 
+// ── Фильтр по источнику регистрации ──────────────────────────────────────
+// null = все; "__organic__" = без источника (органика); иначе — конкретный источник
+const availableSources = ref<string[]>([])
+const selectedSource = ref<string | null>(null)
+
+const loadSources = async () => {
+  try {
+    const res = await adminApi.getSources()
+    availableSources.value = res.data
+  } catch {
+    availableSources.value = []
+  }
+}
+
+const onSourceChange = () => {
+  loadUsers(0)
+}
+
+/** Человекочитаемая метка источника для дропдауна */
+const sourceLabel = (src: string | null) => {
+  if (!src) return 'Все источники'
+  if (src === '__organic__') return 'Без источника (органика)'
+  if (src.startsWith('ref_')) return '🔗 Реф. пользователь'
+  return src
+}
+
+// ── Фильтр источника для вкладки "Отчёты" ────────────────────────────────
+const reportsSource = ref<string | null>(null)
+
+// ── Фильтр источника для вкладки "Диапазон" ──────────────────────────────
+const rangeSource = ref<string | null>(null)
+
 /** Переключить сортировку по полю: повторный клик — меняет направление */
 const setSort = (field: string) => {
   if (sortBy.value === field) {
@@ -1321,7 +1393,13 @@ const resetSort = () => {
 const loadUsers = async (page = 0) => {
   loading.value = true
   try {
-    const res = await adminApi.getUsers(page, 20, searchQuery.value || undefined, sortBy.value, sortDir.value, hideInactive.value)
+    const res = await adminApi.getUsers(
+      page, 20,
+      searchQuery.value || undefined,
+      sortBy.value, sortDir.value,
+      hideInactive.value,
+      selectedSource.value,
+    )
     users.value = res.data.content
     totalPages.value = res.data.totalPages || 1
     currentPage.value = res.data.number
@@ -1582,7 +1660,7 @@ const loadReports = async () => {
   reportsLoading.value = true
   reportsError.value = null
   try {
-    const res = await adminApi.getReports()
+    const res = await adminApi.getReports(reportsSource.value)
     reports.value = res.data
     reportsUpdatedAt.value = new Date().toISOString()
   } catch {
@@ -1778,7 +1856,7 @@ const loadRangeReport = async () => {
   rangeLoading.value = true
   rangeError.value = null
   try {
-    const res = await adminApi.getRangeReport(rangeFrom.value, rangeTo.value)
+    const res = await adminApi.getRangeReport(rangeFrom.value, rangeTo.value, rangeSource.value)
     rangeReport.value = res.data
   } catch (e: any) {
     rangeError.value = e.response?.data?.message || 'Не удалось загрузить отчёт'
@@ -1878,6 +1956,7 @@ onMounted(async () => {
   } catch { /* при ошибке остаётся ADMIN по умолчанию — безопасно, т.к. бэк всё равно блокирует */ }
 
   loadUsers(0)
+  loadSources()
 })
 </script>
 
@@ -2897,4 +2976,57 @@ input[type="checkbox"] {
   width: 100%;
 }
 .price-input:focus { border-color: #6366f1; }
+
+/* ── Source filter ── */
+.source-select {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+  min-width: 160px;
+}
+.source-select:focus { border-color: #6366f1; }
+
+.source-filter-badge {
+  margin: 0 24px 8px;
+  font-size: 13px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.source-filter-badge strong { color: #a5b4fc; }
+.source-filter-clear {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+.source-filter-clear:hover { color: #e2e8f0; }
+
+/* ── Source cell in users table ── */
+.source-cell { max-width: 140px; }
+.source-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+.source-badge--organic {
+  background: rgba(148, 163, 184, 0.1);
+  color: #64748b;
+}
+
 </style>

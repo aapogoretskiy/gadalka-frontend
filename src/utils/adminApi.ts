@@ -30,6 +30,8 @@ export interface AdminUserSummary {
   visitCount: number
   totalActionsCount: number
   totalSpent: number
+  /** Реферальный источник регистрации. Пустая строка если не задан. */
+  referralSource: string
 }
 
 export interface AdminUserDetails extends AdminUserSummary {
@@ -106,11 +108,15 @@ export const adminApi = {
 
   // ── Пользователи ──────────────────────────────────────────────────────────
 
-  /** Список пользователей с пагинацией, поиском, сортировкой и фильтром неактивных */
-  getUsers: (page = 0, size = 20, search?: string, sortBy = 'createdAt', sortDir = 'desc', hideInactive = false) =>
+  /** Список пользователей с пагинацией, поиском, сортировкой, фильтром неактивных и фильтром по источнику */
+  getUsers: (page = 0, size = 20, search?: string, sortBy = 'createdAt', sortDir = 'desc', hideInactive = false, source?: string | null) =>
     adminAxios.get<AdminUsersPage>('/api/admin/users', {
-      params: { page, size, sortBy, sortDir, hideInactive, ...(search ? { search } : {}) },
+      params: { page, size, sortBy, sortDir, hideInactive, ...(search ? { search } : {}), ...(source ? { source } : {}) },
     }),
+
+  /** Список уникальных реферальных источников для дропдауна */
+  getSources: () =>
+    adminAxios.get<string[]>('/api/admin/sources'),
 
   /** Детальная информация об одном пользователе */
   getUser: (id: number) =>
@@ -184,17 +190,22 @@ export const adminApi = {
 
   // ── Отчёты ────────────────────────────────────────────────────────────────
 
-  /** Получить агрегированный отчёт по метрикам */
-  getReports: () =>
-    adminAxios.get<AdminReports>('/api/admin/reports'),
+  /** Получить агрегированный отчёт по метрикам. source: null = все, "__organic__" = без источника */
+  getReports: (source?: string | null) =>
+    adminAxios.get<AdminReports>('/api/admin/reports', {
+      params: { ...(source ? { source } : {}) },
+    }),
 
   /**
    * Получить отчёт за произвольный диапазон дат.
-   * @param from начало диапазона в формате YYYY-MM-DD
-   * @param to   конец диапазона в формате YYYY-MM-DD
+   * @param from   начало диапазона (YYYY-MM-DDTHH:mm:ss)
+   * @param to     конец диапазона (YYYY-MM-DDTHH:mm:ss)
+   * @param source опциональный фильтр по источнику
    */
-  getRangeReport: (from: string, to: string) =>
-    adminAxios.get<RangeReport>('/api/admin/reports/range', { params: { from, to } }),
+  getRangeReport: (from: string, to: string, source?: string | null) =>
+    adminAxios.get<RangeReport>('/api/admin/reports/range', {
+      params: { from, to, ...(source ? { source } : {}) },
+    }),
 
   // ── Заявки обратной связи ─────────────────────────────────────────────────
 

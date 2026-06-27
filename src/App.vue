@@ -63,7 +63,7 @@ const { authWithTelegram, fetchProfile, hasProfile } = useUser()
 const { addToast } = useToast()
 
 const currentRoute   = ref<string>('onboarding')
-const previousRoute  = ref<string>('')
+const historyStack   = ref<string[]>([])
 const transitionName = ref<string>('fade')
 const activeTab      = ref<string>('home')
 const starsRef       = ref<HTMLElement | null>(null)
@@ -97,8 +97,9 @@ const currentScreen = computed(() => {
 const tabOrder = ['home', 'numerology', 'fortune', 'compatibility', 'profile']
 
 const navigate = (route: string) => {
-  previousRoute.value = currentRoute.value
-  currentRoute.value  = route
+  const prev = currentRoute.value
+  historyStack.value.push(prev)
+  currentRoute.value = route
 
   // Синхронизируем подсветку нижней панели вне зависимости от источника перехода
   if (tabOrder.includes(route)) {
@@ -106,7 +107,7 @@ const navigate = (route: string) => {
   }
 
   // Направление анимации по порядку вкладок
-  const from = tabOrder.indexOf(previousRoute.value)
+  const from = tabOrder.indexOf(prev)
   const to   = tabOrder.indexOf(route)
   if (from !== -1 && to !== -1) {
     transitionName.value = from < to ? 'slide-left' : 'slide-right'
@@ -118,8 +119,14 @@ const navigate = (route: string) => {
 }
 
 const handleTabChange = (tab: string) => {
-  navigate(tab) // activeTab синхронизируется внутри navigate()
+  // При переключении вкладок сбрасываем стек истории — переход по вкладке
+  // не должен накапливаться, иначе "Назад" будет листать все прошлые вкладки
+  historyStack.value = []
+  navigate(tab)
 }
+
+// previousRoute как computed для обратной совместимости
+const previousRoute = computed(() => historyStack.value[historyStack.value.length - 1] || '')
 
 provide('navigate', navigate)
 provide('previousRoute', previousRoute)
@@ -133,8 +140,26 @@ provide('setBackOverride', (fn: (() => void) | null) => { backOverride.value = f
 const masterBackHandler = () => {
   if (backOverride.value) {
     backOverride.value()
+    return
+  }
+
+  const prev = historyStack.value.pop()
+  if (prev && prev !== 'onboarding') {
+    // Анимация обратная: если шли вправо — теперь идём влево и наоборот
+    const from = tabOrder.indexOf(currentRoute.value)
+    const to   = tabOrder.indexOf(prev)
+    if (from !== -1 && to !== -1) {
+      transitionName.value = from > to ? 'slide-right' : 'slide-left'
+    } else {
+      transitionName.value = 'fade'
+    }
+    currentRoute.value = prev
+    if (tabOrder.includes(prev)) activeTab.value = prev
   } else {
-    navigate(previousRoute.value || 'home')
+    // Стек пуст или там только onboarding — идём на главную
+    transitionName.value = 'fade'
+    currentRoute.value = 'home'
+    activeTab.value = 'home'
   }
 }
 try { WebApp.BackButton.onClick(masterBackHandler) } catch {}
