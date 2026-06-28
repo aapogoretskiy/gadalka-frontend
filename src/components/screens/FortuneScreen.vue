@@ -84,8 +84,11 @@
             @click="handleSpreadSelect(s.type, s.cost)"
           >
             <div class="spread-icon-wrap">
-              <div v-for="i in s.cardCount" :key="i" class="mini-card-spread"
-                :style="`left:${(i-1)*Math.min(10,36/Math.max(s.cardCount-1,1))}px;transform:rotate(${(i-Math.ceil(s.cardCount/2))*(s.cardCount>5?5:8)}deg)`"></div>
+              <div
+                v-for="(pos, i) in MINI_ICON_POS[s.type]" :key="i"
+                class="mini-card-spread"
+                :style="`left:${pos.x}px;top:${pos.y}px;background:${ICON_COLORS[i % ICON_COLORS.length]}`"
+              ></div>
             </div>
             <div class="spread-info">
               <div class="spread-title serif">{{ s.name }}</div>
@@ -103,6 +106,18 @@
             </div>
           </div>
         </div>
+
+        <!-- Подробности о выбранном расклада: для кого и зачем -->
+        <Transition name="presets-fade">
+          <div v-if="selectedSpreadInfo" class="spread-detail glass">
+            <div class="spread-detail-title serif">Расклад «{{ selectedSpreadInfo.name }}»</div>
+            <p class="spread-detail-desc">{{ selectedSpreadInfo.longDesc }}</p>
+            <div class="spread-detail-tip">
+              <span class="spread-detail-tip-icon">💡</span>
+              <span>{{ selectedSpreadInfo.tip }}</span>
+            </div>
+          </div>
+        </Transition>
 
         <div v-if="!hasCredits && !isDev" class="no-credits-block">
           <p>У вас закончились гадания</p>
@@ -441,11 +456,54 @@ const currentCategoryLabel = computed(() => {
 
 // Цена (cost) приходит реактивно из useFeatureCosts — поэтому spreads это computed,
 // а не статичный массив: при изменении цены в админке экран обновится сам.
-const spreads = computed<{ type: SpreadType; name: string; cardCount: number; desc: string; cost: number }[]>(() => [
-  { type: 'THREE_CARD',   name: 'Три карты',      cardCount: 3,  desc: 'Прошлое · Настоящее · Будущее', cost: featureCosts.value.threeCard },
-  { type: 'HORSESHOE',    name: 'Подкова',         cardCount: 7,  desc: 'Углублённый анализ ситуации',   cost: featureCosts.value.horseshoe },
-  { type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, desc: 'Полный расклад судьбы',         cost: featureCosts.value.celticCross },
+const spreads = computed<{ type: SpreadType; name: string; cardCount: number; desc: string; longDesc: string; tip: string; cost: number }[]>(() => [
+  {
+    type: 'THREE_CARD', name: 'Три карты', cardCount: 3, cost: featureCosts.value.threeCard,
+    desc: 'Быстрый ответ на конкретный вопрос',
+    longDesc: 'Классическая троица — то, что отпускаете, то, что есть сейчас, и то, к чему движетесь. Простой и точный расклад для конкретного вопроса.',
+    tip: 'Выбирайте, если у вас один чёткий вопрос и нужен ясный ответ.',
+  },
+  {
+    type: 'HORSESHOE', name: 'Подкова', cardCount: 7, cost: featureCosts.value.horseshoe,
+    desc: 'Когда нужен совет в сложной ситуации',
+    longDesc: 'Семь карт раскладываются дугой и показывают развитие ситуации: что было, что есть, какие силы влияют скрыто, что мешает, кто рядом, какой совет дают карты и чем всё закончится.',
+    tip: 'Выбирайте, когда ситуация запутанная, и непонятно с какой стороны подойти.',
+  },
+  {
+    type: 'CELTIC_CROSS', name: 'Кельтский крест', cardCount: 10, cost: featureCosts.value.celticCross,
+    desc: 'Полный разбор жизненной ситуации',
+    longDesc: 'Самый известный расклад в таро. Десять карт образуют крест и столбец справа. Раскрывает суть, препятствия, корни проблемы, прошлое, будущее, ваше внутреннее состояние, окружение, страхи и итог.',
+    tip: 'Выбирайте для серьёзной жизненной темы — отношения, карьера, переезд. Когда нужен глубокий разбор, а не быстрый ответ.',
+  },
 ])
+
+// Подробная информация о текущем выбранном раскладе — показывается под списком
+const selectedSpreadInfo = computed(() => spreads.value.find(s => s.type === selectedSpread.value) ?? null)
+
+// Мини-иконка расклада: координаты карточек (px) внутри .spread-icon-wrap (56×42),
+// повторяющие реальную форму расклада — ряд / дуга / крест+столбец.
+const MINI_ICON_POS: Record<SpreadType, { x: number; y: number }[]> = {
+  THREE_CARD: [
+    { x: 4,  y: 14 }, { x: 22, y: 14 }, { x: 40, y: 14 },
+  ],
+  HORSESHOE: [
+    { x: 0, y: 24 }, { x: 7, y: 14 }, { x: 14, y: 7 }, { x: 21, y: 3 },
+    { x: 28, y: 7 }, { x: 35, y: 14 }, { x: 42, y: 24 },
+  ],
+  CELTIC_CROSS: [
+    { x: 14, y: 14 }, // суть вопроса (центр)
+    { x: 14, y: 23 }, // что мешает (ниже центра)
+    { x: 14, y: 32 }, // основа (низ)
+    { x: 4,  y: 14 }, // прошлое (слева)
+    { x: 14, y: 5  }, // возможное будущее (верх)
+    { x: 24, y: 14 }, // ближайшее будущее (справа)
+    { x: 40, y: 29 }, // столбец справа: 4 карты
+    { x: 40, y: 20 },
+    { x: 40, y: 11 },
+    { x: 40, y: 2  },
+  ],
+}
+const ICON_COLORS = ['#e94aa8', '#b654ff', '#ffc857', '#70e0a8']
 
 // Подкова: контейнер 350×278px, карта 50×75px
 // Шаг 50px (карта 50px → нулевой горизонтальный зазор, как и раньше)
@@ -781,17 +839,15 @@ const resetFortune = () => {
   border-color: rgba(182,84,255,0.5);
 }
 .spread-icon-wrap {
-  width: 54px; height: 44px;
+  width: 56px; height: 42px;
   position: relative; flex-shrink: 0;
-  overflow: hidden;
 }
 .mini-card-spread {
   position: absolute;
-  width: 18px; height: 28px;
-  top: 8px;
-  background: linear-gradient(135deg, #3a1b6e, #1a0b2e);
-  border-radius: 3px;
-  border: 0.5px solid rgba(255,200,87,0.4);
+  width: 7px; height: 11px;
+  border-radius: 2px;
+  opacity: 0.85;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 .spread-info { flex: 1; }
 .spread-title { font-size: 17px; margin-bottom: 2px; }
@@ -799,6 +855,36 @@ const resetFortune = () => {
 .spread-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .spread-price { font-size: 14px; font-weight: 700; }
 .spread-card--locked { opacity: 0.6; cursor: default; }
+
+/* ══ Подробности о выбранном раскладе ══════════════════════════════════════ */
+.spread-detail {
+  margin-top: 12px;
+  padding: 16px 16px 14px;
+}
+.spread-detail-title {
+  font-size: 15px;
+  color: #ffc857;
+  margin-bottom: 8px;
+}
+.spread-detail-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255,255,255,.75);
+  margin: 0 0 12px;
+}
+.spread-detail-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255,200,87,0.08);
+  border: 1px solid rgba(255,200,87,0.25);
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255,255,255,.8);
+}
+.spread-detail-tip-icon { flex-shrink: 0; font-size: 14px; line-height: 1.3; }
 
 /* Fortune button */
 .fortune-btn {
