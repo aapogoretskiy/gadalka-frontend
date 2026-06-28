@@ -3,7 +3,10 @@
 
     <!-- ── Шапка ─────────────────────────────────────────────── -->
     <header class="dash-header">
-      <h1>🔮 Админ-панель</h1>
+      <div class="dash-header-left">
+        <h1>🔮 Админ-панель</h1>
+        <span v-if="!isAdmin" class="role-badge">👁 Режим просмотра</span>
+      </div>
       <button class="btn-ghost" @click="logout">Выйти</button>
     </header>
 
@@ -15,6 +18,7 @@
         @click="activeTab = 'users'"
       >Пользователи</button>
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'broadcast' }"
         @click="activeTab = 'broadcast'"
@@ -46,6 +50,7 @@
         @click="activeTab = 'range'"
       >📅 Диапазон</button>
       <button
+        v-if="isAdmin"
         class="tab"
         :class="{ active: activeTab === 'prices' }"
         @click="openPricesTab"
@@ -81,8 +86,18 @@
         >
           {{ hideInactive ? '👁️ Показать всех' : '🙈 Скрыть неактивных' }}
         </button>
+        <select
+          v-model="selectedSource"
+          class="source-select"
+          @change="onSourceChange"
+          title="Фильтр по источнику регистрации"
+        >
+          <option :value="null">Все источники</option>
+          <option value="__organic__">Без источника (органика)</option>
+          <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+        </select>
         <button
-          v-if="selectedIds.size > 0"
+          v-if="selectedIds.size > 0 && isAdmin"
           class="btn-broadcast"
           @click="goToBroadcast"
         >
@@ -126,16 +141,17 @@
               <th class="th-sortable" @click="setSort('totalSpent')">
                 Потрачено знаков <span class="sort-icon">{{ sortIcon('totalSpent') }}</span>
               </th>
+              <th>Источник</th>
               <th>Статус</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="11" class="loading-row">Загрузка...</td>
+              <td colspan="12" class="loading-row">Загрузка...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="11" class="empty-row">Пользователи не найдены</td>
+              <td colspan="12" class="empty-row">Пользователи не найдены</td>
             </tr>
             <tr
               v-for="user in users"
@@ -162,6 +178,12 @@
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.visitCount }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalActionsCount }}</td>
               <td @click="openDetails(user.id)" class="mono visit-count">{{ user.totalSpent }}</td>
+              <td @click="openDetails(user.id)" class="source-cell">
+                <span v-if="user.referralSource" class="source-badge" :title="user.referralSource">
+                  {{ user.referralSource.startsWith('ref_') ? '🔗 Реферал' : user.referralSource }}
+                </span>
+                <span v-else class="source-badge source-badge--organic">органика</span>
+              </td>
               <td @click="openDetails(user.id)">
                 <span class="badge" :class="user.banned ? 'badge-ban' : 'badge-ok'">
                   {{ user.banned ? 'Забанен' : 'Активен' }}
@@ -319,9 +341,24 @@
           <span class="reports-updated" v-if="reportsUpdatedAt">
             Обновлено: {{ formatDate(reportsUpdatedAt) }}
           </span>
+          <select
+            v-model="reportsSource"
+            class="source-select"
+            @change="loadReports"
+            title="Фильтр по источнику регистрации"
+          >
+            <option :value="null">Все источники</option>
+            <option value="__organic__">Без источника (органика)</option>
+            <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+          </select>
           <button class="btn-ghost" :disabled="reportsLoading" @click="loadReports">
             {{ reportsLoading ? '⏳ Загрузка...' : '🔄 Обновить' }}
           </button>
+        </div>
+
+        <div v-if="reportsSource" class="source-filter-badge">
+          Фильтр: <strong>{{ sourceLabel(reportsSource) }}</strong>
+          <button class="source-filter-clear" @click="reportsSource = null; loadReports()">✕</button>
         </div>
 
         <p v-if="reportsError" class="error-msg">{{ reportsError }}</p>
@@ -770,6 +807,14 @@
                 class="range-date-input"
               />
             </div>
+            <div class="range-field">
+              <label class="range-label">Источник</label>
+              <select v-model="rangeSource" class="source-select">
+                <option :value="null">Все</option>
+                <option value="__organic__">Без источника</option>
+                <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+              </select>
+            </div>
           </div>
           <button
             class="btn-primary"
@@ -1038,8 +1083,8 @@
             </div>
           </section>
 
-          <!-- Закрытие заявки (только если открыта) -->
-          <section v-if="selectedTicket.status === 'OPEN'" class="info-section">
+          <!-- Закрытие заявки (только если открыта и пользователь — ADMIN) -->
+          <section v-if="selectedTicket.status === 'OPEN' && isAdmin" class="info-section">
             <h3>Закрыть заявку</h3>
             <label class="bc-toggle-row">
               <input type="checkbox" v-model="closeWithGift" />
@@ -1143,7 +1188,7 @@
           </section>
 
           <!-- Подарок -->
-          <section class="info-section">
+          <section v-if="isAdmin" class="info-section">
             <h3>Подарить знаки</h3>
             <div class="gift-row">
               <input
@@ -1166,7 +1211,7 @@
           </section>
 
           <!-- Бан -->
-          <section class="info-section">
+          <section v-if="isAdmin" class="info-section">
             <h3>Управление доступом</h3>
             <button
               v-if="!selectedUser.banned"
@@ -1256,6 +1301,12 @@ import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminRepor
 
 const router = useRouter()
 
+// ── Роль текущего пользователя ────────────────────────────────────────────
+// Загружается при монтировании из /api/admin/auth/me
+// ADMIN — полный доступ, MODERATOR — только чтение
+const userRole = ref<'ADMIN' | 'MODERATOR'>('ADMIN')
+const isAdmin = computed(() => userRole.value === 'ADMIN')
+
 // ── Вкладки ───────────────────────────────────────────────────────────────
 const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices'>('users')
 
@@ -1282,6 +1333,38 @@ const toggleHideInactive = () => {
   hideInactive.value = !hideInactive.value
   loadUsers(0)
 }
+
+// ── Фильтр по источнику регистрации ──────────────────────────────────────
+// null = все; "__organic__" = без источника (органика); иначе — конкретный источник
+const availableSources = ref<string[]>([])
+const selectedSource = ref<string | null>(null)
+
+const loadSources = async () => {
+  try {
+    const res = await adminApi.getSources()
+    availableSources.value = res.data
+  } catch {
+    availableSources.value = []
+  }
+}
+
+const onSourceChange = () => {
+  loadUsers(0)
+}
+
+/** Человекочитаемая метка источника для дропдауна */
+const sourceLabel = (src: string | null) => {
+  if (!src) return 'Все источники'
+  if (src === '__organic__') return 'Без источника (органика)'
+  if (src.startsWith('ref_')) return '🔗 Реф. пользователь'
+  return src
+}
+
+// ── Фильтр источника для вкладки "Отчёты" ────────────────────────────────
+const reportsSource = ref<string | null>(null)
+
+// ── Фильтр источника для вкладки "Диапазон" ──────────────────────────────
+const rangeSource = ref<string | null>(null)
 
 /** Переключить сортировку по полю: повторный клик — меняет направление */
 const setSort = (field: string) => {
@@ -1310,7 +1393,13 @@ const resetSort = () => {
 const loadUsers = async (page = 0) => {
   loading.value = true
   try {
-    const res = await adminApi.getUsers(page, 20, searchQuery.value || undefined, sortBy.value, sortDir.value, hideInactive.value)
+    const res = await adminApi.getUsers(
+      page, 20,
+      searchQuery.value || undefined,
+      sortBy.value, sortDir.value,
+      hideInactive.value,
+      selectedSource.value,
+    )
     users.value = res.data.content
     totalPages.value = res.data.totalPages || 1
     currentPage.value = res.data.number
@@ -1571,7 +1660,7 @@ const loadReports = async () => {
   reportsLoading.value = true
   reportsError.value = null
   try {
-    const res = await adminApi.getReports()
+    const res = await adminApi.getReports(reportsSource.value)
     reports.value = res.data
     reportsUpdatedAt.value = new Date().toISOString()
   } catch {
@@ -1767,7 +1856,7 @@ const loadRangeReport = async () => {
   rangeLoading.value = true
   rangeError.value = null
   try {
-    const res = await adminApi.getRangeReport(rangeFrom.value, rangeTo.value)
+    const res = await adminApi.getRangeReport(rangeFrom.value, rangeTo.value, rangeSource.value)
     rangeReport.value = res.data
   } catch (e: any) {
     rangeError.value = e.response?.data?.message || 'Не удалось загрузить отчёт'
@@ -1857,7 +1946,18 @@ const calcAge = (birthDate: string): number | null => {
   return age >= 0 ? age : null
 }
 
-onMounted(() => loadUsers(0))
+onMounted(async () => {
+  // Определяем роль — чтобы скрыть или показать элементы управления
+  try {
+    const res = await adminApi.checkSession()
+    if (res.data.role) {
+      userRole.value = res.data.role
+    }
+  } catch { /* при ошибке остаётся ADMIN по умолчанию — безопасно, т.к. бэк всё равно блокирует */ }
+
+  loadUsers(0)
+  loadSources()
+})
 </script>
 
 <style scoped>
@@ -1882,10 +1982,23 @@ onMounted(() => loadUsers(0))
   top: 0;
   z-index: 10;
 }
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .dash-header h1 {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
+}
+.role-badge {
+  font-size: 12px;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  padding: 3px 8px;
 }
 
 /* ── Tabs ── */
@@ -2863,4 +2976,57 @@ input[type="checkbox"] {
   width: 100%;
 }
 .price-input:focus { border-color: #6366f1; }
+
+/* ── Source filter ── */
+.source-select {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+  min-width: 160px;
+}
+.source-select:focus { border-color: #6366f1; }
+
+.source-filter-badge {
+  margin: 0 24px 8px;
+  font-size: 13px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.source-filter-badge strong { color: #a5b4fc; }
+.source-filter-clear {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+.source-filter-clear:hover { color: #e2e8f0; }
+
+/* ── Source cell in users table ── */
+.source-cell { max-width: 140px; }
+.source-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+.source-badge--organic {
+  background: rgba(148, 163, 184, 0.1);
+  color: #64748b;
+}
+
 </style>
