@@ -42,13 +42,14 @@
         </div>
 
         <!-- Рейтинги -->
-        <div class="scores-card glass">
-          <div v-for="s in scoreRows" :key="s.label" class="score-row">
-            <div class="score-label">{{ s.label }}</div>
-            <div class="score-bar-wrap">
-              <div class="score-bar" :style="{ width: (s.value / 5 * 100) + '%' }"></div>
+        <div class="scores-grid">
+          <div v-for="s in scoreRows" :key="s.label" class="score-card glass">
+            <div class="score-card-icon">{{ s.icon }}</div>
+            <div class="score-card-label" :style="{ color: s.color }">{{ s.label }}</div>
+            <div class="score-card-bar-wrap">
+              <div class="score-card-bar" :style="{ width: (s.value / 5 * 100) + '%', background: s.color }"></div>
             </div>
-            <div class="score-value">{{ s.value }}/5</div>
+            <div class="score-card-frac" :style="{ color: s.color }">{{ s.value }}/5</div>
           </div>
         </div>
 
@@ -83,12 +84,21 @@
         </div>
 
         <!-- Статичная справка по знаку -->
-        <div class="meaning-card glass">
-          <div class="meaning-label">✦ Знаки дня</div>
-          <div class="static-chips">
-            <span v-for="n in horoscope.luckyNumbers" :key="'n'+n" class="static-chip">{{ n }}</span>
-            <span v-for="c in horoscope.luckyColors" :key="c" class="static-chip">{{ c }}</span>
-            <span class="static-chip static-chip--stone">{{ horoscope.stone }}</span>
+        <div class="static-grid">
+          <div class="static-card glass">
+            <div class="static-icon">🔢</div>
+            <div class="static-label">Числа</div>
+            <div class="static-value">{{ horoscope.luckyNumbers.join(', ') }}</div>
+          </div>
+          <div class="static-card glass">
+            <div class="static-icon">🎨</div>
+            <div class="static-label">Цвета</div>
+            <div class="static-value">{{ horoscope.luckyColors.join(', ') }}</div>
+          </div>
+          <div class="static-card glass">
+            <div class="static-icon">💎</div>
+            <div class="static-label">Камень</div>
+            <div class="static-value">{{ horoscope.stone }}</div>
           </div>
         </div>
 
@@ -109,10 +119,10 @@ const { horoscope, isLoading, error, needsBirthDate, fetchHoroscope } = useHoros
 const scoreRows = computed(() => {
   if (!horoscope.value) return []
   return [
-    { label: 'Общее',  value: horoscope.value.generalScore },
-    { label: 'Любовь', value: horoscope.value.loveScore },
-    { label: 'Карьера', value: horoscope.value.careerScore },
-    { label: 'Деньги', value: horoscope.value.moneyScore },
+    { label: 'Общий',   value: horoscope.value.generalScore, icon: '🌀', color: '#b654ff' },
+    { label: 'Любовь',  value: horoscope.value.loveScore,    icon: '💗', color: '#ff6b9d' },
+    { label: 'Карьера', value: horoscope.value.careerScore,  icon: '🚀', color: '#ffa857' },
+    { label: 'Деньги',  value: horoscope.value.moneyScore,   icon: '💰', color: '#4ade80' },
   ]
 })
 
@@ -145,17 +155,16 @@ onMounted(() => {
 .sign-period { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 4px; }
 
 /* Scores */
-.scores-card { padding: 18px 16px; margin-bottom: 14px; }
-.score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.score-row:last-child { margin-bottom: 0; }
-.score-label { font-size: 12px; width: 64px; flex-shrink: 0; color: rgba(255,255,255,.7); }
-.score-bar-wrap { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
-.score-bar {
-  height: 100%; border-radius: 3px;
-  background: linear-gradient(90deg, #b654ff, #e94aa8);
-  transition: width 1s ease;
+.scores-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.score-card { padding: 12px 8px; text-align: center; }
+.score-card-icon { font-size: 16px; margin-bottom: 6px; }
+.score-card-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; margin-bottom: 8px;
 }
-.score-value { font-size: 11px; font-weight: 600; color: #ffc857; width: 30px; text-align: right; flex-shrink: 0; }
+.score-card-bar-wrap { height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); overflow: hidden; margin-bottom: 6px; }
+.score-card-bar { height: 100%; border-radius: 2px; transition: width 1s ease; }
+.score-card-frac { font-size: 11px; font-weight: 700; }
 
 /* Meaning cards */
 .meaning-card { padding: 20px; margin-bottom: 12px; }
@@ -166,15 +175,21 @@ onMounted(() => {
   border: 1px solid rgba(182,84,255,.2);
 }
 
-/* Static chips */
-.static-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.static-chip {
-  font-size: 12px; font-weight: 600;
-  padding: 6px 14px; border-radius: 100px;
-  background: rgba(255,200,87,.1); border: 1px solid rgba(255,200,87,.25);
-  color: rgba(255,255,255,.85);
+/* Static info grid (числа / цвета / камень) */
+.static-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.static-card {
+  padding: 14px 10px;
+  text-align: center;
 }
-.static-chip--stone { color: #ffc857; }
+.static-icon { font-size: 18px; margin-bottom: 6px; }
+.static-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
+  color: rgba(255,255,255,.45); font-weight: 700; margin-bottom: 6px;
+}
+.static-value {
+  font-size: 13px; font-weight: 600; color: #ffc857;
+  line-height: 1.3;
+}
 
 /* Empty state (нет даты рождения) */
 .empty-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 32px 20px; }
