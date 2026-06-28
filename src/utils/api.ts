@@ -241,6 +241,25 @@ export interface NumerologyTodayResponse {
   personalMonthNumber: number
 }
 
+// GET /api/horoscope/daily
+export interface DailyHoroscopeResponse {
+  date: string             // format: date (YYYY-MM-DD)
+  zodiacSign: string       // отображаемое имя знака, например "Телец"
+  periodLabel: string      // "20 апреля — 20 мая"
+  generalScore: number     // 1–5
+  loveScore: number        // 1–5
+  careerScore: number      // 1–5
+  moneyScore: number       // 1–5
+  general: string
+  advice: string
+  love: string
+  career: string
+  money: string
+  luckyNumbers: number[]   // статично по знаку, не зависит от даты
+  luckyColors: string[]    // статично по знаку
+  stone: string            // статично по знаку
+}
+
 // ── Платежи ─────────────────────────────────────────────────────────────────
 
 export interface PaymentProduct {
@@ -271,7 +290,7 @@ export interface PaymentConfig {
 }
 
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK'
+export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'DAILY_HOROSCOPE'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -386,6 +405,11 @@ export const api = {
   // Нумерология дня
   getNumerologyToday: () =>
     apiClient.get<NumerologyTodayResponse>('/api/numerology/today'),
+
+  // Гороскоп на день (бесплатно, по знаку зодиака из профиля)
+  // skipGlobalError: true — 422 (нет даты рождения в профиле) обрабатываем сами в useHoroscope
+  getDailyHoroscope: () =>
+    apiClient.get<DailyHoroscopeResponse>('/api/horoscope/daily', { skipGlobalError: true }),
 
   // Нумерология недели (платно — 3 знака; повторный вызов в течение действующих 7 дней бесплатен)
   // skipGlobalError: true — 402 (мало знаков) и 422 (нет даты рождения) обрабатываем сами в виджете

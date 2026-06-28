@@ -44,6 +44,7 @@ import { useToast } from './composables/useToast'
 import HomeScreen          from './components/screens/HomeScreen.vue'
 import TarotDeckScreen     from './components/screens/TarotDeckScreen.vue'
 import TarotDayDetailedScreen from './components/screens/TarotDayDetailedScreen.vue'
+import HoroscopeDetailedScreen from './components/screens/HoroscopeDetailedScreen.vue'
 import NumerologyScreen    from './components/screens/NumerologyScreen.vue'
 import WeekSpreadScreen    from './components/screens/WeekSpreadScreen.vue'
 import CompatibilityScreen from './components/screens/CompatibilityScreen.vue'
@@ -80,6 +81,7 @@ const currentScreen = computed(() => {
     home:          HomeScreen,
     tarot:         TarotDeckScreen,
     'tarot-day':   TarotDayDetailedScreen,
+    'horoscope-day': HoroscopeDetailedScreen,
     numerology:    NumerologyScreen,
     'numerology-week': WeekSpreadScreen,
     compatibility: CompatibilityScreen,

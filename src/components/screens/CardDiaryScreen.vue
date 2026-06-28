@@ -280,6 +280,40 @@
             </div>
           </div>
         </template>
+
+        <!-- DAILY_HOROSCOPE -->
+        <template v-if="selected.featureType === 'DAILY_HOROSCOPE'">
+          <div class="modal-type-label">{{ zodiacGlyph(selected.data?.zodiacSign) }} Гороскоп на день</div>
+          <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
+          <div class="modal-title serif">{{ selected.data?.zodiacSign }}</div>
+          <div v-if="selected.data?.generalScore != null" class="modal-categories" style="margin-bottom:16px;">
+            <div v-for="s in horoscopeScoreRows(selected.data)" :key="s.label" class="modal-cat-row">
+              <div class="modal-cat-label">{{ s.label }}</div>
+              <div class="modal-cat-bar-wrap"><div class="modal-cat-bar" :style="{ width: (s.value / 5 * 100) + '%' }"></div></div>
+              <div class="modal-cat-pct">{{ s.value }}/5</div>
+            </div>
+          </div>
+          <div v-if="selected.data?.general" class="modal-section">
+            <div class="modal-section-label">✦ Общий прогноз</div>
+            <div class="modal-section-body">{{ selected.data.general }}</div>
+          </div>
+          <div v-if="selected.data?.advice" class="modal-section">
+            <div class="modal-section-label">💡 Совет</div>
+            <div class="modal-section-body">{{ selected.data.advice }}</div>
+          </div>
+          <div v-if="selected.data?.love" class="modal-section">
+            <div class="modal-section-label">💗 Любовь</div>
+            <div class="modal-section-body">{{ selected.data.love }}</div>
+          </div>
+          <div v-if="selected.data?.career" class="modal-section">
+            <div class="modal-section-label">💼 Карьера</div>
+            <div class="modal-section-body">{{ selected.data.career }}</div>
+          </div>
+          <div v-if="selected.data?.money" class="modal-section">
+            <div class="modal-section-label">💰 Финансы</div>
+            <div class="modal-section-body">{{ selected.data.money }}</div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -292,6 +326,7 @@ import { useBalance } from '@/composables/useBalance'
 import { useDevMode } from '@/composables/useDevMode'
 import { useToast } from '@/composables/useToast'
 import { hapticFeedback } from '@/utils/telegram'
+import { zodiacGlyph } from '@/utils/zodiac'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { hasCredits, refreshBalance } = useBalance()
@@ -328,6 +363,15 @@ async function unlockFromDiary() {
   }
 }
 
+function horoscopeScoreRows(d: any): { label: string; value: number }[] {
+  return [
+    { label: 'Общее',   value: d.generalScore },
+    { label: 'Любовь',  value: d.loveScore },
+    { label: 'Карьера', value: d.careerScore },
+    { label: 'Деньги',  value: d.moneyScore },
+  ]
+}
+
 function isCompatUnlocked(entry: DiaryEntryDto | null): boolean {
   if (!entry || entry.featureType !== 'COMPATIBILITY') return false
   return isDev.value || entry.data?.unlocked || unlockedIds.value.has(entry.data?.id)
@@ -347,6 +391,7 @@ const tabs: { value: TabValue; label: string }[] = [
   { value: 'COMPATIBILITY',  label: 'Совместимость' },
   { value: 'NUMEROLOGY_DAY', label: 'Числа' },
   { value: 'NUMEROLOGY_WEEK', label: 'Неделя' },
+  { value: 'DAILY_HOROSCOPE', label: 'Гороскоп' },
 ]
 
 const FORTUNE_TYPES: FeatureType[] = ['THREE_CARD', 'HORSESHOE', 'CELTIC_CROSS']
@@ -369,7 +414,7 @@ async function loadAll() {
   error.value = ''
   const { from, to } = dateRange()
   try {
-    const [r1, r2, r3, r4, r5, r6, r7] = await Promise.allSettled([
+    const [r1, r2, r3, r4, r5, r6, r7, r8] = await Promise.allSettled([
       api.getDiaryHistory('THREE_CARD', from, to),
       api.getDiaryHistory('HORSESHOE', from, to),
       api.getDiaryHistory('CELTIC_CROSS', from, to),
@@ -377,9 +422,10 @@ async function loadAll() {
       api.getDiaryHistory('DAILY_CARD', from, to),
       api.getDiaryHistory('NUMEROLOGY_DAY', from, to),
       api.getDiaryHistory('NUMEROLOGY_WEEK', from, to),
+      api.getDiaryHistory('DAILY_HOROSCOPE', from, to),
     ])
     const entries: DiaryEntryDto[] = []
-    for (const r of [r1, r2, r3, r4, r5, r6, r7]) {
+    for (const r of [r1, r2, r3, r4, r5, r6, r7, r8]) {
       if (r.status === 'fulfilled') entries.push(...r.value.data.entries)
     }
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -398,6 +444,7 @@ function entryIcon(entry: DiaryEntryDto): string {
   if (entry.featureType === 'COMPATIBILITY')   return '💕'
   if (entry.featureType === 'NUMEROLOGY_DAY')  return '🔢'
   if (entry.featureType === 'NUMEROLOGY_WEEK') return '🗓'
+  if (entry.featureType === 'DAILY_HOROSCOPE') return zodiacGlyph(entry.data?.zodiacSign)
   return '🔮'
 }
 
@@ -406,6 +453,7 @@ function entryBg(entry: DiaryEntryDto): string {
   if (entry.featureType === 'COMPATIBILITY')   return 'linear-gradient(135deg, #4e0a2e, #6e1a4a)'
   if (entry.featureType === 'NUMEROLOGY_DAY')  return 'linear-gradient(135deg, #2a1a00, #4a3200)'
   if (entry.featureType === 'NUMEROLOGY_WEEK') return 'linear-gradient(135deg, #1a0036, #3a0a4e)'
+  if (entry.featureType === 'DAILY_HOROSCOPE') return 'linear-gradient(135deg, #2e0a4e, #4a1a6e)'
   return 'linear-gradient(135deg, #3a1b6e, #1a0b2e)'
 }
 
@@ -428,6 +476,9 @@ function entryTitle(entry: DiaryEntryDto): string {
   }
   if (entry.featureType === 'NUMEROLOGY_WEEK') {
     return d.weekNumber != null ? `Неделя числа ${d.weekNumber}` : 'Расклад на неделю'
+  }
+  if (entry.featureType === 'DAILY_HOROSCOPE') {
+    return d.zodiacSign ? `Гороскоп — ${d.zodiacSign}` : 'Гороскоп на день'
   }
   // Все расклады (THREE_CARD, HORSESHOE, CELTIC_CROSS): показываем вопрос
   if (d.question) return truncate(d.question, 60)
@@ -459,6 +510,9 @@ function entryKeywords(entry: DiaryEntryDto): string[] {
     if (d.weekStart && d.weekEnd) kws.push(`${formatShort(d.weekStart)}–${formatShort(d.weekEnd)}`)
     return kws
   }
+  if (entry.featureType === 'DAILY_HOROSCOPE') {
+    return d.generalScore != null ? [`${d.generalScore}/5`] : []
+  }
   return []
 }
 
@@ -474,6 +528,7 @@ function entryNote(entry: DiaryEntryDto): string {
   if (entry.featureType === 'COMPATIBILITY')  return truncate(d.label || '', 100)
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
   if (entry.featureType === 'NUMEROLOGY_WEEK') return truncate(d.mainTheme || d.weekDescription || '', 100)
+  if (entry.featureType === 'DAILY_HOROSCOPE') return truncate(d.general || '', 100)
   // Все расклады: если заголовок уже показывает вопрос — в note показываем карты; иначе — интерпретацию
   if (d.question) {
     const cards = d.cards as Array<{ name: string }>

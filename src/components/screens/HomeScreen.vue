@@ -80,6 +80,29 @@
         </div>
       </div>
 
+      <!-- Daily horoscope -->
+      <div class="horoscope-card glass haptic" @click="navigate('horoscope-day')">
+        <div class="horoscope-label">ГОРОСКОП НА СЕГОДНЯ</div>
+        <div v-if="horoscopeNeedsBirthDate" class="horoscope-empty">
+          <div class="horoscope-empty-icon">✦</div>
+          <div class="horoscope-empty-text">Укажите дату рождения в профиле, чтобы увидеть гороскоп</div>
+        </div>
+        <div v-else class="horoscope-body">
+          <div class="horoscope-sign">
+            <div class="horoscope-glyph">{{ zodiacGlyph(horoscope?.zodiacSign) }}</div>
+            <div class="horoscope-sign-name">{{ horoscopeLoading ? '...' : (horoscope?.zodiacSign?.toUpperCase() || '') }}</div>
+          </div>
+          <div class="horoscope-teaser">
+            {{ horoscopeLoading ? 'Заглядываем к звёздам…' : truncatedGeneral }}
+          </div>
+          <div class="horoscope-score">
+            <span class="horoscope-score-num">{{ horoscope?.generalScore ?? '–' }}</span>
+            <span class="horoscope-score-max">/5</span>
+          </div>
+        </div>
+        <div class="arrow-right horoscope-arrow">›</div>
+      </div>
+
       <!-- Numerology number -->
       <div class="number-card glass haptic" @click="navigate('numerology')">
         <div class="number-big">
@@ -131,14 +154,17 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { useDailyCard } from '@/composables/useDailyCard'
+import { useHoroscope } from '@/composables/useHoroscope'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
 import { useTheme } from '@/composables/useTheme'
+import { zodiacGlyph } from '@/utils/zodiac'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
+const { horoscope, isLoading: horoscopeLoading, needsBirthDate: horoscopeNeedsBirthDate, fetchHoroscope } = useHoroscope()
 const { isDev, toggleDevMode } = useDevMode()
 const { balance, hasCredits } = useBalance()
 const { themesCount } = useTheme()
@@ -170,8 +196,14 @@ const dateStr = computed(() =>
 const lifeNumber      = computed(() => numerologyData.value?.dayCode || '—')
 const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle || '')
 
+const truncatedGeneral = computed(() => {
+  const text = horoscope.value?.general || ''
+  return text.length > 70 ? text.slice(0, 70) + '…' : text
+})
+
 onMounted(async () => {
   fetchDailyCard()
+  fetchHoroscope()
   try {
     const res = await api.getNumerologyToday()
     numerologyData.value = res.data
@@ -417,6 +449,83 @@ onMounted(async () => {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Horoscope card */
+.horoscope-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  position: relative;
+}
+.horoscope-label {
+  position: absolute;
+  top: 10px; left: 16px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,.4);
+  font-weight: 700;
+}
+.horoscope-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding-top: 14px;
+}
+.horoscope-sign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 46px;
+}
+.horoscope-glyph {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(182,84,255,0.25), rgba(233,74,168,0.15));
+  border: 1px solid rgba(182,84,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  color: #e0c3ff;
+}
+.horoscope-sign-name {
+  font-size: 9px;
+  letter-spacing: .06em;
+  color: rgba(255,255,255,.55);
+  margin-top: 4px;
+  font-weight: 600;
+}
+.horoscope-teaser {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255,255,255,.8);
+}
+.horoscope-score {
+  flex-shrink: 0;
+  font-family: 'Cormorant Garamond', serif;
+  color: #ffc857;
+  display: flex;
+  align-items: baseline;
+}
+.horoscope-score-num { font-size: 24px; font-weight: 600; }
+.horoscope-score-max { font-size: 12px; opacity: .6; }
+.horoscope-arrow { flex-shrink: 0; }
+.horoscope-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 14px;
+  flex: 1;
+}
+.horoscope-empty-icon { font-size: 18px; color: rgba(255,200,87,.7); flex-shrink: 0; }
+.horoscope-empty-text { font-size: 12px; color: rgba(255,255,255,.55); line-height: 1.4; }
 
 /* Number card */
 .number-card {
