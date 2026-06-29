@@ -431,13 +431,13 @@ const animationDone  = ref(false)
 
 // ── Данные ───────────────────────────────────────────────────────────────────
 const categories = [
-  { value: 'love',   label: 'Любовь',   emoji: '💕' },
+  { value: 'love',     label: 'Любовь',   emoji: '💕' },
+  { value: 'intimacy', label: 'Близость', emoji: '🔥' },
+  { value: 'ex',       label: 'Бывшие',   emoji: '💔' },
   { value: 'money',  label: 'Деньги',   emoji: '💰' },
   { value: 'work',   label: 'Работа',   emoji: '💼' },
   { value: 'life',   label: 'Ситуация', emoji: '🎯' },
   { value: 'health', label: 'Здоровье', emoji: '🌿' },
-  { value: 'ex',       label: 'Бывшие',  emoji: '💔' },
-  { value: 'intimacy', label: 'Близость', emoji: '🔥' },
 ]
 
 // Пресеты вопросов одинаковы для всех категорий (бэк отдаёт сразу весь список,
@@ -585,6 +585,12 @@ const loadingMessages = [
   'Соединяемся с энергиями...',
   'Перемешиваем карты...',
   'Читаем знаки...',
+  'Слушаем шёпот Вселенной...',
+  'Раскладываем нити судьбы...',
+  'Считываем символы...',
+  'Ищем ответ в картах...',
+  'Толкуем послания...',
+  'Собираем смысл воедино...',
   'Формируем ответ...',
 ]
 
@@ -697,9 +703,13 @@ const startFortune = async () => {
   progress.value = 0
   msgIdx.value = 0
 
+  // Прогресс-бар растёт асимптотически к 96% — на каждом тике покрывает часть
+  // оставшегося расстояния, а не фиксированный шаг. Так он никогда не "замирает"
+  // на одном значении (как раньше при Math.min(+25, 90)), даже если расклад большой
+  // (Кельтский крест — до 11 последовательных запросов к AI и заметно дольше тройки карт).
   const interval = setInterval(() => {
     msgIdx.value = (msgIdx.value + 1) % loadingMessages.length
-    progress.value = Math.min(progress.value + 25, 90)
+    progress.value = progress.value + (96 - progress.value) * 0.12
   }, 900)
 
   try {
