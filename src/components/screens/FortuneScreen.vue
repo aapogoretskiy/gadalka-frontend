@@ -436,6 +436,8 @@ const categories = [
   { value: 'work',   label: 'Работа',   emoji: '💼' },
   { value: 'life',   label: 'Ситуация', emoji: '🎯' },
   { value: 'health', label: 'Здоровье', emoji: '🌿' },
+  { value: 'ex',       label: 'Бывшие',  emoji: '💔' },
+  { value: 'intimacy', label: 'Близость', emoji: '🔥' },
 ]
 
 // Пресеты вопросов одинаковы для всех категорий (бэк отдаёт сразу весь список,
@@ -447,7 +449,7 @@ onMounted(() => {
   loadFeatureCosts()
 })
 
-// Пресеты вопросов для текущей выбранной категории (love/money/work/life/health)
+// Пресеты вопросов для текущей выбранной категории (love/money/work/life/health/ex/intimacy)
 const currentPresets = computed(() => getPresetsByCode(selectedCategory.value))
 const currentCategoryLabel = computed(() => {
   const c = categories.find(c => c.value === selectedCategory.value)
