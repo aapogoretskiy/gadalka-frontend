@@ -258,6 +258,7 @@ export interface DailyHoroscopeResponse {
   luckyNumbers: number[]   // статично по знаку, не зависит от даты
   luckyColors: string[]    // статично по знаку
   stone: string            // статично по знаку
+  stale: boolean           // true — сегодняшняя генерация не удалась, показан вчерашний гороскоп (см. date)
 }
 
 // ── Платежи ─────────────────────────────────────────────────────────────────

@@ -41,6 +41,11 @@
           <div class="sign-period">{{ horoscope.periodLabel }}</div>
         </div>
 
+        <!-- Гороскоп не успели обновить на сегодня — показываем вчерашний с пометкой -->
+        <div v-if="horoscope.stale" class="stale-banner glass">
+          ✦ Обновляем гороскоп на сегодня, пока показываем прогноз от {{ formattedDate }}
+        </div>
+
         <!-- Рейтинги -->
         <div class="scores-grid">
           <div v-for="s in scoreRows" :key="s.label" class="score-card glass">
@@ -116,6 +121,11 @@ import { zodiacGlyph } from '@/utils/zodiac'
 const navigate = inject<(r: string) => void>('navigate')
 const { horoscope, isLoading, error, needsBirthDate, fetchHoroscope } = useHoroscope()
 
+const formattedDate = computed(() => {
+  if (!horoscope.value) return ''
+  return new Date(horoscope.value.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+})
+
 const scoreRows = computed(() => {
   if (!horoscope.value) return []
   return [
@@ -153,6 +163,14 @@ onMounted(() => {
 }
 .sign-name { font-size: 24px; }
 .sign-period { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 4px; }
+
+/* Stale-баннер: гороскоп на сегодня ещё не сгенерирован, показан вчерашний */
+.stale-banner {
+  padding: 12px 16px; margin-bottom: 14px; text-align: center;
+  font-size: 12px; line-height: 1.5; color: #ffc857;
+  background: linear-gradient(135deg, rgba(255,200,87,.1), rgba(255,200,87,.04));
+  border: 1px solid rgba(255,200,87,.25);
+}
 
 /* Scores */
 .scores-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
