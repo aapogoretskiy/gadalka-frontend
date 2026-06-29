@@ -50,6 +50,8 @@ export interface UserAction {
   label: string
   date: string
   details: string
+  /** Полный, необрезанный текст (например, вопрос гадания). Есть только у некоторых типов действий. */
+  fullDetails?: string | null
   interpretation: string | null
   /** null если пользователь не оставлял оценку */
   feedbackRating: 'POSITIVE' | 'NEGATIVE' | null

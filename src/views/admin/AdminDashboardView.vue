@@ -1262,9 +1262,19 @@
                   <span v-else-if="action.feedbackRating === 'NEGATIVE'" class="feedback-badge feedback-badge--neg">👎</span>
                 </div>
                 <div class="action-meta">
-                  <span class="action-details">{{ action.details }}</span>
+                  <span class="action-details">
+                    {{ expandedQuestions.has(idx) && action.fullDetails ? action.fullDetails : action.details }}
+                  </span>
                   <span class="action-date">{{ formatDate(action.date) }}</span>
                 </div>
+                <!-- Разворачивание полного текста вопроса (если он был обрезан на бэке) -->
+                <button
+                  v-if="action.fullDetails && action.fullDetails !== action.details"
+                  class="action-expand-btn"
+                  @click="toggleQuestionExpand(idx)"
+                >
+                  {{ expandedQuestions.has(idx) ? '▲ Скрыть вопрос' : '▼ Читать вопрос полностью' }}
+                </button>
                 <!-- Комментарий к отрицательной оценке -->
                 <div v-if="action.feedbackRating === 'NEGATIVE' && action.feedbackComment" class="feedback-comment">
                   💬 {{ action.feedbackComment }}
@@ -1466,6 +1476,7 @@ const openDetails = async (id: number) => {
     userActionsLoading.value = false
     actionsLoaded.value = false
     expandedActions.value = new Set()
+    expandedQuestions.value = new Set()
   } catch {
     // ignore
   }
@@ -1476,6 +1487,7 @@ const userActions = ref<UserAction[]>([])
 const userActionsLoading = ref(false)
 const actionsLoaded = ref(false)
 const expandedActions = ref(new Set<number>())
+const expandedQuestions = ref(new Set<number>())
 
 const loadUserActions = async () => {
   if (!selectedUser.value) return
@@ -1485,6 +1497,7 @@ const loadUserActions = async () => {
     userActions.value = res.data
     actionsLoaded.value = true
     expandedActions.value = new Set()
+    expandedQuestions.value = new Set()
   } catch {
     userActions.value = []
     actionsLoaded.value = true
@@ -1501,6 +1514,16 @@ const toggleActionExpand = (idx: number) => {
     next.add(idx)
   }
   expandedActions.value = next
+}
+
+const toggleQuestionExpand = (idx: number) => {
+  const next = new Set(expandedQuestions.value)
+  if (next.has(idx)) {
+    next.delete(idx)
+  } else {
+    next.add(idx)
+  }
+  expandedQuestions.value = next
 }
 
 // ── Подарок ───────────────────────────────────────────────────────────────
