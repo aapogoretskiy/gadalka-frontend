@@ -80,28 +80,6 @@
         </div>
       </div>
 
-      <!-- Daily horoscope -->
-      <div class="horoscope-card glass haptic" @click="navigate('horoscope-day')">
-        <div class="horoscope-label">ГОРОСКОП НА СЕГОДНЯ</div>
-        <div v-if="horoscopeNeedsBirthDate" class="horoscope-empty">
-          <div class="horoscope-empty-icon">✦</div>
-          <div class="horoscope-empty-text">Укажите дату рождения в профиле, чтобы увидеть гороскоп</div>
-        </div>
-        <div v-else class="horoscope-body">
-          <div class="horoscope-sign">
-            <div class="horoscope-glyph">{{ zodiacGlyph(horoscope?.zodiacSign) }}</div>
-            <div class="horoscope-sign-name">{{ horoscopeLoading ? '...' : (horoscope?.zodiacSign?.toUpperCase() || '') }}</div>
-          </div>
-          <div class="horoscope-teaser">
-            {{ horoscopeLoading ? 'Заглядываем к звёздам…' : truncatedGeneral }}
-          </div>
-          <div class="horoscope-score">
-            <span class="horoscope-score-num">{{ horoscope?.generalScore ?? '–' }}</span>
-            <span class="horoscope-score-max">/5</span>
-          </div>
-        </div>
-        <div class="arrow-right horoscope-arrow">›</div>
-      </div>
 
       <!-- Numerology number -->
       <div class="number-card glass haptic" @click="navigate('numerology')">
@@ -134,10 +112,23 @@
           <div class="action-title">Совместимость</div>
           <div class="action-sub">Нумерология пары</div>
         </div>
-        <div class="action-card glass haptic" @click="navigate('shop')">
-          <div class="action-icon">🃏</div>
-          <div class="action-title">Магазин колод</div>
-          <div class="action-sub">{{ themesCount > 0 ? themesCount + ' тем' : 'Коллекция' }}</div>
+        <div class="action-card glass haptic action-card--horoscope" @click="navigate('horoscope-day')">
+          <template v-if="horoscopeNeedsBirthDate">
+            <div class="action-icon">✦</div>
+            <div class="action-title">Гороскоп</div>
+            <div class="action-sub">Укажите дату рождения</div>
+          </template>
+          <template v-else>
+            <div class="action-horoscope-top">
+              <div class="action-horoscope-glyph">{{ zodiacGlyph(horoscope?.zodiacSign) }}</div>
+              <div class="action-horoscope-score" v-if="horoscope?.generalScore">
+                <span class="action-score-num">{{ horoscope.generalScore }}</span>
+                <span class="action-score-max">/5</span>
+              </div>
+            </div>
+            <div class="action-title">Гороскоп</div>
+            <div class="action-sub">{{ horoscopeLoading ? '…' : (horoscope?.zodiacSign || '') }}</div>
+          </template>
         </div>
       </div>
 
@@ -157,7 +148,6 @@ import { useDailyCard } from '@/composables/useDailyCard'
 import { useHoroscope } from '@/composables/useHoroscope'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
-import { useTheme } from '@/composables/useTheme'
 import { zodiacGlyph } from '@/utils/zodiac'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
 
@@ -167,7 +157,6 @@ const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { horoscope, isLoading: horoscopeLoading, needsBirthDate: horoscopeNeedsBirthDate, fetchHoroscope } = useHoroscope()
 const { isDev, toggleDevMode } = useDevMode()
 const { balance, hasCredits } = useBalance()
-const { themesCount } = useTheme()
 
 const cardFlipped    = ref(false)
 const betaVisible    = ref(true)
@@ -196,10 +185,6 @@ const dateStr = computed(() =>
 const lifeNumber      = computed(() => numerologyData.value?.dayCode || '—')
 const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle || '')
 
-const truncatedGeneral = computed(() => {
-  const text = horoscope.value?.general || ''
-  return text.length > 70 ? text.slice(0, 70) + '…' : text
-})
 
 onMounted(async () => {
   fetchDailyCard()
@@ -450,82 +435,6 @@ onMounted(async () => {
   margin-right: auto;
 }
 
-/* Horoscope card */
-.horoscope-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  margin-bottom: 14px;
-  cursor: pointer;
-  position: relative;
-}
-.horoscope-label {
-  position: absolute;
-  top: 10px; left: 16px;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  color: rgba(255,255,255,.4);
-  font-weight: 700;
-}
-.horoscope-body {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-  padding-top: 14px;
-}
-.horoscope-sign {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 46px;
-}
-.horoscope-glyph {
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(182,84,255,0.25), rgba(233,74,168,0.15));
-  border: 1px solid rgba(182,84,255,0.4);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  color: #e0c3ff;
-}
-.horoscope-sign-name {
-  font-size: 9px;
-  letter-spacing: .06em;
-  color: rgba(255,255,255,.55);
-  margin-top: 4px;
-  font-weight: 600;
-}
-.horoscope-teaser {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  line-height: 1.4;
-  color: rgba(255,255,255,.8);
-}
-.horoscope-score {
-  flex-shrink: 0;
-  font-family: 'Cormorant Garamond', serif;
-  color: #ffc857;
-  display: flex;
-  align-items: baseline;
-}
-.horoscope-score-num { font-size: 24px; font-weight: 600; }
-.horoscope-score-max { font-size: 12px; opacity: .6; }
-.horoscope-arrow { flex-shrink: 0; }
-.horoscope-empty {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-top: 14px;
-  flex: 1;
-}
-.horoscope-empty-icon { font-size: 18px; color: rgba(255,200,87,.7); flex-shrink: 0; }
-.horoscope-empty-text { font-size: 12px; color: rgba(255,255,255,.55); line-height: 1.4; }
 
 /* Number card */
 .number-card {
@@ -604,6 +513,31 @@ onMounted(async () => {
 .action-icon  { font-size: 26px; margin-bottom: 8px; display: block; }
 .action-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
 .action-sub   { font-size: 11px; color: rgba(255,255,255,.5); }
+
+/* Horoscope action card extras */
+.action-horoscope-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.action-horoscope-glyph {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(182,84,255,0.25), rgba(233,74,168,0.15));
+  border: 1px solid rgba(182,84,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  color: #e0c3ff;
+}
+.action-horoscope-score {
+  display: flex;
+  align-items: baseline;
+  font-family: 'Cormorant Garamond', serif;
+  color: #ffc857;
+}
+.action-score-num { font-size: 20px; font-weight: 600; }
+.action-score-max { font-size: 11px; opacity: .6; }
 
 /* Quote */
 .quote-card { padding: 18px; text-align: center; }
