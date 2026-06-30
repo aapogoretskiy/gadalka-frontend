@@ -240,6 +240,13 @@ export const adminApi = {
   /** Обновить стоимость всех платных функций сразу */
   updateFeatureCosts: (costs: FeatureCosts) =>
     adminAxios.put<FeatureCosts>('/api/admin/feature-costs', costs),
+
+
+  /** Список заблокированных чувствительных запросов. category — опциональный фильтр */
+  getSensitiveQueries: (page = 0, size = 20, category?: SensitiveCategory | '') =>
+    adminAxios.get<SensitiveQueriesPage>('/api/admin/sensitive-queries', {
+      params: { page, size, ...(category ? { category } : {}) },
+    }),
 }
 
 // ── Типы заявок ───────────────────────────────────────────────────────────────
@@ -391,5 +398,35 @@ export interface AdminReports {
     grantedByAdmin: number
     grantedByBonus: number
   }
+}
+
+export type SensitiveCategory =
+  | 'MILITARY_CONFLICT'
+  | 'HEALTH_MEDICAL'
+  | 'DEATH_MORTALITY'
+  | 'SELF_HARM_SUICIDE'
+  | 'CRIME_VIOLENCE'
+  | 'LEGAL_FINANCIAL_ADVICE'
+  | 'GAMBLING_INVESTMENT'
+  | 'POLITICAL_RELIGIOUS'
+  | 'MISSING_PERSONS_GUILT'
+  | 'LLM_REFUSED'
+
+export interface SensitiveQueryLogEntry {
+  id: number
+  userId: number
+  username: string | null
+  firstName: string | null
+  question: string
+  category: SensitiveCategory
+  detectedAt: string
+}
+
+export interface SensitiveQueriesPage {
+  content: SensitiveQueryLogEntry[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
 }
 

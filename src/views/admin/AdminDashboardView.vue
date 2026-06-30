@@ -55,6 +55,11 @@
         :class="{ active: activeTab === 'prices' }"
         @click="openPricesTab"
       >⚙️ Цены</button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'sensitive' }"
+        @click="openSensitiveTab"
+      >🚫 Блокировки</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -1028,6 +1033,83 @@
       </div>
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: БЛОКИРОВКИ ЧУВСТВИТЕЛЬНОГО КОНТЕНТА
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'sensitive'">
+      <div class="reports-wrap">
+
+        <div class="reports-toolbar">
+          <div class="tickets-filter" style="flex-wrap: wrap;">
+            <button
+              class="filter-btn"
+              :class="{ active: sensitiveCategory === '' }"
+              @click="setSensitiveCategory('')"
+            >Все</button>
+            <button
+              v-for="cat in sensitiveCategories"
+              :key="cat.value"
+              class="filter-btn"
+              :class="{ active: sensitiveCategory === cat.value }"
+              @click="setSensitiveCategory(cat.value)"
+            >{{ cat.label }}</button>
+          </div>
+          <button class="btn-ghost" :disabled="sensitiveLoading" @click="loadSensitiveQueries(0)">
+            {{ sensitiveLoading ? '⏳' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Пользователь</th>
+                <th>Категория</th>
+                <th>Вопрос</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="sensitiveLoading">
+                <td colspan="4" class="td-loading">⏳ Загрузка...</td>
+              </tr>
+              <tr v-else-if="sensitiveEntries.length === 0">
+                <td colspan="4" class="td-empty">Нет заблокированных запросов</td>
+              </tr>
+              <tr v-for="entry in sensitiveEntries" :key="entry.id">
+                <td class="td-date">{{ formatDate(entry.detectedAt) }}</td>
+                <td>
+                  <span
+                    class="user-link"
+                    @click="openUserById(entry.userId)"
+                  >{{ entry.firstName || '' }}{{ entry.username ? ' (@' + entry.username + ')' : '' || 'id=' + entry.userId }}</span>
+                </td>
+                <td>
+                  <span class="sensitive-badge" :class="'sensitive-badge--' + entry.category.toLowerCase()">
+                    {{ sensitiveCategoryLabel(entry.category) }}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    class="sensitive-question"
+                    :class="{ expanded: expandedSensitiveId === entry.id }"
+                    @click="expandedSensitiveId = expandedSensitiveId === entry.id ? null : entry.id"
+                  >{{ entry.question }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <button :disabled="sensitivePage === 0" @click="loadSensitiveQueries(sensitivePage - 1)">← Назад</button>
+          <span>Страница {{ sensitivePage + 1 }} из {{ sensitiveTotalPages }}</span>
+          <button :disabled="sensitivePage >= sensitiveTotalPages - 1" @click="loadSensitiveQueries(sensitivePage + 1)">Вперёд →</button>
+        </div>
+
+      </div><!-- /reports-wrap sensitive -->
+    </template>
+
     <!-- ── Детали заявки (боковая панель) ────────────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedTicket" class="side-panel">
@@ -1307,7 +1389,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type SensitiveQueryLogEntry, type SensitiveCategory } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -1318,7 +1400,7 @@ const userRole = ref<'ADMIN' | 'MODERATOR'>('ADMIN')
 const isAdmin = computed(() => userRole.value === 'ADMIN')
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -1941,6 +2023,55 @@ const openPricesTab = () => {
   if (!featureCosts.value) loadFeatureCosts()
 }
 
+// ── Блокировки чувствительного контента ───────────────────────────────────
+
+const sensitiveEntries = ref<SensitiveQueryLogEntry[]>([])
+const sensitiveLoading = ref(false)
+const sensitivePage = ref(0)
+const sensitiveTotalPages = ref(1)
+const sensitiveCategory = ref<SensitiveCategory | ''>('')
+const expandedSensitiveId = ref<number | null>(null)
+
+const sensitiveCategories: { value: SensitiveCategory; label: string }[] = [
+  { value: 'SELF_HARM_SUICIDE',      label: '⚠️ Суицид' },
+  { value: 'DEATH_MORTALITY',        label: '💀 Смерть' },
+  { value: 'MILITARY_CONFLICT',      label: '🪖 СВО/война' },
+  { value: 'HEALTH_MEDICAL',         label: '🏥 Диагноз/лечение' },
+  { value: 'CRIME_VIOLENCE',         label: '🔪 Преступления' },
+  { value: 'POLITICAL_RELIGIOUS',    label: '🏛️ Политика/религия' },
+  { value: 'LEGAL_FINANCIAL_ADVICE', label: '⚖️ Юр./фин. совет' },
+  { value: 'GAMBLING_INVESTMENT',    label: '🎰 Азарт/инвестиции' },
+  { value: 'MISSING_PERSONS_GUILT',  label: '🔍 Поиск/вина' },
+  { value: 'LLM_REFUSED',            label: '🤖 LLM отказал' },
+]
+
+const sensitiveCategoryLabel = (cat: SensitiveCategory): string =>
+  sensitiveCategories.find(c => c.value === cat)?.label ?? cat
+
+const loadSensitiveQueries = async (page = 0) => {
+  sensitiveLoading.value = true
+  try {
+    const res = await adminApi.getSensitiveQueries(page, 20, sensitiveCategory.value || undefined)
+    sensitiveEntries.value = res.data.content
+    sensitiveTotalPages.value = res.data.totalPages || 1
+    sensitivePage.value = res.data.number
+  } catch {
+    sensitiveEntries.value = []
+  } finally {
+    sensitiveLoading.value = false
+  }
+}
+
+const setSensitiveCategory = (cat: SensitiveCategory | '') => {
+  sensitiveCategory.value = cat
+  loadSensitiveQueries(0)
+}
+
+const openSensitiveTab = () => {
+  activeTab.value = 'sensitive'
+  if (sensitiveEntries.value.length === 0) loadSensitiveQueries(0)
+}
+
 // ── Выход ─────────────────────────────────────────────────────────────────
 const logout = async () => {
   try { await adminApi.logout() } catch { /* ignore */ }
@@ -2555,6 +2686,47 @@ input[type="checkbox"] {
   background: rgba(99,102,241,0.12);
   border-color: #6366f1;
   color: #a5b4fc;
+}
+
+/* ── Sensitive queries ── */
+.sensitive-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #334155;
+  color: #94a3b8;
+}
+.sensitive-badge--self_harm_suicide   { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+.sensitive-badge--death_mortality     { background: rgba(71,85,105,0.4);   color: #94a3b8; }
+.sensitive-badge--military_conflict   { background: rgba(234,179,8,0.15);  color: #fde047; }
+.sensitive-badge--health_medical      { background: rgba(234,179,8,0.1);   color: #fde68a; }
+.sensitive-badge--crime_violence      { background: rgba(249,115,22,0.15); color: #fdba74; }
+.sensitive-badge--political_religious { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+.sensitive-badge--legal_financial_advice { background: rgba(99,102,241,0.1); color: #c4b5fd; }
+.sensitive-badge--gambling_investment { background: rgba(168,85,247,0.15); color: #d8b4fe; }
+.sensitive-badge--missing_persons_guilt { background: rgba(100,116,139,0.2); color: #94a3b8; }
+.sensitive-badge--llm_refused         { background: rgba(51,65,85,0.4);    color: #64748b; }
+
+.sensitive-question {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 13px;
+  max-width: 420px;
+  transition: color 0.15s;
+}
+.sensitive-question:hover { color: #e2e8f0; }
+.sensitive-question.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  color: #e2e8f0;
 }
 
 /* ── Overlay ── */
