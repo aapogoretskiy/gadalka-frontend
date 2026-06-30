@@ -247,6 +247,37 @@ export const adminApi = {
     adminAxios.get<SensitiveQueriesPage>('/api/admin/sensitive-queries', {
       params: { page, size, ...(category ? { category } : {}) },
     }),
+
+  // ── Транзакции (покупки знаков) ─────────────────────────────────────────────
+  // Доступно только роли ADMIN — бэк отдаст 403 для MODERATOR.
+
+  /**
+   * Список транзакций с пагинацией и опциональными фильтрами.
+   * @param search telegram_id (точно) или подстрока username
+   * @param from/to YYYY-MM-DDTHH:mm:ss (московское время)
+   */
+  getTransactions: (
+    page = 0, size = 20,
+    status?: TransactionStatus | '',
+    provider?: TransactionProvider | '',
+    search?: string,
+    from?: string,
+    to?: string,
+  ) =>
+    adminAxios.get<TransactionsPage>('/api/admin/payments', {
+      params: {
+        page, size,
+        ...(status ? { status } : {}),
+        ...(provider ? { provider } : {}),
+        ...(search ? { search } : {}),
+        ...(from ? { from } : {}),
+        ...(to ? { to } : {}),
+      },
+    }),
+
+  /** Детальная карточка транзакции + сопоставленный webhook-лог (если найден) */
+  getTransaction: (id: number) =>
+    adminAxios.get<TransactionDetails>(`/api/admin/payments/${id}`),
 }
 
 // ── Типы заявок ───────────────────────────────────────────────────────────────
@@ -428,5 +459,51 @@ export interface SensitiveQueriesPage {
   totalPages: number
   number: number
   size: number
+}
+
+// ── Транзакции ────────────────────────────────────────────────────────────────
+
+export type TransactionStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
+export type TransactionProvider = 'YOOKASSA' | 'ROBOKASSA' | 'TELEGRAM_STARS'
+
+export interface TransactionSummary {
+  id: number
+  userId: number
+  telegramId: number | null
+  username: string | null
+  firstName: string | null
+  productCode: string
+  productName: string
+  provider: TransactionProvider
+  status: TransactionStatus
+  amountMinor: number
+  currency: string
+  creditsToGrant: number
+  providerPaymentId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TransactionsPage {
+  content: TransactionSummary[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+export interface WebhookInfo {
+  id: number
+  status: 'PENDING' | 'PROCESSED' | 'FAILED'
+  errorMessage: string | null
+  rawPayload: string
+  receivedAt: string
+  processedAt: string | null
+}
+
+export interface TransactionDetails {
+  payment: TransactionSummary
+  /** null — связанный webhook не найден (или провайдер Telegram Stars, где webhook-лога нет в принципе) */
+  webhook: WebhookInfo | null
 }
 

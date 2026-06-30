@@ -60,6 +60,12 @@
         :class="{ active: activeTab === 'sensitive' }"
         @click="openSensitiveTab"
       >🚫 Блокировки</button>
+      <button
+        v-if="isAdmin"
+        class="tab"
+        :class="{ active: activeTab === 'payments' }"
+        @click="openPaymentsTab"
+      >💳 Транзакции</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -1110,6 +1116,237 @@
       </div><!-- /reports-wrap sensitive -->
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ТРАНЗАКЦИИ
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'payments'">
+      <div class="reports-wrap">
+
+        <!-- Фильтры -->
+        <div class="reports-toolbar">
+          <div class="tickets-filter">
+            <button
+              class="filter-btn"
+              :class="{ active: txStatusFilter === '' }"
+              @click="setTxStatus('')"
+            >Все</button>
+            <button
+              v-for="s in txStatuses"
+              :key="s.value"
+              class="filter-btn"
+              :class="{ active: txStatusFilter === s.value }"
+              @click="setTxStatus(s.value)"
+            >{{ s.label }}</button>
+          </div>
+          <button class="btn-ghost" :disabled="txLoading" @click="loadTransactions(0)">
+            {{ txLoading ? '⏳' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <div class="range-toolbar">
+          <div class="range-inputs">
+            <div class="range-field">
+              <label class="range-label">Платёжная система</label>
+              <select v-model="txProviderFilter" class="source-select" @change="loadTransactions(0)">
+                <option value="">Все</option>
+                <option v-for="p in txProviders" :key="p.value" :value="p.value">{{ p.label }}</option>
+              </select>
+            </div>
+            <div class="range-field">
+              <label class="range-label">Пользователь</label>
+              <input
+                v-model="txSearch"
+                type="text"
+                placeholder="Telegram ID или @username..."
+                class="range-date-input"
+                @input="onTxSearchInput"
+              />
+            </div>
+            <div class="range-field">
+              <label class="range-label">С</label>
+              <input v-model="txFrom" type="datetime-local" step="1" class="range-date-input" @change="loadTransactions(0)" />
+            </div>
+            <div class="range-field">
+              <label class="range-label">По</label>
+              <input v-model="txTo" type="datetime-local" step="1" class="range-date-input" @change="loadTransactions(0)" />
+            </div>
+            <button v-if="txHasFilters" class="btn-reset-sort" @click="resetTxFilters">↺ Сбросить фильтры</button>
+          </div>
+        </div>
+
+        <!-- Таблица -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Пользователь</th>
+                <th>Продукт</th>
+                <th>Знаков</th>
+                <th>Система</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+                <th>Создана</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="txLoading">
+                <td colspan="8" class="loading-row">Загрузка...</td>
+              </tr>
+              <tr v-else-if="transactions.length === 0">
+                <td colspan="8" class="empty-row">Транзакции не найдены</td>
+              </tr>
+              <tr
+                v-for="tx in transactions"
+                :key="tx.id"
+                class="user-row"
+                @click="openTransactionDetails(tx.id)"
+              >
+                <td class="mono">#{{ tx.id }}</td>
+                <td>
+                  {{ tx.firstName || '—' }}
+                  <span v-if="tx.username" class="referrer-username">@{{ tx.username }}</span>
+                </td>
+                <td>{{ tx.productName }}</td>
+                <td class="mono visit-count">{{ tx.creditsToGrant }}</td>
+                <td>{{ providerLabel(tx.provider) }}</td>
+                <td class="mono">{{ formatAmount(tx.amountMinor, tx.currency) }}</td>
+                <td>
+                  <span class="badge" :class="'tx-badge--' + tx.status.toLowerCase()">
+                    {{ txStatusLabel(tx.status) }}
+                  </span>
+                </td>
+                <td>{{ formatDate(tx.createdAt) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Пагинация -->
+        <div class="pagination">
+          <button :disabled="txPage === 0" @click="loadTransactions(txPage - 1)">← Назад</button>
+          <span>Страница {{ txPage + 1 }} из {{ txTotalPages }}</span>
+          <button :disabled="txPage >= txTotalPages - 1" @click="loadTransactions(txPage + 1)">Вперёд →</button>
+        </div>
+
+      </div>
+    </template>
+
+    <!-- ── Детали транзакции (боковая панель) ─────────────────── -->
+    <Transition name="slide-panel">
+      <div v-if="selectedTransaction" class="side-panel">
+        <div class="panel-header">
+          <h2>Транзакция #{{ selectedTransaction.payment.id }}</h2>
+          <button class="btn-ghost" @click="selectedTransaction = null">✕</button>
+        </div>
+
+        <div class="panel-body">
+
+          <!-- Пользователь -->
+          <section class="info-section">
+            <h3>Пользователь</h3>
+            <div class="info-row">
+              <span class="label">Имя</span>
+              <span>{{ selectedTransaction.payment.firstName || '—' }}</span>
+            </div>
+            <div class="info-row" v-if="selectedTransaction.payment.username">
+              <span class="label">Username</span>
+              <span>@{{ selectedTransaction.payment.username }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Telegram ID</span>
+              <span class="mono">{{ selectedTransaction.payment.telegramId ?? '—' }}</span>
+            </div>
+            <button class="btn-ghost-sm" @click="openDetails(selectedTransaction.payment.userId); selectedTransaction = null">
+              Открыть карточку пользователя
+            </button>
+          </section>
+
+          <!-- Платёж -->
+          <section class="info-section">
+            <h3>Платёж</h3>
+            <div class="info-row">
+              <span class="label">Продукт</span>
+              <span>{{ selectedTransaction.payment.productName }} ({{ selectedTransaction.payment.productCode }})</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Запрошено знаков</span>
+              <span>{{ selectedTransaction.payment.creditsToGrant }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Платёжная система</span>
+              <span>{{ providerLabel(selectedTransaction.payment.provider) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Сумма</span>
+              <span>{{ formatAmount(selectedTransaction.payment.amountMinor, selectedTransaction.payment.currency) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Статус</span>
+              <span class="badge" :class="'tx-badge--' + selectedTransaction.payment.status.toLowerCase()">
+                {{ txStatusLabel(selectedTransaction.payment.status) }}
+              </span>
+            </div>
+            <div class="info-row" v-if="selectedTransaction.payment.providerPaymentId">
+              <span class="label">ID платежа у провайдера</span>
+              <span class="mono">{{ selectedTransaction.payment.providerPaymentId }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Создана</span>
+              <span>{{ formatDate(selectedTransaction.payment.createdAt) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Обновлена</span>
+              <span>{{ formatDate(selectedTransaction.payment.updatedAt) }}</span>
+            </div>
+          </section>
+
+          <!-- Подтверждение вебхуком -->
+          <section class="info-section">
+            <h3>Подтверждение от платёжной системы</h3>
+            <template v-if="selectedTransaction.payment.provider === 'TELEGRAM_STARS'">
+              <p class="reports-empty" style="padding:8px 0">
+                Telegram Stars подтверждаются синхронно через Bot API — отдельного webhook-лога для этого провайдера нет.
+                Статус платежа выше уже отражает фактический результат.
+              </p>
+            </template>
+            <template v-else-if="selectedTransaction.webhook">
+              <div class="info-row">
+                <span class="label">Статус обработки</span>
+                <span class="badge" :class="'tx-badge--' + (selectedTransaction.webhook.status === 'PROCESSED' ? 'succeeded' : selectedTransaction.webhook.status === 'FAILED' ? 'failed' : 'pending')">
+                  {{ webhookStatusLabel(selectedTransaction.webhook.status) }}
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="label">Получен</span>
+                <span>{{ formatDate(selectedTransaction.webhook.receivedAt) }}</span>
+              </div>
+              <div class="info-row" v-if="selectedTransaction.webhook.processedAt">
+                <span class="label">Обработан</span>
+                <span>{{ formatDate(selectedTransaction.webhook.processedAt) }}</span>
+              </div>
+              <div class="info-row" v-if="selectedTransaction.webhook.errorMessage">
+                <span class="label">Ошибка</span>
+                <span style="color:#fca5a5">{{ selectedTransaction.webhook.errorMessage }}</span>
+              </div>
+              <button class="action-expand-btn" @click="showRawPayload = !showRawPayload">
+                {{ showRawPayload ? '▲ Скрыть сырой payload' : '▼ Показать сырой payload' }}
+              </button>
+              <div v-if="showRawPayload" class="ticket-full-text mono">{{ selectedTransaction.webhook.rawPayload }}</div>
+            </template>
+            <template v-else>
+              <p class="reports-empty" style="padding:8px 0">
+                Связанный webhook не найден. Если статус платежа всё ещё PENDING — возможно, уведомление
+                от провайдера ещё не пришло или не было сопоставлено автоматически.
+              </p>
+            </template>
+          </section>
+
+        </div>
+      </div>
+    </Transition>
+    <div v-if="selectedTransaction" class="overlay" @click="selectedTransaction = null" />
+
     <!-- ── Детали заявки (боковая панель) ────────────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedTicket" class="side-panel">
@@ -1389,7 +1626,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type SensitiveQueryLogEntry, type SensitiveCategory } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -1400,7 +1637,7 @@ const userRole = ref<'ADMIN' | 'MODERATOR'>('ADMIN')
 const isAdmin = computed(() => userRole.value === 'ADMIN')
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive' | 'payments'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -2072,6 +2309,110 @@ const openSensitiveTab = () => {
   if (sensitiveEntries.value.length === 0) loadSensitiveQueries(0)
 }
 
+// ── Транзакции (покупки знаков) ───────────────────────────────────────────
+
+const transactions = ref<TransactionSummary[]>([])
+const txLoading = ref(false)
+const txPage = ref(0)
+const txTotalPages = ref(1)
+
+const txStatusFilter = ref<TransactionStatus | ''>('')
+const txProviderFilter = ref<TransactionProvider | ''>('')
+const txSearch = ref('')
+const txFrom = ref('')
+const txTo = ref('')
+let txSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+const txStatuses: { value: TransactionStatus; label: string }[] = [
+  { value: 'PENDING',   label: '⏳ В процессе' },
+  { value: 'SUCCEEDED', label: '✅ Подтверждена' },
+  { value: 'FAILED',    label: '❌ Отклонена' },
+  { value: 'CANCELLED', label: '🚫 Отменена' },
+]
+
+const txProviders: { value: TransactionProvider; label: string }[] = [
+  { value: 'YOOKASSA',       label: '💳 ЮKassa' },
+  { value: 'ROBOKASSA',      label: '💳 Robokassa' },
+  { value: 'TELEGRAM_STARS', label: '⭐ Telegram Stars' },
+]
+
+const txHasFilters = computed(() =>
+  !!txStatusFilter.value || !!txProviderFilter.value || !!txSearch.value || !!txFrom.value || !!txTo.value
+)
+
+const loadTransactions = async (page = 0) => {
+  txLoading.value = true
+  try {
+    const res = await adminApi.getTransactions(
+      page, 20,
+      txStatusFilter.value || undefined,
+      txProviderFilter.value || undefined,
+      txSearch.value || undefined,
+      txFrom.value || undefined,
+      txTo.value || undefined,
+    )
+    transactions.value = res.data.content
+    txTotalPages.value = res.data.totalPages || 1
+    txPage.value = res.data.number
+  } catch {
+    transactions.value = []
+  } finally {
+    txLoading.value = false
+  }
+}
+
+const setTxStatus = (s: TransactionStatus | '') => {
+  txStatusFilter.value = s
+  loadTransactions(0)
+}
+
+const onTxSearchInput = () => {
+  if (txSearchTimer) clearTimeout(txSearchTimer)
+  txSearchTimer = setTimeout(() => loadTransactions(0), 400)
+}
+
+const resetTxFilters = () => {
+  txStatusFilter.value = ''
+  txProviderFilter.value = ''
+  txSearch.value = ''
+  txFrom.value = ''
+  txTo.value = ''
+  loadTransactions(0)
+}
+
+const openPaymentsTab = () => {
+  activeTab.value = 'payments'
+  if (transactions.value.length === 0) loadTransactions(0)
+}
+
+// ── Детали транзакции ─────────────────────────────────────────────────────
+const selectedTransaction = ref<TransactionDetails | null>(null)
+const showRawPayload = ref(false)
+
+const openTransactionDetails = async (id: number) => {
+  showRawPayload.value = false
+  try {
+    const res = await adminApi.getTransaction(id)
+    selectedTransaction.value = res.data
+  } catch { /* ignore */ }
+}
+
+const providerLabel = (p: TransactionProvider): string =>
+  txProviders.find(x => x.value === p)?.label ?? p
+
+const txStatusLabel = (s: TransactionStatus): string =>
+  txStatuses.find(x => x.value === s)?.label ?? s
+
+const webhookStatusLabel = (s: 'PENDING' | 'PROCESSED' | 'FAILED'): string => {
+  if (s === 'PROCESSED') return '✅ Обработан'
+  if (s === 'FAILED') return '❌ Ошибка обработки'
+  return '⏳ Ожидает обработки'
+}
+
+/** amountMinor → строка с символом валюты. RUB хранится в копейках, XTR (Stars) — в штуках. */
+const formatAmount = (amountMinor: number, currency: string): string =>
+  currency === 'RUB' ? rubFormat(amountMinor) : `${fmt(amountMinor)} ★`
+
 // ── Выход ─────────────────────────────────────────────────────────────────
 const logout = async () => {
   try { await adminApi.logout() } catch { /* ignore */ }
@@ -2352,6 +2693,12 @@ input[type="checkbox"] {
 }
 .badge-ok  { background: rgba(34,197,94,0.15);  color: #86efac; }
 .badge-ban { background: rgba(239,68,68,0.15);   color: #fca5a5; }
+
+/* ── Транзакции: статус-бейджи ── */
+.tx-badge--pending   { background: rgba(250,204,21,0.15);  color: #fde68a; }
+.tx-badge--succeeded { background: rgba(34,197,94,0.15);   color: #86efac; }
+.tx-badge--failed    { background: rgba(239,68,68,0.15);   color: #fca5a5; }
+.tx-badge--cancelled { background: rgba(148,163,184,0.1);  color: #64748b; }
 
 /* ── Pagination ── */
 .pagination {
