@@ -53,6 +53,17 @@
           </div>
         </div>
 
+        <!-- Постоянный код (число жизни) — над энергией дня -->
+        <div class="portrait-banner glass haptic" @click="navigate?.('numerology-portrait')">
+          <div class="portrait-num">{{ data.lifePathNumber }}</div>
+          <div class="portrait-text">
+            <div class="portrait-label">ВАШ ПОСТОЯННЫЙ КОД</div>
+            <div class="portrait-title serif">Число жизни — {{ data.lifePathTitle }}</div>
+            <div class="portrait-sub">Число имени, души и дня рождения</div>
+          </div>
+          <div class="portrait-cta">Открыть портрет →</div>
+        </div>
+
         <!-- Detail cards -->
         <div class="detail-card glass">
           <h4 class="serif detail-title">⚡ Энергия дня</h4>
@@ -75,17 +86,6 @@
         <div class="affirmation-card gradient-card">
           <div class="aff-label">✦ Аффирмация дня</div>
           <div class="aff-text serif">"{{ data.affirmation }}"</div>
-        </div>
-
-        <!-- Постоянный код (число жизни) -->
-        <div class="portrait-banner glass haptic" @click="navigate?.('numerology-portrait')">
-          <div class="portrait-num">{{ data.lifePathNumber }}</div>
-          <div class="portrait-text">
-            <div class="portrait-label">ВАШ ПОСТОЯННЫЙ КОД</div>
-            <div class="portrait-title serif">Число жизни — {{ data.lifePathTitle }}</div>
-            <div class="portrait-sub">Число имени, души и дня рождения</div>
-          </div>
-          <div class="portrait-cta">Открыть портрет →</div>
         </div>
 
         <!-- Deep analysis section -->
