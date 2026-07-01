@@ -25,22 +25,6 @@
         <div class="balance-action">{{ balance > 0 ? 'Пополнить' : 'Купить' }} →</div>
       </div>
 
-      <!-- Life number -->
-      <div class="life-card gradient-card haptic" @click="lifeCardExpanded = !lifeCardExpanded">
-        <div class="life-inner">
-          <div class="life-num">{{ lifeNumber }}</div>
-          <div class="life-text">
-            <div class="life-label">Число жизни</div>
-            <div class="life-title serif">{{ lifeNumberTitle }}</div>
-            <div class="life-sub">Ваш путь предназначения</div>
-          </div>
-          <div class="life-arrow" :class="{ 'life-arrow--open': lifeCardExpanded }">›</div>
-        </div>
-        <div v-if="lifeCardExpanded && lifeNumberDescription" class="life-description">
-          {{ lifeNumberDescription }}
-        </div>
-      </div>
-
       <!-- Menu -->
       <div class="menu-list">
         <button class="menu-item glass haptic" @click="navigate('shop')">
@@ -228,7 +212,7 @@ import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
-import { api, type Goal, type NotificationTime, type NumerologyTodayResponse } from '@/utils/api'
+import { api, type Goal, type NotificationTime } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
@@ -249,20 +233,6 @@ const userBirthdate = computed(() => {
   return new Date(profile.value.birthDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 })
 
-const numerologyData        = ref<NumerologyTodayResponse | null>(null)
-const lifeCardExpanded      = ref(false)
-const lifeNumber            = computed(() => numerologyData.value?.lifePathNumber || '—')
-const lifeNumberTitle       = computed(() => numerologyData.value?.lifePathTitle || '')
-const lifeNumberDescription = computed(() => numerologyData.value?.lifePathDescription || '')
-
-onMounted(async () => {
-  try {
-    const res = await api.getNumerologyToday()
-    numerologyData.value = res.data
-  } catch {
-    // Профиль может быть не заполнен — карточка покажет прочерк
-  }
-})
 
 // ── Сброс профиля ──
 const handleReset = async () => {
@@ -495,33 +465,6 @@ function shareReferralLink() {
 .balance-val { font-size: 18px; font-weight: 700; color: #ffc857; }
 .balance-empty { color: rgba(255,255,255,.4); font-size: 16px; font-weight: 500; }
 .balance-action { font-size: 12px; color: #b654ff; font-weight: 600; white-space: nowrap; }
-
-/* Life card */
-.life-card { padding: 18px 20px; margin-bottom: 14px; }
-.life-inner { display: flex; align-items: center; gap: 14px; }
-.life-num {
-  width: 60px; height: 60px; flex-shrink: 0;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
-  border: 1px solid rgba(255,255,255,.15);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 32px; font-weight: 600; color: #ffc857;
-}
-.life-text { flex: 1; }
-.life-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; margin-bottom: 2px; }
-.life-title { font-size: 17px; margin-bottom: 2px; }
-.life-sub   { font-size: 11px; color: rgba(255,255,255,.45); }
-.life-arrow {
-  font-size: 22px; color: rgba(255,255,255,.4); line-height: 1; flex-shrink: 0;
-  transition: transform .25s ease;
-}
-.life-arrow--open { transform: rotate(90deg); }
-.life-description {
-  font-size: 13px; line-height: 1.65; color: rgba(255,255,255,.72);
-  margin-top: 14px; padding-top: 14px;
-  border-top: 1px solid rgba(255,255,255,.08);
-}
 
 /* Menu */
 .menu-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }

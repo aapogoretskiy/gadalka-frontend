@@ -77,6 +77,17 @@
           <div class="aff-text serif">"{{ data.affirmation }}"</div>
         </div>
 
+        <!-- Постоянный код (число жизни) -->
+        <div class="portrait-banner glass haptic" @click="navigate?.('numerology-portrait')">
+          <div class="portrait-num">{{ data.lifePathNumber }}</div>
+          <div class="portrait-text">
+            <div class="portrait-label">ВАШ ПОСТОЯННЫЙ КОД</div>
+            <div class="portrait-title serif">Число жизни — {{ data.lifePathTitle }}</div>
+            <div class="portrait-sub">Число имени, души и дня рождения</div>
+          </div>
+          <div class="portrait-cta">Открыть портрет →</div>
+        </div>
+
         <!-- Deep analysis section -->
         <div class="section-header">
           <div class="section-title serif">А теперь глубже</div>
@@ -250,6 +261,34 @@ function selectPeriod(label: string) {
 .period-icon  { font-size:20px; margin-bottom:4px; }
 .period-title { font-size:14px; margin-bottom:2px; }
 .period-desc  { font-size:9.5px; color:rgba(255,255,255,.5); margin-bottom:6px; line-height:1.3; }
+
+/* Portrait banner */
+.portrait-banner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; margin-bottom: 20px; cursor: pointer;
+  flex-wrap: wrap;
+}
+.portrait-num {
+  width: 52px; height: 52px; flex-shrink: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255,200,87,.2), rgba(233,74,168,.15));
+  border: 1px solid rgba(255,200,87,.35);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px; font-weight: 600; color: #ffc857;
+}
+.portrait-text { flex: 1; min-width: 0; }
+.portrait-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
+  color: #ffc857; font-weight: 700; margin-bottom: 3px;
+}
+.portrait-title { font-size: 15px; margin-bottom: 2px; }
+.portrait-sub   { font-size: 11px; color: rgba(255,255,255,.45); }
+.portrait-cta {
+  width: 100%; font-size: 13px; color: #b654ff; font-weight: 600;
+  padding-top: 10px; border-top: 1px solid rgba(255,255,255,.07);
+  margin-top: 2px;
+}
 
 /* Button */
 .action-btn {

@@ -110,6 +110,41 @@ export interface UpdateProfileRequest {
   birthCity?: string
   goals?: Goal[]
   notificationTime?: NotificationTime
+  numerologyName?: string
+}
+
+// GET /api/numerology/portrait
+export interface NumerologyPortraitCompatibilityItem {
+  number: number
+  archetype: string
+  compatibility: number
+}
+
+export interface NumerologyPortraitResponse {
+  lifePathNumber: number
+  lifePathArchetype: string
+  lifePathDescription: string
+  lifePathStrengths: string
+  lifePathGrowthPoints: string
+  lifePathCalling: string
+  lifePathFamousPeople: string
+
+  birthdayNumber: number
+  birthdayArchetype: string
+  birthdayDescription: string
+
+  soulNumber: number
+  soulArchetype: string
+  soulDescription: string
+
+  nameNumber: number
+  nameArchetype: string
+  nameDescription: string
+
+  nameUsed: string
+  nameSource: 'custom' | 'telegram'
+
+  compatibility: NumerologyPortraitCompatibilityItem[]
 }
 
 // GET /api/daily-card
@@ -406,6 +441,14 @@ export const api = {
   // Нумерология дня
   getNumerologyToday: () =>
     apiClient.get<NumerologyTodayResponse>('/api/numerology/today'),
+
+  // Нумерологический портрет
+  getNumerologyPortrait: () =>
+    apiClient.get<NumerologyPortraitResponse>('/api/numerology/portrait', { skipGlobalError: true }),
+
+  // Сохранить имя для портрета (пустая строка = сброс на TG-имя)
+  saveNumerologyName: (name: string) =>
+    apiClient.patch<void>(`/api/numerology/portrait/name`, null, { params: { name } }),
 
   // Гороскоп на день (бесплатно, по знаку зодиака из профиля)
   // skipGlobalError: true — 422 (нет даты рождения в профиле) обрабатываем сами в useHoroscope
