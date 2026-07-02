@@ -8,7 +8,7 @@
     <div v-if="step === 'welcome'" class="onb-screen welcome-screen">
       <div class="welcome-hero">
         <div class="liora-orb"><span class="liora-orb-inner">🔮</span></div>
-        <h1 class="serif welcome-title">Лиора</h1>
+        <h1 class="serif welcome-title">Liora</h1>
         <p class="onb-sub">Карты уже перемешаны для вас</p>
       </div>
       <div class="onb-form welcome-form">
@@ -27,7 +27,7 @@
 
     <!-- ══════════ Карта дня — первый вау-момент ══════════ -->
     <div v-if="step === 'daily'" class="onb-screen">
-      <div class="onb-hero" style="padding-top:32px">
+      <div class="onb-hero onb-hero--safe">
         <h2 style="font-size:26px;margin-bottom:4px">Ваша карта дня</h2>
         <p class="onb-sub">{{ todayLabel }}</p>
       </div>
@@ -45,14 +45,14 @@
 
     <!-- ══════════ Выбор вопроса для подарочного расклада ══════════ -->
     <div v-if="step === 'question'" class="onb-screen">
-      <div class="onb-hero" style="padding-top:32px">
+      <div class="onb-hero onb-hero--safe">
         <h2 style="font-size:26px;margin-bottom:4px">О чём спросить карты?</h2>
         <p class="onb-sub">Первый расклад — наш подарок</p>
       </div>
       <div class="onb-form">
         <div v-if="isLoading" class="onb-shuffle">
           <div class="liora-orb"><span class="liora-orb-inner">🃏</span></div>
-          <p class="onb-sub">Карты раскладываются...</p>
+          <p class="onb-sub">Готовим вопросы...</p>
         </div>
         <template v-else>
           <button
@@ -66,9 +66,20 @@
       </div>
     </div>
 
+    <!-- ══════════ «Магия» перед раскладом: ритуальный экран расчёта ══════════
+         Расклад приходит из предгенерированного пула мгновенно — но мгновенный
+         ответ обесценивает ощущение работы карт. Держим пользователя ~3 секунды
+         на анимации с меняющимися фразами. -->
+    <div v-if="step === 'shuffling'" class="onb-screen">
+      <div class="onb-form onb-shuffle-screen">
+        <div class="liora-orb"><span class="liora-orb-inner">🔮</span></div>
+        <p class="onb-shuffle-phrase serif">{{ shufflePhrase }}</p>
+      </div>
+    </div>
+
     <!-- ══════════ Результат подарочного расклада ══════════ -->
     <div v-if="step === 'spread'" class="onb-screen">
-      <div class="onb-hero" style="padding-top:24px">
+      <div class="onb-hero onb-hero--safe">
         <h2 style="font-size:20px;margin-bottom:4px">{{ fortune?.question }}</h2>
         <p class="onb-sub">Расклад «Три карты»</p>
       </div>
@@ -451,8 +462,8 @@ const { createProfile, authWithTelegram, termsAccepted: termsAlreadyAccepted } =
 // Версия юридических документов — обновлять при выпуске новой редакции
 const TERMS_VERSION = '2025-04-28'
 
-// Шаги: welcome → daily → question → spread (опыт) → 1..4 (отложенная анкета)
-const step = ref<'welcome' | 'daily' | 'question' | 'spread' | 1 | 2 | 3 | 4>('welcome')
+// Шаги: welcome → daily → question → shuffling → spread (опыт) → 1..4 (отложенная анкета)
+const step = ref<'welcome' | 'daily' | 'question' | 'shuffling' | 'spread' | 1 | 2 | 3 | 4>('welcome')
 // Числовой шаг для progress-dots анкеты (строковые шаги = 0)
 const stepNum = computed(() => (typeof step.value === 'number' ? step.value : 0))
 const isLoading = ref(false)
@@ -515,17 +526,43 @@ const goToQuestions = async () => {
   }
 }
 
+// ── «Ритуальный» экран расчёта перед раскладом ───────────────────────────────
+// Расклад из пула приходит мгновенно, но мгновенный ответ обесценивает магию.
+// Держим минимум ~3 секунды на анимации с меняющимися фразами.
+const SHUFFLE_PHRASES = [
+  'Тасуем колоду...',
+  'Раскладываем карты...',
+  'Слушаем, что говорят карты...',
+]
+const SHUFFLE_MIN_MS = 3000
+const shufflePhrase = ref(SHUFFLE_PHRASES[0])
+
 const askQuestion = async (q: string) => {
-  if (isLoading.value) return
-  isLoading.value = true
+  if (step.value === 'shuffling') return
   errorMsg.value = ''
+  step.value = 'shuffling'
+
+  // Крутим фразы, пока «считаем»
+  let phraseIdx = 0
+  shufflePhrase.value = SHUFFLE_PHRASES[0]
+  const phraseTimer = setInterval(() => {
+    phraseIdx = (phraseIdx + 1) % SHUFFLE_PHRASES.length
+    shufflePhrase.value = SHUFFLE_PHRASES[phraseIdx]
+  }, 1100)
+
   try {
-    fortune.value = (await api.createOnboardingFortune(q)).data
+    // Запрос и минимальная пауза идут параллельно: ждём оба
+    const [res] = await Promise.all([
+      api.createOnboardingFortune(q),
+      new Promise(resolve => setTimeout(resolve, SHUFFLE_MIN_MS)),
+    ])
+    fortune.value = res.data
     step.value = 'spread'
   } catch {
     errorMsg.value = 'Не получилось разложить карты. Попробуйте другой вопрос.'
+    step.value = 'question'
   } finally {
-    isLoading.value = false
+    clearInterval(phraseTimer)
   }
 }
 
@@ -1007,6 +1044,12 @@ const handleFinish = async () => {
   50%      { box-shadow: 0 0 56px rgba(233,74,168,.42); }
 }
 
+/* Заголовки экранов онбординга под служебными кнопками Telegram
+   (Закрыть / свернуть / меню) — отступ на высоту safe-area, как на HomeScreen */
+.onb-hero--safe {
+  padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 56px);
+}
+
 /* Карта дня в онбординге */
 .onb-daily-card {
   padding: 22px 18px;
@@ -1014,7 +1057,12 @@ const handleFinish = async () => {
   text-align: center;
   margin-bottom: 20px;
 }
-.onb-daily-img { width: 120px; border-radius: 12px; margin-bottom: 12px; }
+.onb-daily-img {
+  display: block;           /* иначе inline-картинка липнет влево независимо от text-align */
+  width: 120px;
+  border-radius: 12px;
+  margin: 0 auto 12px;
+}
 .onb-daily-name { font-size: 24px; margin-bottom: 8px; }
 .onb-daily-meaning { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.75); }
 .onb-daily-advice { margin-top: 12px; font-size: 13px; font-style: italic; color: #d89fff; }
@@ -1043,6 +1091,27 @@ const handleFinish = async () => {
   align-items: center;
   gap: 16px;
   padding: 40px 0;
+}
+
+/* Полноэкранный «ритуальный» экран расчёта расклада */
+.onb-shuffle-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+.onb-shuffle-phrase {
+  font-size: 19px;
+  font-style: italic;
+  color: rgba(255,255,255,.75);
+  text-align: center;
+  animation: phrase-fade 1.1s ease-in-out infinite;
+}
+@keyframes phrase-fade {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
 }
 
 /* Результат подарочного расклада */
