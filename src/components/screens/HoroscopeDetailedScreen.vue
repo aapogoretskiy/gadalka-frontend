@@ -20,8 +20,8 @@
       <div v-else-if="needsBirthDate" class="meaning-card glass empty-card">
         <div class="empty-icon">✦</div>
         <div class="empty-title serif">Нужна дата рождения</div>
-        <div class="empty-text">Чтобы определить ваш знак зодиака и составить гороскоп, укажите дату рождения — это 10 секунд, а в подарок начислим +1 знак.</div>
-        <button class="action-btn primary haptic" @click="navigate('onboarding')">Указать дату рождения</button>
+        <div class="empty-text">Чтобы определить ваш знак зодиака и составить персональный гороскоп, заполните профиль — дата, время и город рождения. Это минута, а в подарок начислим +1 знак.</div>
+        <button class="action-btn primary haptic" @click="navigate('onboarding')">Заполнить профиль</button>
       </div>
 
       <!-- Ошибка -->

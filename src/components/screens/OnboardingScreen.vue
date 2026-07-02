@@ -33,13 +33,39 @@
       </div>
       <div class="onb-form">
         <div class="onb-daily-card glass">
-          <img v-if="dailyCard?.imageUrl" :src="dailyCard.imageUrl" :alt="dailyCard?.name" class="onb-daily-img" />
-          <div class="onb-daily-name serif">{{ dailyCard?.name }}</div>
-          <p class="onb-daily-meaning">{{ dailyCard?.meaning }}</p>
-          <p v-if="dailyCard?.advice" class="onb-daily-advice">✦ {{ dailyCard?.advice }}</p>
+          <!-- Переворачиваемая карта: сначала рубашка, тап — открытие.
+               Ритуал переворота — часть вау-момента, как на главном экране -->
+          <div class="onb-flip-card haptic" :class="{ flipped: cardRevealed }" @click="cardRevealed = true">
+            <div class="onb-card-face onb-card-back">
+              <div class="onb-card-back-inner">
+                <svg viewBox="0 0 60 80" fill="none" opacity="0.7">
+                  <rect x="4" y="4" width="52" height="72" rx="4" stroke="#ffc857" stroke-width="1"/>
+                  <circle cx="30" cy="40" r="16" stroke="#ffc857" stroke-width="1"/>
+                  <path d="M30 24 L30 56 M14 40 L46 40" stroke="#ffc857" stroke-width="0.8"/>
+                </svg>
+              </div>
+            </div>
+            <div class="onb-card-face onb-card-front">
+              <img v-if="dailyCard?.imageUrl" :src="dailyCard.imageUrl" :alt="dailyCard?.name" class="onb-card-image" />
+              <div v-else class="onb-card-fallback">🌟</div>
+            </div>
+          </div>
+
+          <p v-if="!cardRevealed" class="onb-tap-hint">✨ Коснитесь карты, чтобы перевернуть</p>
+
+          <template v-else>
+            <div class="onb-daily-name serif">{{ dailyCard?.name }}</div>
+            <p class="onb-daily-meaning">{{ dailyCard?.meaning }}</p>
+            <p v-if="dailyCard?.advice" class="onb-daily-advice">✦ {{ dailyCard?.advice }}</p>
+            <p v-if="dailyCard?.descriptionParagraph1" class="onb-daily-desc">{{ dailyCard.descriptionParagraph1 }}</p>
+          </template>
         </div>
-        <button class="onb-btn haptic" @click="goToQuestions">🃏 Сделать первый расклад — в подарок</button>
-        <button class="onb-skip" @click="finishLater">Позже — на главную</button>
+
+        <!-- Кнопки появляются после переворота — фокус на ритуале карты -->
+        <template v-if="cardRevealed">
+          <button class="onb-btn haptic" @click="goToQuestions">🃏 Сделать первый расклад — в подарок</button>
+          <button class="onb-skip" @click="finishLater">Позже — на главную</button>
+        </template>
       </div>
     </div>
 
@@ -473,6 +499,7 @@ const privacyOpen = ref(false)
 
 // ── Состояние welcome-пути ───────────────────────────────────────────────────
 const dailyCard = ref<DailyCardResponse | null>(null)
+const cardRevealed = ref(false)  // перевернул ли пользователь карту дня
 const questions = ref<string[]>([])
 const fortune = ref<FortuneResponse | null>(null)
 
@@ -501,8 +528,13 @@ const startJourney = async () => {
         return
       }
     }
-    // Click-wrap согласие: юридическая фиксация ДО первого действия
+    // Click-wrap согласие: юридическая фиксация ДО первого действия.
+    // Сразу обновляем и локальный флаг: он выставляется при авторизации на старте
+    // приложения, и без этого повторный заход на OnboardingScreen в той же сессии
+    // (например, из «замка» гороскопа за анкетой) снова показывал welcome-путь
+    // и упирался в 409 «подарочный расклад уже использован».
     await api.acceptTerms(TERMS_VERSION)
+    termsAlreadyAccepted.value = true
     const res = await api.getDailyCard()
     dailyCard.value = res.data
     step.value = 'daily'
@@ -558,9 +590,15 @@ const askQuestion = async (q: string) => {
     ])
     fortune.value = res.data
     step.value = 'spread'
-  } catch {
-    errorMsg.value = 'Не получилось разложить карты. Попробуйте другой вопрос.'
-    step.value = 'question'
+  } catch (e: any) {
+    if (e?.response?.status === 409) {
+      // Подарочный расклад уже был (повторный welcome-путь) — не ошибка,
+      // просто ведём пользователя дальше, к анкете
+      step.value = 1
+    } else {
+      errorMsg.value = 'Не получилось разложить карты. Попробуйте другой вопрос.'
+      step.value = 'question'
+    }
   } finally {
     clearInterval(phraseTimer)
   }
@@ -1057,15 +1095,72 @@ const handleFinish = async () => {
   text-align: center;
   margin-bottom: 20px;
 }
-.onb-daily-img {
-  display: block;           /* иначе inline-картинка липнет влево независимо от text-align */
-  width: 120px;
+
+/* Переворачиваемая карта дня (как mini-tarot-card на главной) */
+.onb-flip-card {
+  width: 140px;
+  height: 210px;
+  position: relative;
+  cursor: pointer;
+  margin: 0 auto 14px;
   border-radius: 12px;
-  margin: 0 auto 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,200,87,0.2);
+  animation: onb-card-breathe 4s ease-in-out infinite;
+}
+@keyframes onb-card-breathe {
+  0%, 100% { transform: translateY(0); box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,200,87,.2); }
+  50%      { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(0,0,0,.55), 0 0 18px rgba(255,200,87,.25); }
+}
+.onb-card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.onb-flip-card:not(.flipped) .onb-card-back  { opacity: 1; }
+.onb-flip-card.flipped       .onb-card-front { opacity: 1; }
+.onb-card-back {
+  background: linear-gradient(135deg, #3a1b6e 0%, #1a0b2e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.onb-card-back-inner {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(255,200,87,0.4);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.onb-card-back-inner svg { width: 60%; }
+.onb-card-front {
+  background: linear-gradient(160deg, #4a1d7e 0%, #2a0e4e 50%, #1a0529 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,200,87,0.3);
+}
+.onb-card-image { width: 100%; height: 100%; object-fit: cover; }
+.onb-card-fallback { font-size: 48px; }
+.onb-tap-hint {
+  font-size: 13px;
+  color: rgba(255,255,255,.55);
+  animation: phrase-fade 1.6s ease-in-out infinite;
 }
 .onb-daily-name { font-size: 24px; margin-bottom: 8px; }
 .onb-daily-meaning { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.75); }
 .onb-daily-advice { margin-top: 12px; font-size: 13px; font-style: italic; color: #d89fff; }
+.onb-daily-desc {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255,255,255,.6);
+  text-align: left;
+}
 
 /* Выбор вопроса */
 .onb-question {
