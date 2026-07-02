@@ -1,16 +1,105 @@
 <template>
   <div class="onb-wrap">
-    <!-- Step 1: Дата рождения -->
+
+    <!-- ══════════ Welcome: вход без барьера ══════════
+         Новичок сначала получает опыт (карта дня → подарочный расклад),
+         анкета — потом и пропускаемая. Согласие с офертой — click-wrap
+         на этом экране (фиксируется через /api/me/accept-terms). -->
+    <div v-if="step === 'welcome'" class="onb-screen welcome-screen">
+      <div class="welcome-hero">
+        <div class="liora-orb"><span class="liora-orb-inner">🔮</span></div>
+        <h1 class="serif welcome-title">Лиора</h1>
+        <p class="onb-sub">Карты уже перемешаны для вас</p>
+      </div>
+      <div class="onb-form welcome-form">
+        <button class="onb-btn haptic" :disabled="isLoading" @click="startJourney">
+          {{ isLoading ? 'Тасуем колоду...' : '✨ Получить первую карту дня' }}
+        </button>
+        <p class="welcome-terms">
+          Продолжая, вы соглашаетесь с
+          <button class="terms-link" type="button" @click="agreementOpen = true">Пользовательским соглашением</button>
+          и
+          <button class="terms-link" type="button" @click="privacyOpen = true">Политикой конфиденциальности</button>
+        </p>
+        <p v-if="errorMsg" class="onb-error">{{ errorMsg }}</p>
+      </div>
+    </div>
+
+    <!-- ══════════ Карта дня — первый вау-момент ══════════ -->
+    <div v-if="step === 'daily'" class="onb-screen">
+      <div class="onb-hero" style="padding-top:32px">
+        <h2 style="font-size:26px;margin-bottom:4px">Ваша карта дня</h2>
+        <p class="onb-sub">{{ todayLabel }}</p>
+      </div>
+      <div class="onb-form">
+        <div class="onb-daily-card glass">
+          <img v-if="dailyCard?.imageUrl" :src="dailyCard.imageUrl" :alt="dailyCard?.name" class="onb-daily-img" />
+          <div class="onb-daily-name serif">{{ dailyCard?.name }}</div>
+          <p class="onb-daily-meaning">{{ dailyCard?.meaning }}</p>
+          <p v-if="dailyCard?.advice" class="onb-daily-advice">✦ {{ dailyCard?.advice }}</p>
+        </div>
+        <button class="onb-btn haptic" @click="goToQuestions">🃏 Сделать первый расклад — в подарок</button>
+        <button class="onb-skip" @click="finishLater">Позже — на главную</button>
+      </div>
+    </div>
+
+    <!-- ══════════ Выбор вопроса для подарочного расклада ══════════ -->
+    <div v-if="step === 'question'" class="onb-screen">
+      <div class="onb-hero" style="padding-top:32px">
+        <h2 style="font-size:26px;margin-bottom:4px">О чём спросить карты?</h2>
+        <p class="onb-sub">Первый расклад — наш подарок</p>
+      </div>
+      <div class="onb-form">
+        <div v-if="isLoading" class="onb-shuffle">
+          <div class="liora-orb"><span class="liora-orb-inner">🃏</span></div>
+          <p class="onb-sub">Карты раскладываются...</p>
+        </div>
+        <template v-else>
+          <button
+            v-for="q in questions" :key="q"
+            class="onb-question haptic"
+            @click="askQuestion(q)"
+          >{{ q }}</button>
+          <button v-if="questions.length === 0" class="onb-skip" @click="finishLater">Продолжить без расклада</button>
+        </template>
+        <p v-if="errorMsg" class="onb-error">{{ errorMsg }}</p>
+      </div>
+    </div>
+
+    <!-- ══════════ Результат подарочного расклада ══════════ -->
+    <div v-if="step === 'spread'" class="onb-screen">
+      <div class="onb-hero" style="padding-top:24px">
+        <h2 style="font-size:20px;margin-bottom:4px">{{ fortune?.question }}</h2>
+        <p class="onb-sub">Расклад «Три карты»</p>
+      </div>
+      <div class="onb-form">
+        <div v-for="c in fortune?.cards" :key="c.id" class="onb-spread-card glass">
+          <div class="onb-spread-pos">{{ positionLabel(c.cardPosition) }}</div>
+          <div class="onb-spread-head">
+            <img v-if="c.imageUrl" :src="c.imageUrl" :alt="c.name" class="onb-spread-img" />
+            <div class="onb-spread-name serif">{{ c.name }}</div>
+          </div>
+          <p class="onb-spread-text">{{ c.interpretation }}</p>
+        </div>
+        <div class="onb-spread-card glass">
+          <div class="onb-spread-pos">Общее послание</div>
+          <p class="onb-spread-text">{{ fortune?.interpretation }}</p>
+        </div>
+        <button class="onb-btn haptic" @click="step = 1">Продолжить ✨</button>
+      </div>
+    </div>
+
+    <!-- Step 1: Дата рождения (отложенная регистрация — пропускаемая) -->
     <div v-if="step === 1" class="onb-screen">
       <div class="onb-hero">
         <div class="onb-icon">🔮</div>
-        <h1>Мистика</h1>
-        <p class="onb-sub">Откройте тайны своей судьбы</p>
+        <h1>Расскажите о себе</h1>
+        <p class="onb-sub">Откроем персональный гороскоп и нумерологию · +1 знак в подарок</p>
         <div class="progress-dots">
-          <div class="dot" :class="{ active: step >= 1 }"></div>
-          <div class="dot" :class="{ active: step >= 2 }"></div>
-          <div class="dot" :class="{ active: step >= 3 }"></div>
-          <div class="dot" :class="{ active: step >= 4 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 1 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 2 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 3 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 4 }"></div>
         </div>
       </div>
 
@@ -50,33 +139,14 @@
           <label class="input-label">Город рождения <span class="req">*</span></label>
           <input v-model="form.birthCity" type="text" placeholder="Например: Москва" class="onb-input" />
         </div>
-        <!-- Checkbox согласия -->
-        <div class="terms-row">
-          <button
-            class="terms-checkbox haptic"
-            :class="{ checked: termsAccepted }"
-            @click="termsAccepted = !termsAccepted"
-            type="button"
-          >
-            <svg v-if="termsAccepted" viewBox="0 0 12 10" fill="none" width="12" height="10">
-              <path d="M1 5L4.5 8.5L11 1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <div class="terms-text">
-            Продолжая использование Сервиса и/или вводя свои данные, я подтверждаю, что ознакомился и согласен с
-            <button class="terms-link" @click="agreementOpen = true" type="button">Пользовательским соглашением</button>
-            и
-            <button class="terms-link" @click="privacyOpen = true" type="button">Политикой конфиденциальности</button>.
-          </div>
-        </div>
-
         <button
           class="onb-btn haptic"
-          :disabled="!form.birthDate || !form.birthTime || !form.birthCity.trim() || !termsAccepted"
+          :disabled="!form.birthDate || !form.birthTime || !form.birthCity.trim()"
           @click="step = 2"
         >
           Далее →
         </button>
+        <button class="onb-skip" @click="finishLater">Заполню позже</button>
       </div>
     </div>
 
@@ -148,7 +218,7 @@
 
             <p class="terms-updated">Редакция 1.0 · Вступила в силу 26 апреля 2026 г.</p>
           </div>
-          <button class="terms-modal-accept haptic" @click="termsAccepted = true; agreementOpen = false">
+          <button class="terms-modal-accept haptic" @click="agreementOpen = false">
             Принимаю соглашение ✓
           </button>
         </div>
@@ -223,7 +293,7 @@
 
             <p class="terms-updated">Редакция 1.0 · Вступила в силу 26 апреля 2026 г.</p>
           </div>
-          <button class="terms-modal-accept haptic" @click="termsAccepted = true; privacyOpen = false">
+          <button class="terms-modal-accept haptic" @click="privacyOpen = false">
             Принимаю политику ✓
           </button>
         </div>
@@ -237,9 +307,9 @@
         <p class="onb-sub">Выберите, что важно для вас</p>
         <div class="progress-dots">
           <div class="dot active"></div>
-          <div class="dot" :class="{ active: step >= 2 }"></div>
-          <div class="dot" :class="{ active: step >= 3 }"></div>
-          <div class="dot" :class="{ active: step >= 4 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 2 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 3 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 4 }"></div>
         </div>
       </div>
 
@@ -271,8 +341,8 @@
         <div class="progress-dots">
           <div class="dot active"></div>
           <div class="dot active"></div>
-          <div class="dot" :class="{ active: step >= 3 }"></div>
-          <div class="dot" :class="{ active: step >= 4 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 3 }"></div>
+          <div class="dot" :class="{ active: stepNum >= 4 }"></div>
         </div>
       </div>
 
@@ -371,22 +441,101 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useUser } from '@/composables/useUser'
-import type { Goal, NotificationTime } from '@/utils/api'
+import { api, type Goal, type NotificationTime, type DailyCardResponse, type FortuneResponse, type CardPosition } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
-const { createProfile, authWithTelegram } = useUser()
+const { createProfile, authWithTelegram, termsAccepted: termsAlreadyAccepted } = useUser()
 
 // Версия юридических документов — обновлять при выпуске новой редакции
 const TERMS_VERSION = '2025-04-28'
 
-const step = ref(1)
+// Шаги: welcome → daily → question → spread (опыт) → 1..4 (отложенная анкета)
+const step = ref<'welcome' | 'daily' | 'question' | 'spread' | 1 | 2 | 3 | 4>('welcome')
+// Числовой шаг для progress-dots анкеты (строковые шаги = 0)
+const stepNum = computed(() => (typeof step.value === 'number' ? step.value : 0))
 const isLoading = ref(false)
 const errorMsg = ref('')
-const termsAccepted = ref(false)
 const agreementOpen = ref(false)
 const privacyOpen = ref(false)
+
+// ── Состояние welcome-пути ───────────────────────────────────────────────────
+const dailyCard = ref<DailyCardResponse | null>(null)
+const questions = ref<string[]>([])
+const fortune = ref<FortuneResponse | null>(null)
+
+const todayLabel = computed(() =>
+  new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+)
+
+onMounted(() => {
+  // Пользователь, уже принявший оферту, попадает сюда только чтобы донастроить
+  // профиль (из «замков» гороскопа/нумерологии или CTA) — сразу анкета, без welcome
+  if (termsAlreadyAccepted.value) {
+    step.value = 1
+  }
+})
+
+// Welcome → фиксируем согласие и показываем карту дня
+const startJourney = async () => {
+  if (isLoading.value) return
+  isLoading.value = true
+  errorMsg.value = ''
+  try {
+    if (!localStorage.getItem('jwt_token')) {
+      const ok = await authWithTelegram()
+      if (!ok) {
+        errorMsg.value = 'Не удалось авторизоваться. Попробуйте перезапустить приложение.'
+        return
+      }
+    }
+    // Click-wrap согласие: юридическая фиксация ДО первого действия
+    await api.acceptTerms(TERMS_VERSION)
+    const res = await api.getDailyCard()
+    dailyCard.value = res.data
+    step.value = 'daily'
+  } catch {
+    errorMsg.value = 'Карты задумались... Попробуйте ещё раз.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const goToQuestions = async () => {
+  step.value = 'question'
+  if (questions.value.length > 0) return
+  isLoading.value = true
+  try {
+    questions.value = (await api.getOnboardingQuestions()).data
+  } catch {
+    questions.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const askQuestion = async (q: string) => {
+  if (isLoading.value) return
+  isLoading.value = true
+  errorMsg.value = ''
+  try {
+    fortune.value = (await api.createOnboardingFortune(q)).data
+    step.value = 'spread'
+  } catch {
+    errorMsg.value = 'Не получилось разложить карты. Попробуйте другой вопрос.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const positionLabel = (p: CardPosition) =>
+  ({ PAST: 'Прошлое', PRESENT: 'Настоящее', FUTURE: 'Будущее' } as Record<string, string>)[p] ?? ''
+
+// «Заполню позже» / «Позже — на главную»: анкету пропускаем, юзер уже в продукте
+const finishLater = () => {
+  navigate?.('home')
+}
 
 const form = ref({
   birthDate: '',
@@ -541,6 +690,7 @@ const handleFinish = async () => {
   letter-spacing: .08em;
 }
 .req  { color: #e94aa8; }
+
 
 /* Блок с объяснением данных */
 .data-reason-card {
@@ -813,4 +963,100 @@ const handleFinish = async () => {
   font-weight: 700;
   flex-shrink: 0;
 }
+
+/* ── Welcome-экран (вход без барьера) ─────────────────────────────────── */
+.welcome-screen { justify-content: space-between; }
+.welcome-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 48px;
+}
+.welcome-title { font-size: 42px; letter-spacing: .04em; margin: 8px 0 0; }
+.welcome-form { padding-bottom: 24px; }
+.welcome-terms {
+  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+  color: rgba(255,255,255,.45);
+}
+
+/* Анимированный шар Лиоры: мягкое парение + пульс свечения */
+.liora-orb {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 30%, rgba(182,84,255,.45), rgba(94,23,168,.25) 60%, transparent);
+  box-shadow: 0 0 42px rgba(182,84,255,.35);
+  animation: orb-float 3.6s ease-in-out infinite, orb-glow 2.8s ease-in-out infinite;
+}
+.liora-orb-inner { font-size: 44px; }
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+@keyframes orb-glow {
+  0%, 100% { box-shadow: 0 0 32px rgba(182,84,255,.28); }
+  50%      { box-shadow: 0 0 56px rgba(233,74,168,.42); }
+}
+
+/* Карта дня в онбординге */
+.onb-daily-card {
+  padding: 22px 18px;
+  border-radius: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.onb-daily-img { width: 120px; border-radius: 12px; margin-bottom: 12px; }
+.onb-daily-name { font-size: 24px; margin-bottom: 8px; }
+.onb-daily-meaning { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.75); }
+.onb-daily-advice { margin-top: 12px; font-size: 13px; font-style: italic; color: #d89fff; }
+
+/* Выбор вопроса */
+.onb-question {
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(182,84,255,.3);
+  color: #F5ECFF;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.onb-question:active { background: rgba(182,84,255,.16); }
+.onb-shuffle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0;
+}
+
+/* Результат подарочного расклада */
+.onb-spread-card { padding: 16px; border-radius: 18px; margin-bottom: 12px; }
+.onb-spread-pos {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #d89fff;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.onb-spread-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.onb-spread-img { width: 44px; border-radius: 8px; flex-shrink: 0; }
+.onb-spread-name { font-size: 18px; }
+.onb-spread-text { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.75); margin: 0; }
 </style>

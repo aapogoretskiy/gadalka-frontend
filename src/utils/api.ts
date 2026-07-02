@@ -73,6 +73,7 @@ export interface TelegramAuthResponse {
   jwtToken: string
   readingBalance: number   // баланс знаков на момент входа
   isNewUser: boolean       // true если пользователь зарегистрировался впервые
+  termsAccepted: boolean   // принял ли оферту/ПК — гейт онбординга (welcome vs главная)
 }
 
 // Время уведомлений — должно точно совпадать с enum NotificationTime на бэкенде
@@ -396,6 +397,10 @@ export const api = {
   getMe: () =>
     apiClient.get<TelegramUserDto>('/api/me'),
 
+  // Фиксация согласия с офертой и политикой конфиденциальности (welcome-экран онбординга)
+  acceptTerms: (termsVersion: string) =>
+    apiClient.post<{ accepted: boolean }>('/api/me/accept-terms', { termsVersion }),
+
   // Профиль пользователя
   getProfile: () =>
     apiClient.get<ProfileResponse>('/api/user-profiles', { skipGlobalError: true }),
@@ -422,6 +427,14 @@ export const api = {
       { question, category: category || null, spreadType },
       { timeout: 60000 },
     ),
+
+  // Онбординг: вопросы для подарочного расклада (кнопки)
+  getOnboardingQuestions: () =>
+    apiClient.get<string[]>('/api/fortune/onboarding/questions'),
+
+  // Онбординг: подарочный первый расклад (без списания знаков, из предгенерированного пула)
+  createOnboardingFortune: (question: string) =>
+    apiClient.post<FortuneResponse>('/api/fortune/onboarding', { question }),
 
   // Совместимость
   getCompatibility: (data: CompatibilityRequest) =>

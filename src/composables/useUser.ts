@@ -8,6 +8,10 @@ import { useBalance } from '@/composables/useBalance'
 const telegramUser = ref<TelegramUserDto | null>(null)
 const profile = ref<ProfileResponse | null>(null)
 const isAuthLoading = ref(false)
+// Принял ли пользователь оферту/ПК — приходит из auth-ответа.
+// OnboardingScreen использует это, чтобы решить: показывать welcome-путь целиком
+// или сразу форму профиля (для тех, кто пришёл донастроить профиль позже).
+const termsAccepted = ref(false)
 
 export function useUser() {
   const { setBalance } = useBalance()
@@ -28,13 +32,14 @@ export function useUser() {
     isAuthLoading.value = true
     try {
       const response = await api.authTelegram(initData)
-      const { user, jwtToken, readingBalance, isNewUser } = response.data
+      const { user, jwtToken, readingBalance, isNewUser, termsAccepted: accepted } = response.data
 
       // Сохраняем токен в localStorage — он будет автоматически добавляться
       // к каждому запросу через axios interceptor в api.ts
       localStorage.setItem('jwt_token', jwtToken)
       telegramUser.value = user
       setBalance(readingBalance)
+      termsAccepted.value = !!accepted
       return { isNewUser }
     } catch {
       return false
@@ -92,6 +97,7 @@ export function useUser() {
     isAuthLoading,
     isAuthenticated,
     hasProfile,
+    termsAccepted,
     authWithTelegram,
     fetchProfile,
     createProfile,

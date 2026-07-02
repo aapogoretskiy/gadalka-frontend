@@ -61,7 +61,7 @@ import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
 
 const { hapticFeedback } = useTelegram()
-const { authWithTelegram, fetchProfile, hasProfile } = useUser()
+const { authWithTelegram, fetchProfile, hasProfile, termsAccepted } = useUser()
 const { addToast } = useToast()
 
 const currentRoute   = ref<string>('onboarding')
@@ -234,7 +234,11 @@ onMounted(async () => {
       addToast('Добро пожаловать! Вам начислено 5 знаков в подарок 🔮', 'success')
     }
     try { await fetchProfile() } catch {}
-    if (hasProfile.value) {
+
+    // Гейт онбординга: раньше в приложение пускали только с заполненным профилем,
+    // теперь профиль опционален — достаточно принятой оферты (welcome-экран).
+    // Новички без согласия остаются на OnboardingScreen (welcome-путь).
+    if (termsAccepted.value || hasProfile.value) {
       navigate('home')
       activeTab.value = 'home'
 

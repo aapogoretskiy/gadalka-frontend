@@ -18,8 +18,8 @@
       <div v-else-if="noBirthDate" class="error-card glass">
         <div class="error-icon">🔢</div>
         <div class="error-title serif">Нужна дата рождения</div>
-        <div class="error-body">Укажите дату рождения в профиле — без неё личный код дня не рассчитать.</div>
-        <button class="action-btn" @click="navigate('profile')">Заполнить профиль</button>
+        <div class="error-body">Укажите дату рождения — без неё личный код дня не рассчитать. За заполнение начислим +1 знак ✨</div>
+        <button class="action-btn" @click="navigate('onboarding')">Указать дату рождения</button>
       </div>
 
       <!-- Content -->
