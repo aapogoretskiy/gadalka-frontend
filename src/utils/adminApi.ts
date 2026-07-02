@@ -163,6 +163,9 @@ export const adminApi = {
    * @param userIds     список ID пользователей (пусто — все или только админы)
    * @param onlyAdmins  если true — рассылка только администраторам
    * @param photo       файл изображения (null — только текст)
+   * @param segment     именованный сегмент аудитории (INACTIVE — «нулевые» без единого
+   *                    действия); резолвится в userIds на бэке.
+   *                    Приоритет: userIds > segment > onlyAdmins > все
    */
   broadcast: (
     message: string,
@@ -170,6 +173,7 @@ export const adminApi = {
     userIds: number[],
     onlyAdmins: boolean,
     photo?: File | null,
+    segment?: string | null,
   ) => {
     const form = new FormData()
     form.append('data', new Blob([JSON.stringify({
@@ -177,6 +181,7 @@ export const adminApi = {
       giftAmount: giftAmount && giftAmount > 0 ? giftAmount : null,
       userIds: userIds.length > 0 ? userIds : null,
       onlyAdmins,
+      segment: segment ?? null,
     })], { type: 'application/json' }))
     if (photo) {
       form.append('photo', photo)
@@ -185,6 +190,10 @@ export const adminApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  /** Счётчики сегментов аудитории для вкладки рассылки (сейчас: inactive) */
+  getBroadcastSegments: () =>
+    adminAxios.get<{ inactive: number }>('/api/admin/broadcast/segments'),
 
   /** Lazy-история действий пользователя (гадания, совместимость, нумерология, карта дня) */
   getUserActions: (id: number, limit = 30) =>

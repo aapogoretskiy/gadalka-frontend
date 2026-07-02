@@ -240,6 +240,11 @@
                 :class="{ active: broadcastTarget === 'admins' }"
                 @click="broadcastTarget = 'admins'"
               >👤 Только администраторам</button>
+              <button
+                class="bc-recipient-btn"
+                :class="{ active: broadcastTarget === 'inactive' }"
+                @click="broadcastTarget = 'inactive'"
+              >😴 Неактивированным — 0 действий{{ segmentCounts ? ` (${segmentCounts.inactive})` : '' }}</button>
             </template>
           </div>
         </section>
@@ -331,6 +336,7 @@
             <span v-if="broadcastLoading">⏳ Запуск рассылки...</span>
             <span v-else-if="selectedIds.size > 0">📣 Отправить выбранным ({{ selectedIds.size }})</span>
             <span v-else-if="broadcastTarget === 'admins'">📣 Отправить администраторам</span>
+            <span v-else-if="broadcastTarget === 'inactive'">📣 Отправить неактивированным{{ segmentCounts ? ` (${segmentCounts.inactive})` : '' }}</span>
             <span v-else>📣 Отправить всем</span>
           </button>
         </section>
@@ -1624,7 +1630,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider } from '@/utils/adminApi'
 
@@ -1930,18 +1936,42 @@ const templates: Template[] = [
     icon: '🔮',
     text: 'Звёзды ждут вас...\n\nДавно не заглядывали в Гадалку? Возможно, сегодня именно тот день, когда карты раскроют что-то важное.\n\nЗаходите — ответы рядом 🌙',
   },
+  {
+    id: 'reanimation',
+    name: 'Реанимация',
+    icon: '😴',
+    text: 'Кажется, вы ещё не задали картам свой первый вопрос...\n\nА ведь первый вопрос — обычно самый важный. Загляните: карта дня, гороскоп и нумерология ждут вас бесплатно каждый день 🌙\n\nПодарок внутри 👇',
+  },
 ]
 
 const activeTemplate = ref<string>('custom')
 const broadcastMessage = ref('')
 const broadcastPhoto = ref<File | null>(null)
 const broadcastPhotoPreview = ref<string | null>(null)
-const broadcastTarget = ref<'all' | 'admins'>('all')
+const broadcastTarget = ref<'all' | 'admins' | 'inactive'>('all')
 const withGift = ref(false)
 const broadcastGiftAmount = ref<number | null>(null)
 const broadcastLoading = ref(false)
 const broadcastSuccess = ref<string | null>(null)
 const broadcastError = ref<string | null>(null)
+
+// Счётчики сегментов (сейчас только inactive — «нулевые» без единого действия).
+// Подгружаются при первом открытии вкладки рассылки, чтобы кнопка сегмента
+// показывала живое число получателей до отправки.
+const segmentCounts = ref<{ inactive: number } | null>(null)
+
+const loadSegmentCounts = async () => {
+  try {
+    const res = await adminApi.getBroadcastSegments()
+    segmentCounts.value = res.data
+  } catch {
+    // Не критично: кнопка сегмента работает и без счётчика
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'broadcast' && !segmentCounts.value) loadSegmentCounts()
+})
 
 const onPhotoSelected = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0] ?? null
@@ -1974,6 +2004,7 @@ const sendBroadcast = async () => {
   const userIds = Array.from(selectedIds.value)
   const giftAmt = withGift.value ? broadcastGiftAmount.value : null
   const onlyAdmins = selectedIds.value.size === 0 && broadcastTarget.value === 'admins'
+  const segment = selectedIds.value.size === 0 && broadcastTarget.value === 'inactive' ? 'INACTIVE' : null
 
   try {
     const res = await adminApi.broadcast(
@@ -1982,6 +2013,7 @@ const sendBroadcast = async () => {
       userIds,
       onlyAdmins,
       broadcastPhoto.value,
+      segment,
     )
     broadcastSuccess.value = res.data.message + '. Рассылка идёт в фоне — это может занять несколько минут.'
     selectedIds.value = new Set()

@@ -57,7 +57,6 @@
 
             <div class="package-right">
               <div class="package-price-rub">{{ product.priceRub }} ₽</div>
-              <div class="package-price-stars">⭐ {{ product.priceStars }}</div>
             </div>
           </div>
         </div>
@@ -76,7 +75,7 @@
             <span class="pay-icon">💳</span>
             <span class="pay-label">
               <span class="pay-title">Оплатить картой</span>
-              <span class="pay-sub">{{ selectedProduct?.priceRub }} ₽ · Visa, Mastercard, МИР, СБП</span>
+              <span class="pay-sub">{{ selectedProduct?.priceRub }} ₽ · МИР, СБП, Visa — займёт минуту</span>
             </span>
             <span v-if="isCreating && activeProvider === 'robokassa'" class="pay-spinner">...</span>
           </button>
@@ -91,23 +90,21 @@
             <span class="pay-icon">💳</span>
             <span class="pay-label">
               <span class="pay-title">Оплатить картой</span>
-              <span class="pay-sub">{{ selectedProduct?.priceRub }} ₽ · Visa, Mastercard, МИР, СБП</span>
+              <span class="pay-sub">{{ selectedProduct?.priceRub }} ₽ · МИР, СБП, Visa — займёт минуту</span>
             </span>
             <span v-if="isCreating && activeProvider === 'yookassa'" class="pay-spinner">...</span>
           </button>
 
-          <!-- Telegram Stars -->
+          <!-- Telegram Stars — намеренно приглушён: конверсия окна Stars ~7% против ~57% у карты
+               (пользователям в РФ сложно пополнить Stars), поэтому карта — основной сценарий,
+               а Stars — текстовая ссылка для тех, у кого звёзды уже есть -->
           <button
-            class="pay-btn pay-btn--stars haptic"
+            class="stars-link haptic"
             :disabled="isCreating"
             @click="payWithStars"
           >
-            <span class="pay-icon">⭐</span>
-            <span class="pay-label">
-              <span class="pay-title">Оплатить Telegram Stars</span>
-              <span class="pay-sub">{{ selectedProduct?.priceStars }} Stars · без банковской карты</span>
-            </span>
-            <span v-if="isCreating && activeProvider === 'stars'" class="pay-spinner">...</span>
+            <span v-if="isCreating && activeProvider === 'stars'">Создаём инвойс...</span>
+            <span v-else>⭐ Или оплатить через Telegram Stars ({{ selectedProduct?.priceStars }})</span>
           </button>
         </div>
 
@@ -346,7 +343,6 @@ async function payWithStars() {
 
 .package-right { text-align: right; flex-shrink: 0; }
 .package-price-rub { font-size: 16px; font-weight: 700; color: #ffc857; }
-.package-price-stars { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
 
 /* Payment buttons */
 .payment-buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
@@ -377,11 +373,20 @@ async function payWithStars() {
   background: linear-gradient(135deg, #b654ff, #e94aa8);
   color: #fff;
 }
-.pay-btn--stars {
-  background: linear-gradient(135deg, rgba(255,200,87,0.15), rgba(255,160,50,0.1));
-  border: 1px solid rgba(255,200,87,0.35) !important;
-  color: #F5ECFF;
+/* Stars — приглушённая текстовая ссылка вместо полноценной кнопки */
+.stars-link {
+  background: none;
+  border: none;
+  padding: 8px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,.55);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  text-align: center;
 }
+.stars-link:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .pay-icon { font-size: 24px; flex-shrink: 0; }
 .pay-label { display: flex; flex-direction: column; flex: 1; }

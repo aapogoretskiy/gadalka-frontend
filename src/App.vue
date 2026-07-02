@@ -237,6 +237,15 @@ onMounted(async () => {
     if (hasProfile.value) {
       navigate('home')
       activeTab.value = 'home'
+
+      // Deep-link из сообщений бота: кнопка «Оплатить картой» в напоминании
+      // о брошенной оплате открывает Mini App с ?screen=pay (см. PaymentRecoveryService
+      // на бэке). Сначала navigate('home') выше — чтобы кнопка «Назад» с экрана
+      // оплаты вела на главную, а не в пустоту.
+      const deepScreen = new URLSearchParams(window.location.search).get('screen')
+      if (deepScreen === 'pay') {
+        navigate('payment')
+      }
     }
   }
 
