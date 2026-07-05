@@ -789,7 +789,9 @@ const goToDeeperSpread = () => {
   openAccordions.value = new Set()
   dealPhase.value      = 'fan'
   animationDone.value  = false
-  hapticFeedback('light')
+  // hapticFeedback — объект с методами (light/medium/...), а не функция.
+  // try/catch — как в App.vue: вне Telegram (браузер) вызов может бросить исключение
+  try { hapticFeedback.light() } catch {}
   step.value = 2
 }
 
