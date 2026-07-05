@@ -334,6 +334,36 @@
           :action-id="result.id"
         />
 
+        <!-- Углубиться: предложение следующего по глубине расклада на тот же вопрос.
+             Скрыт после Кельтского креста (deeperSpread === null — глубже некуда) -->
+        <div v-if="deeperSpread" class="deeper-block">
+          <div class="deeper-title serif">✦ Углубиться</div>
+          <div class="deeper-sub">Тот же вопрос — более глубокий разбор</div>
+          <div class="spread-card haptic" @click="goToDeeperSpread">
+            <div class="spread-icon-wrap">
+              <div
+                v-for="(pos, i) in MINI_ICON_POS[deeperSpread.type]" :key="i"
+                class="mini-card-spread"
+                :style="`left:${pos.x}px;top:${pos.y}px;background:${ICON_COLORS[i % ICON_COLORS.length]}`"
+              ></div>
+            </div>
+            <div class="spread-info">
+              <div class="spread-title serif">{{ deeperSpread.name }}</div>
+              <div class="spread-desc">{{ deeperSpread.desc }}</div>
+            </div>
+            <div class="spread-right">
+              <template v-if="isDev || (balance ?? 0) >= deeperSpread.cost">
+                <div class="spread-price" style="color:#70e0a8">
+                  {{ deeperSpread.cost }} {{ deeperSpread.cost === 1 ? 'знак' : deeperSpread.cost < 5 ? 'знака' : 'знаков' }}
+                </div>
+              </template>
+              <template v-else>
+                <div class="spread-price" style="color:#ffc857">Купить →</div>
+              </template>
+            </div>
+          </div>
+        </div>
+
         <!-- Actions -->
         <div class="actions-row">
           <button class="fortune-btn haptic" @click="resetFortune">Новый вопрос</button>
@@ -481,6 +511,15 @@ const spreads = computed<{ type: SpreadType; name: string; cardCount: number; de
 
 // Подробная информация о текущем выбранном раскладе — показывается под списком
 const selectedSpreadInfo = computed(() => spreads.value.find(s => s.type === selectedSpread.value) ?? null)
+
+// «Углубиться»: следующий по глубине (и цене) расклад относительно только что
+// сделанного. Три карты → Подкова → Кельтский крест → null (глубже некуда, блок скрыт).
+// Опираемся на порядок в массиве spreads — он отсортирован от простого к глубокому.
+const deeperSpread = computed(() => {
+  if (!result.value) return null
+  const idx = spreads.value.findIndex(s => s.type === result.value!.spreadType)
+  return idx >= 0 && idx < spreads.value.length - 1 ? spreads.value[idx + 1] : null
+})
 
 // Мини-иконка расклада: координаты карточек (px) внутри .spread-icon-wrap (56×42),
 // повторяющие реальную форму расклада — ряд / дуга / крест+столбец.
@@ -733,6 +772,25 @@ function handleSpreadSelect(type: SpreadType, cost: number) {
     return
   }
   selectedSpread.value = type
+}
+
+// Переход из готового расклада к более глубокому: предвыбираем расклад и ведём
+// на шаг выбора (step 2) — там пользователь видит описание, цену и запускает сам,
+// а при нехватке баланса срабатывает существующая логика «Купить →» → экран оплаты.
+// Вопрос и категорию НЕ сбрасываем — смысл в углублении того же вопроса.
+const goToDeeperSpread = () => {
+  if (!deeperSpread.value) return
+  selectedSpread.value = deeperSpread.value.type
+  // Сбрасываем состояние анимации и раскрытых значений — иначе новый расклад
+  // не разложится заново (animationDone === true пропустит startAnimation,
+  // а flipped/visibleCards будут содержать индексы старых карт)
+  flipped.value        = new Set()
+  visibleCards.value   = new Set()
+  openAccordions.value = new Set()
+  dealPhase.value      = 'fan'
+  animationDone.value  = false
+  hapticFeedback('light')
+  step.value = 2
 }
 
 const resetFortune = () => {
@@ -1576,6 +1634,16 @@ const resetFortune = () => {
   align-items: center;
   justify-content: center;
   font-family: 'Manrope', sans-serif;
+}
+
+/* ══ Блок «Углубиться» (step 5) ═════════════════════════════════════════════ */
+/* Сама карточка переиспользует стили .spread-card со step 2 */
+.deeper-block { margin: 20px 0 4px; }
+.deeper-title { font-size: 16px; color: #ffc857; margin-bottom: 4px; }
+.deeper-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 10px;
 }
 
 /* Анимация появления/исчезновения модала */
