@@ -76,6 +76,12 @@
           <div class="step-item"></div>
         </div>
 
+        <!-- Вопрос пользователя — чтобы при выборе расклада он был перед глазами -->
+        <div class="question-pill">
+          <span class="question-pill-icon">💬</span>
+          <span>"{{ question }}"</span>
+        </div>
+
         <div class="spread-options">
           <div
             v-for="s in spreads" :key="s.type"
@@ -430,7 +436,7 @@ const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const selectedCard = ref<{ imageUrl: string | null; name: string; cardPosition: string } | null>(null)
 const openCardModal = (card: { imageUrl: string | null; name: string; cardPosition: string }) => {
   selectedCard.value = card
-  hapticFeedback('light')
+  try { hapticFeedback.light() } catch {}
 }
 const closeCardModal = () => { selectedCard.value = null }
 
@@ -460,14 +466,15 @@ const visibleCards   = ref(new Set<number>())
 const animationDone  = ref(false)
 
 // ── Данные ───────────────────────────────────────────────────────────────────
+// about — предложный падеж для заголовка «Вопросы о ...» (иначе «Вопросы о любовь»)
 const categories = [
-  { value: 'love',     label: 'Любовь',   emoji: '💕' },
-  { value: 'intimacy', label: 'Близость', emoji: '🔥' },
-  { value: 'ex',       label: 'Бывшие',   emoji: '💔' },
-  { value: 'money',  label: 'Деньги',   emoji: '💰' },
-  { value: 'work',   label: 'Работа',   emoji: '💼' },
-  { value: 'life',   label: 'Ситуация', emoji: '🎯' },
-  { value: 'health', label: 'Здоровье', emoji: '🌿' },
+  { value: 'love',     label: 'Любовь',   emoji: '💕', about: 'любви' },
+  { value: 'intimacy', label: 'Секс',     emoji: '🔥', about: 'сексе' },
+  { value: 'ex',       label: 'Бывшие',   emoji: '💔', about: 'бывших' },
+  { value: 'money',    label: 'Деньги',   emoji: '💰', about: 'деньгах' },
+  { value: 'work',     label: 'Работа',   emoji: '💼', about: 'работе' },
+  { value: 'life',     label: 'Ситуация', emoji: '🎯', about: 'ситуации' },
+  { value: 'health',   label: 'Здоровье', emoji: '🌿', about: 'здоровье' },
 ]
 
 // Пресеты вопросов одинаковы для всех категорий (бэк отдаёт сразу весь список,
@@ -483,7 +490,7 @@ onMounted(() => {
 const currentPresets = computed(() => getPresetsByCode(selectedCategory.value))
 const currentCategoryLabel = computed(() => {
   const c = categories.find(c => c.value === selectedCategory.value)
-  return c ? c.label.toLowerCase() : ''
+  return c ? c.about : ''
 })
 
 // Цена (cost) приходит реактивно из useFeatureCosts — поэтому spreads это computed,
@@ -720,7 +727,7 @@ const selectCategory = (value: string) => {
     return
   }
   selectedCategory.value = value
-  hapticFeedback('light')
+  try { hapticFeedback.light() } catch {}
 }
 
 // Клик по готовому вопросу — подставляем его текст в textarea и плавно
@@ -729,7 +736,7 @@ const selectCategory = (value: string) => {
 const selectPreset = (text: string) => {
   question.value = text
   charCount.value = text.length
-  hapticFeedback('light')
+  try { hapticFeedback.light() } catch {}
   nextTick(() => {
     questionTextareaRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     questionTextareaRef.value?.focus()
