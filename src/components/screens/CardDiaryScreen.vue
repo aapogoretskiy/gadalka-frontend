@@ -44,6 +44,13 @@
           Рассчитать совместимость →
         </button>
         <button
+          v-else-if="activeTab === 'DREAM'"
+          class="empty-btn haptic"
+          @click="navigate('dream')"
+        >
+          Разобрать сон →
+        </button>
+        <button
           v-else
           class="empty-btn haptic"
           @click="navigate('fortune')"
@@ -314,6 +321,39 @@
             <div class="modal-section-body">{{ selected.data.money }}</div>
           </div>
         </template>
+
+        <!-- DREAM -->
+        <template v-if="selected.featureType === 'DREAM'">
+          <div class="modal-type-label">🌙 Разбор сна</div>
+          <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
+          <div class="modal-title serif">{{ (selected.data?.titleSymbols ?? []).join(' · ') || 'Сон' }}</div>
+          <div v-if="selected.data?.dreamText" class="modal-question-pill">
+            <span class="modal-question-icon">💤</span>
+            <span class="modal-question-text">{{ selected.data.dreamText }}</span>
+          </div>
+          <div v-if="selected.data?.mainMeaning" class="modal-section">
+            <div class="modal-section-label">✦ Главный смысл</div>
+            <div class="modal-section-body">{{ selected.data.mainMeaning }}</div>
+          </div>
+          <div v-if="selected.data?.lifeNumberSection" class="modal-section">
+            <div class="modal-section-label">🔢 Связь с числом жизни {{ selected.data?.lifeNumber }}</div>
+            <div class="modal-section-body">{{ selected.data.lifeNumberSection }}</div>
+          </div>
+          <div v-if="selected.data?.zodiacSection" class="modal-section">
+            <div class="modal-section-label">{{ zodiacGlyph(selected.data?.zodiacSign) }} Знак {{ selected.data?.zodiacSign }}</div>
+            <div class="modal-section-body">{{ selected.data.zodiacSection }}</div>
+          </div>
+          <div v-if="selected.data?.symbols?.length" class="modal-section">
+            <div class="modal-section-label">🌙 Символы сна</div>
+            <div v-for="s in selected.data.symbols" :key="s.name" class="modal-section-body" style="margin-bottom:8px;">
+              <b>{{ s.name }}</b> — {{ s.meaning }}
+            </div>
+          </div>
+          <div v-if="selected.data?.advice" class="modal-section modal-section--affirmation">
+            <div class="modal-section-label">💡 Совет</div>
+            <div class="modal-section-body">{{ selected.data.advice }}</div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -392,6 +432,7 @@ const tabs: { value: TabValue; label: string }[] = [
   { value: 'NUMEROLOGY_DAY', label: 'Числа' },
   { value: 'NUMEROLOGY_WEEK', label: 'Неделя' },
   { value: 'DAILY_HOROSCOPE', label: 'Гороскоп' },
+  { value: 'DREAM',          label: 'Сонник' },
 ]
 
 const FORTUNE_TYPES: FeatureType[] = ['THREE_CARD', 'HORSESHOE', 'CELTIC_CROSS']
@@ -414,7 +455,7 @@ async function loadAll() {
   error.value = ''
   const { from, to } = dateRange()
   try {
-    const [r1, r2, r3, r4, r5, r6, r7, r8] = await Promise.allSettled([
+    const results = await Promise.allSettled([
       api.getDiaryHistory('THREE_CARD', from, to),
       api.getDiaryHistory('HORSESHOE', from, to),
       api.getDiaryHistory('CELTIC_CROSS', from, to),
@@ -423,9 +464,10 @@ async function loadAll() {
       api.getDiaryHistory('NUMEROLOGY_DAY', from, to),
       api.getDiaryHistory('NUMEROLOGY_WEEK', from, to),
       api.getDiaryHistory('DAILY_HOROSCOPE', from, to),
+      api.getDiaryHistory('DREAM', from, to),
     ])
     const entries: DiaryEntryDto[] = []
-    for (const r of [r1, r2, r3, r4, r5, r6, r7, r8]) {
+    for (const r of results) {
       if (r.status === 'fulfilled') entries.push(...r.value.data.entries)
     }
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -445,6 +487,7 @@ function entryIcon(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY')  return '🔢'
   if (entry.featureType === 'NUMEROLOGY_WEEK') return '🗓'
   if (entry.featureType === 'DAILY_HOROSCOPE') return zodiacGlyph(entry.data?.zodiacSign)
+  if (entry.featureType === 'DREAM')           return '🌙'
   return '🔮'
 }
 
@@ -454,6 +497,7 @@ function entryBg(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY')  return 'linear-gradient(135deg, #2a1a00, #4a3200)'
   if (entry.featureType === 'NUMEROLOGY_WEEK') return 'linear-gradient(135deg, #1a0036, #3a0a4e)'
   if (entry.featureType === 'DAILY_HOROSCOPE') return 'linear-gradient(135deg, #2e0a4e, #4a1a6e)'
+  if (entry.featureType === 'DREAM')           return 'linear-gradient(135deg, #1a1b5e, #2a2b8e)'
   return 'linear-gradient(135deg, #3a1b6e, #1a0b2e)'
 }
 
@@ -479,6 +523,10 @@ function entryTitle(entry: DiaryEntryDto): string {
   }
   if (entry.featureType === 'DAILY_HOROSCOPE') {
     return d.zodiacSign ? `Гороскоп — ${d.zodiacSign}` : 'Гороскоп на день'
+  }
+  if (entry.featureType === 'DREAM') {
+    const titleSymbols = d.titleSymbols as string[]
+    return titleSymbols?.length ? titleSymbols.join(' · ') : 'Разбор сна'
   }
   // Все расклады (THREE_CARD, HORSESHOE, CELTIC_CROSS): показываем вопрос
   if (d.question) return truncate(d.question, 60)
@@ -513,6 +561,11 @@ function entryKeywords(entry: DiaryEntryDto): string[] {
   if (entry.featureType === 'DAILY_HOROSCOPE') {
     return d.generalScore != null ? [`${d.generalScore}/5`] : []
   }
+  if (entry.featureType === 'DREAM') {
+    const kws: string[] = ['Сонник']
+    if (d.zodiacSign) kws.push(d.zodiacSign)
+    return kws
+  }
   return []
 }
 
@@ -529,6 +582,7 @@ function entryNote(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
   if (entry.featureType === 'NUMEROLOGY_WEEK') return truncate(d.mainTheme || d.weekDescription || '', 100)
   if (entry.featureType === 'DAILY_HOROSCOPE') return truncate(d.general || '', 100)
+  if (entry.featureType === 'DREAM')           return truncate(d.mainMeaning || '', 100)
   // Все расклады: если заголовок уже показывает вопрос — в note показываем карты; иначе — интерпретацию
   if (d.question) {
     const cards = d.cards as Array<{ name: string }>

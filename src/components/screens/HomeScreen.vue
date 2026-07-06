@@ -97,21 +97,20 @@
       <!-- CTA Fortune -->
       <div class="cta-question haptic" @click="navigate('fortune')">
         <div class="cta-shine"></div>
-        <h3>Задать вопрос Оракулу</h3>
-        <p>Получите ответ через расклад карт Таро</p>
-        <div class="cta-btn-inner">Начать <span>→</span></div>
-        <div class="free-badge">
-          {{ balance > 0 ? `${balance} ${balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков'}` : 'Купить знаки' }}
-        </div>
+        <h3>Карты знают ответ</h3>
+        <p>О любви, работе, важном решении.<br>Спросите — и получите разбор прямо сейчас.</p>
+        <div class="cta-btn-white">Открыть расклад <span>→</span></div>
       </div>
 
-      <!-- CTA Dream (Сонник) -->
-      <div class="cta-question cta-dream haptic" @click="navigate('dream')">
-        <div class="cta-shine"></div>
-        <h3>Что вам приснилось?</h3>
-        <p>AI-разбор сна по символам, знаку зодиака и числу жизни</p>
-        <div class="cta-btn-inner">Разобрать сон <span>→</span></div>
-        <div class="free-badge free-badge--dream">🌙 Сонник</div>
+      <!-- Сонник -->
+      <div class="dream-row glass haptic" @click="navigate('dream')">
+        <div class="dream-row-icon">🌙</div>
+        <div class="dream-row-body">
+          <div class="dream-row-overline">Сонник</div>
+          <div class="dream-row-title serif">Что означал ваш сон?</div>
+          <div class="dream-row-sub">Опишите — Оракул разберёт символы лично для вас</div>
+        </div>
+        <div class="dream-row-arrow">›</div>
       </div>
 
       <!-- Actions grid -->
@@ -492,33 +491,53 @@ onMounted(async () => {
   animation: cta-shine 4s ease-in-out infinite;
   pointer-events: none;
 }
-.cta-btn-inner {
+/* Белая pill-кнопка внутри CTA — по макету «Открыть расклад →» */
+.cta-btn-white {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: rgba(255,255,255,.15);
-  border: 1px solid rgba(255,255,255,.25);
+  padding: 10px 20px;
+  background: #fff;
   border-radius: 100px;
-  font-size: 13px; font-weight: 600; color:#fff;
-}
-.free-badge {
-  position: absolute;
-  top: 12px; right: 14px;
-  padding: 3px 8px;
-  background: rgba(255,200,87,0.9);
-  color: #1a0529;
-  border-radius: 6px;
-  font-size: 10px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
+  color: #6a2eb8;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
 }
 
-/* Сонник — тот же размер и структура, что CTA Оракула, но своя гамма (ночная) */
-.cta-dream {
-  background: linear-gradient(135deg, #4a3db8 0%, #2a1b6e 100%);
+/* Сонник — строчная карточка по макету: иконка + оверлайн + заголовок + подпись */
+.dream-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  cursor: pointer;
 }
-.free-badge--dream {
-  background: rgba(224,195,255,0.9);
+.dream-row-icon {
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(182,84,255,0.3), rgba(106,46,184,0.25));
+  border: 1px solid rgba(182,84,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
 }
+.dream-row-body { flex: 1; min-width: 0; }
+.dream-row-overline {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: #b654ff;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.dream-row-title { font-size: 17px; color: #F5ECFF; margin-bottom: 3px; }
+.dream-row-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.4;
+}
+.dream-row-arrow { font-size: 24px; color: rgba(255,255,255,0.35); flex-shrink: 0; }
 
 /* Actions grid */
 .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }

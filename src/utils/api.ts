@@ -602,10 +602,10 @@ export const api = {
     ),
 
   // Оценка платного действия (👍/👎)
-  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK'
+  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'DREAM'
   // skipGlobalError: true — виджет сам обрабатывает ошибку (не мешаем UI)
   submitActionFeedback: (
-    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK',
+    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'DREAM',
     actionId: number,
     rating: 'POSITIVE' | 'NEGATIVE',
     comment?: string,

@@ -14,7 +14,7 @@
           <h1 class="serif">Что вам приснилось?</h1>
           <p v-if="profileReady">
             Опишите сон — AI разберёт символы с учётом вашего знака
-            {{ numerologyData?.zodiacSign || '' }} и числа жизни {{ numerologyData?.lifePathNumber || '' }}
+            {{ horoscope?.zodiacSign || '' }} и числа жизни {{ numerologyData?.lifePathNumber || '' }}
           </p>
           <p v-else>Опишите сон — AI разберёт его символы и подскажет, о чём они говорят</p>
         </div>
@@ -154,6 +154,13 @@
           <p>{{ result.advice }}</p>
         </div>
 
+        <!-- Оценка разбора (только на свежем результате — как в раскладах) -->
+        <ActionFeedbackWidget
+          v-if="justAnalyzed && result.id"
+          action-type="DREAM"
+          :action-id="result.id"
+        />
+
         <!-- Спросить карты об этом -->
         <div class="oracle-cta haptic" @click="askOracle">
           <div class="oracle-cta-icon">🔮</div>
@@ -187,13 +194,18 @@ import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { usePrefilledQuestion } from '@/composables/usePrefilledQuestion'
 import { useDevMode } from '@/composables/useDevMode'
+import { useHoroscope } from '@/composables/useHoroscope'
 import { zodiacGlyph } from '@/utils/zodiac'
+import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 
 const { profile } = useUser()
 const { balance, refreshBalance } = useBalance()
+// Знак пользователя берём из гороскопа (по дате рождения), а НЕ из numerology/today:
+// там zodiacSign — это знак ТЕКУЩЕЙ ДАТЫ (астрологический период), не знак пользователя
+const { horoscope, fetchHoroscope } = useHoroscope()
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const { setPrefilledQuestion } = usePrefilledQuestion()
 const { isDev } = useDevMode()
@@ -239,7 +251,7 @@ const loadingPhrases = [
 // ── Вычисления ───────────────────────────────────────────────────────────────
 const dreamCost      = computed(() => featureCosts.value.dream)
 const needsBirthDate = computed(() => !profile.value?.birthDate)
-const profileReady   = computed(() => !!numerologyData.value)
+const profileReady   = computed(() => !!numerologyData.value && !!horoscope.value?.zodiacSign)
 const canSubmit      = computed(() =>
   dreamText.value.trim().length > 0 || selectedSymbolIds.value.size > 0
 )
@@ -368,6 +380,7 @@ watch(step, (s) => {
 onMounted(async () => {
   loadFeatureCosts()
   loadRecentDreams()
+  fetchHoroscope() // знак пользователя для подзаголовка (кэшируется глобально)
   try {
     const res = await api.getDreamSymbols()
     symbols.value = res.data
