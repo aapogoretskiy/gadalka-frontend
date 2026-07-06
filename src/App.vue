@@ -49,6 +49,8 @@ import NumerologyScreen    from './components/screens/NumerologyScreen.vue'
 import WeekSpreadScreen    from './components/screens/WeekSpreadScreen.vue'
 import NumerologyPortraitScreen from './components/screens/NumerologyPortraitScreen.vue'
 import CompatibilityScreen from './components/screens/CompatibilityScreen.vue'
+import AstroScreen         from './components/screens/AstroScreen.vue'
+import DreamScreen         from './components/screens/DreamScreen.vue'
 import ProfileScreen       from './components/screens/ProfileScreen.vue'
 import OnboardingScreen    from './components/screens/OnboardingScreen.vue'
 import CardDiaryScreen     from './components/screens/CardDiaryScreen.vue'
@@ -87,6 +89,8 @@ const currentScreen = computed(() => {
     'numerology-week':    WeekSpreadScreen,
     'numerology-portrait': NumerologyPortraitScreen,
     compatibility: CompatibilityScreen,
+    astro:         AstroScreen,
+    dream:         DreamScreen,
     fortune:           FortuneScreen,
     payment:           PaymentScreen,
     profile:           ProfileScreen,
@@ -97,8 +101,9 @@ const currentScreen = computed(() => {
   return screens[currentRoute.value] || HomeScreen
 })
 
-// Вкладки нижней навигации (payment — не вкладка, открывается поверх)
-const tabOrder = ['home', 'numerology', 'fortune', 'compatibility', 'profile']
+// Вкладки нижней навигации (payment — не вкладка, открывается поверх).
+// «Совместимость» убрана из вкладок (осталась кнопка на главной), на её месте — «Астро».
+const tabOrder = ['home', 'numerology', 'fortune', 'astro', 'profile']
 
 const navigate = (route: string) => {
   const prev = currentRoute.value

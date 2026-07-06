@@ -422,6 +422,7 @@ import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { useQuestionPresets } from '@/composables/useQuestionPresets'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import { usePrefilledQuestion } from '@/composables/usePrefilledQuestion'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
@@ -431,6 +432,7 @@ const { addToast } = useToast()
 const { fetchQuestionPresets, getPresetsByCode, isLoading: presetsLoading } = useQuestionPresets()
 // Актуальная стоимость раскладов берётся с бэка (настраивается в админке) — см. useFeatureCosts
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
+const { consumePrefilledQuestion } = usePrefilledQuestion()
 
 // ── Модал детали карты ───────────────────────────────────────────────────────
 const selectedCard = ref<{ imageUrl: string | null; name: string; cardPosition: string } | null>(null)
@@ -484,6 +486,14 @@ onMounted(() => {
   fetchQuestionPresets()
   // Подтягиваем свежие цены раскладов при каждом заходе на экран
   loadFeatureCosts()
+
+  // Предзаполненный вопрос с другого экрана (кнопка «Спросить карты об этом»
+  // в Соннике). consume-семантика: вопрос подставляется один раз и не «прилипает».
+  const prefilled = consumePrefilledQuestion()
+  if (prefilled) {
+    question.value = prefilled
+    charCount.value = prefilled.length
+  }
 })
 
 // Пресеты вопросов для текущей выбранной категории (love/money/work/life/health/ex/intimacy)

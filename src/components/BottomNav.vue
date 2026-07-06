@@ -26,12 +26,13 @@
       <span>Гадание</span>
     </button>
 
-    <!-- Совместимость -->
-    <button class="tab-btn" :class="{ active: activeTab === 'compatibility' }" @click="$emit('change', 'compatibility')">
+    <!-- Астро (Сонник, Гороскоп) -->
+    <button class="tab-btn" :class="{ active: activeTab === 'astro' }" @click="$emit('change', 'astro')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>
+        <path d="M17 4l.9 2.1L20 7l-2.1.9L17 10l-.9-2.1L14 7l2.1-.9L17 4z"/>
       </svg>
-      <span>Совместимость</span>
+      <span>Астро</span>
     </button>
 
     <!-- Профиль -->

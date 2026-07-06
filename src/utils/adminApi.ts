@@ -73,6 +73,17 @@ export interface FeatureCosts {
   celticCross: number
   compatibilityUnlock: number
   numerologyWeek: number
+  dream: number
+}
+
+// Символ сна (чип Сонника) — CRUD в админке
+export interface AdminDreamSymbol {
+  id: number | null   // null при создании
+  emoji: string
+  name: string
+  promptHint: string | null
+  sortOrder: number
+  isActive: boolean
 }
 
 export interface AdminSessionResponse {
@@ -250,6 +261,21 @@ export const adminApi = {
   updateFeatureCosts: (costs: FeatureCosts) =>
     adminAxios.put<FeatureCosts>('/api/admin/feature-costs', costs),
 
+  // ── Символы снов (чипы Сонника) ──────────────────────────────────────────
+
+  /** Все символы, включая выключенные */
+  getDreamSymbols: () =>
+    adminAxios.get<AdminDreamSymbol[]>('/api/admin/dream-symbols'),
+
+  createDreamSymbol: (symbol: Omit<AdminDreamSymbol, 'id'>) =>
+    adminAxios.post<AdminDreamSymbol>('/api/admin/dream-symbols', symbol),
+
+  updateDreamSymbol: (id: number, symbol: AdminDreamSymbol) =>
+    adminAxios.put<AdminDreamSymbol>(`/api/admin/dream-symbols/${id}`, symbol),
+
+  deleteDreamSymbol: (id: number) =>
+    adminAxios.delete<{ deleted: boolean }>(`/api/admin/dream-symbols/${id}`),
+
 
   /** Список заблокированных чувствительных запросов. category — опциональный фильтр */
   getSensitiveQueries: (page = 0, size = 20, category?: SensitiveCategory | '') =>
@@ -376,6 +402,7 @@ export interface RangeReport {
     horseshoe: number
     celticCross: number
     numerologyWeek: number
+    dream: number
   }
   returningUsers: number
   payments: {
@@ -414,6 +441,7 @@ export interface AdminReports {
     numerology: number
     dailyCard: number
     numerologyWeek: number
+    dream: number
   }
   returningUsers: {
     returning1Day: number

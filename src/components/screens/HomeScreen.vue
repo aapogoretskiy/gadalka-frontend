@@ -105,6 +105,15 @@
         </div>
       </div>
 
+      <!-- CTA Dream (Сонник) -->
+      <div class="cta-question cta-dream haptic" @click="navigate('dream')">
+        <div class="cta-shine"></div>
+        <h3>Что вам приснилось?</h3>
+        <p>AI-разбор сна по символам, знаку зодиака и числу жизни</p>
+        <div class="cta-btn-inner">Разобрать сон <span>→</span></div>
+        <div class="free-badge free-badge--dream">🌙 Сонник</div>
+      </div>
+
       <!-- Actions grid -->
       <div class="actions-grid">
         <div class="action-card glass haptic" @click="navigate('compatibility')">
@@ -501,6 +510,14 @@ onMounted(async () => {
   color: #1a0529;
   border-radius: 6px;
   font-size: 10px; font-weight: 700;
+}
+
+/* Сонник — тот же размер и структура, что CTA Оракула, но своя гамма (ночная) */
+.cta-dream {
+  background: linear-gradient(135deg, #4a3db8 0%, #2a1b6e 100%);
+}
+.free-badge--dream {
+  background: rgba(224,195,255,0.9);
 }
 
 /* Actions grid */

@@ -327,7 +327,7 @@ export interface PaymentConfig {
 }
 
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'DAILY_HOROSCOPE'
+export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'DAILY_HOROSCOPE' | 'DREAM'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -368,6 +368,52 @@ export interface FeatureCostsResponse {
   celticCross: number
   compatibilityUnlock: number
   numerologyWeek: number
+  dream: number
+}
+
+// ── Сонник ──────────────────────────────────────────────────────────────────
+
+// GET /api/dreams/symbols — чипы «Частые символы в снах»
+export interface DreamSymbolDto {
+  id: number
+  emoji: string
+  name: string
+}
+
+// POST /api/dreams
+export interface DreamRequest {
+  dreamText?: string | null   // до 1000 символов; можно не передавать, если выбраны чипы
+  symbolIds?: number[]        // можно не передавать, если есть текст
+}
+
+export interface DreamSymbolMeaningDto {
+  name: string
+  meaning: string
+}
+
+// Полный разбор сна (и ответ POST /api/dreams, и GET /api/dreams/{id})
+export interface DreamResponse {
+  id: number
+  createdAt: string
+  dreamText?: string | null
+  selectedSymbols: string[]        // снимок выбранных чипов
+  titleSymbols: string[]           // 2-3 ключевых символа для заголовка
+  mainMeaning: string
+  lifeNumber: number
+  lifeNumberTitle: string          // архетип числа («Лидер»)
+  lifeNumberSection: string
+  zodiacSign: string               // «Телец»
+  zodiacSection: string
+  symbols: DreamSymbolMeaningDto[] // разбор каждого символа в контексте сна
+  advice: string
+  oracleQuestion: string           // предзаполненный вопрос для «Спросить карты об этом»
+}
+
+// GET /api/dreams/recent — карточки «Недавние сны»
+export interface DreamHistoryItemDto {
+  id: number
+  createdAt: string
+  titleSymbols: string[]
 }
 
 // GET /api/themes
@@ -518,9 +564,29 @@ export const api = {
   health: () =>
     apiClient.get<Record<string, string>>('/api/health'),
 
-  // Актуальная стоимость платных функций (расклады, совместимость, нумерология недели)
+  // Актуальная стоимость платных функций (расклады, совместимость, нумерология недели, сонник)
   getFeatureCosts: () =>
     apiClient.get<FeatureCostsResponse>('/api/feature-costs'),
+
+  // ── Сонник ────────────────────────────────────────────────────────────────
+
+  // Чипы «Частые символы в снах» (справочник, редактируется в админке)
+  getDreamSymbols: () =>
+    apiClient.get<DreamSymbolDto[]>('/api/dreams/symbols'),
+
+  // Платный AI-разбор сна. skipGlobalError — ошибки (402 мало знаков,
+  // 422 чувствительная тема/нет даты рождения) показываем внутри экрана, а не тостом.
+  // Таймаут выше глобального: генерация JSON-разбора занимает до ~30с.
+  analyzeDream: (data: DreamRequest) =>
+    apiClient.post<DreamResponse>('/api/dreams', data, { timeout: 60000, skipGlobalError: true }),
+
+  // Недавние сны (последние 5) для экрана Сонника
+  getRecentDreams: () =>
+    apiClient.get<DreamHistoryItemDto[]>('/api/dreams/recent'),
+
+  // Открыть сохранённый разбор из истории — бесплатно
+  getDream: (id: number) =>
+    apiClient.get<DreamResponse>(`/api/dreams/${id}`),
 
   // Реферальная ссылка текущего пользователя
   getReferralLink: () =>

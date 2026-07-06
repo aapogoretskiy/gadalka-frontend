@@ -487,6 +487,10 @@
                 <div class="metric-value">{{ fmt(reports.actionsToday.numerologyWeek) }}</div>
                 <div class="metric-label">Расклад на неделю</div>
               </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.dream) }}</div>
+                <div class="metric-label">Разбор сна</div>
+              </div>
             </div>
           </div>
 
@@ -924,6 +928,10 @@
                 <div class="metric-value">{{ fmt(rangeReport.actions.numerologyWeek) }}</div>
                 <div class="metric-label">Расклад на неделю</div>
               </div>
+              <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.dream) }}</div>
+                <div class="metric-label">Разбор сна</div>
+              </div>
             </div>
           </div>
 
@@ -1026,6 +1034,16 @@
           </div>
 
           <div class="report-group">
+            <h3 class="report-group-title">🌙 Сонник</h3>
+            <div class="prices-form">
+              <div class="price-field">
+                <label class="price-label">Разбор сна</label>
+                <input v-model.number="featureCosts.dream" type="number" min="1" class="price-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="report-group">
             <button
               class="btn-primary"
               :disabled="pricesSaving"
@@ -1035,6 +1053,56 @@
             </button>
             <p v-if="pricesSuccess" class="success-msg">{{ pricesSuccess }}</p>
             <p v-if="pricesSaveError" class="error-msg">{{ pricesSaveError }}</p>
+          </div>
+
+          <!-- ── Символы снов (чипы Сонника) ─────────────────────────── -->
+          <div class="report-group">
+            <h3 class="report-group-title">🌙 Символы снов (чипы Сонника)</h3>
+            <p class="dream-symbols-hint">
+              Чипы «Частые символы в снах» на экране Сонника. Подсказка — классическое значение символа,
+              она уходит в промпт AI. Выключенные символы не видны пользователям, но остаются в старых разборах.
+            </p>
+
+            <p v-if="dreamSymbolsError" class="error-msg">{{ dreamSymbolsError }}</p>
+            <p v-if="dreamSymbolsSuccess" class="success-msg">{{ dreamSymbolsSuccess }}</p>
+
+            <div v-if="dreamSymbolsLoading" class="reports-empty">⏳ Загрузка символов...</div>
+
+            <table v-else-if="dreamSymbols.length" class="dream-symbols-table">
+              <thead>
+                <tr>
+                  <th style="width:70px">Эмодзи</th>
+                  <th style="width:150px">Название</th>
+                  <th>Подсказка для AI</th>
+                  <th style="width:80px">Порядок</th>
+                  <th style="width:180px">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="s in dreamSymbols" :key="s.id ?? s.name" :class="{ 'symbol-inactive': !s.isActive }">
+                  <td><input v-model="s.emoji" class="price-input symbol-input" /></td>
+                  <td><input v-model="s.name" class="price-input symbol-input" /></td>
+                  <td><input v-model="s.promptHint" class="price-input symbol-input symbol-input--wide" placeholder="—" /></td>
+                  <td><input v-model.number="s.sortOrder" type="number" class="price-input symbol-input" /></td>
+                  <td class="symbol-actions">
+                    <button class="btn-ghost btn-small" @click="saveDreamSymbol(s)">💾</button>
+                    <button class="btn-ghost btn-small" :title="s.isActive ? 'Выключить' : 'Включить'" @click="toggleDreamSymbol(s)">
+                      {{ s.isActive ? '👁 Вкл' : '🚫 Выкл' }}
+                    </button>
+                    <button class="btn-ghost btn-small btn-danger" @click="removeDreamSymbol(s)">🗑</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- Новый символ -->
+            <div class="dream-symbol-new">
+              <input v-model="newSymbol.emoji" class="price-input symbol-input" placeholder="🌙" style="width:70px" />
+              <input v-model="newSymbol.name" class="price-input symbol-input" placeholder="Название" style="width:150px" />
+              <input v-model="newSymbol.promptHint" class="price-input symbol-input symbol-input--wide" placeholder="Подсказка для AI (опционально)" />
+              <input v-model.number="newSymbol.sortOrder" type="number" class="price-input symbol-input" placeholder="Порядок" style="width:80px" />
+              <button class="btn-primary btn-small" @click="createDreamSymbol">➕ Добавить</button>
+            </div>
           </div>
         </template>
 
@@ -1632,7 +1700,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -2290,6 +2358,83 @@ const saveFeatureCosts = async () => {
 const openPricesTab = () => {
   activeTab.value = 'prices'
   if (!featureCosts.value) loadFeatureCosts()
+  if (!dreamSymbols.value.length) loadDreamSymbols()
+}
+
+// ── Символы снов (чипы Сонника) ───────────────────────────────────────────
+const dreamSymbols = ref<AdminDreamSymbol[]>([])
+const dreamSymbolsLoading = ref(false)
+const dreamSymbolsError = ref<string | null>(null)
+const dreamSymbolsSuccess = ref<string | null>(null)
+// Форма нового символа
+const newSymbol = ref<{ emoji: string; name: string; promptHint: string; sortOrder: number }>({
+  emoji: '', name: '', promptHint: '', sortOrder: 0,
+})
+
+const loadDreamSymbols = async () => {
+  dreamSymbolsLoading.value = true
+  dreamSymbolsError.value = null
+  try {
+    const res = await adminApi.getDreamSymbols()
+    dreamSymbols.value = res.data
+  } catch {
+    dreamSymbolsError.value = 'Не удалось загрузить символы снов'
+  } finally {
+    dreamSymbolsLoading.value = false
+  }
+}
+
+const createDreamSymbol = async () => {
+  dreamSymbolsError.value = null
+  dreamSymbolsSuccess.value = null
+  if (!newSymbol.value.emoji.trim() || !newSymbol.value.name.trim()) {
+    dreamSymbolsError.value = 'Эмодзи и название обязательны'
+    return
+  }
+  try {
+    await adminApi.createDreamSymbol({
+      emoji: newSymbol.value.emoji.trim(),
+      name: newSymbol.value.name.trim(),
+      promptHint: newSymbol.value.promptHint.trim() || null,
+      sortOrder: newSymbol.value.sortOrder || 0,
+      isActive: true,
+    })
+    dreamSymbolsSuccess.value = 'Символ добавлен'
+    newSymbol.value = { emoji: '', name: '', promptHint: '', sortOrder: 0 }
+    await loadDreamSymbols()
+  } catch (e: any) {
+    dreamSymbolsError.value = e.response?.data?.message || 'Ошибка при добавлении символа'
+  }
+}
+
+const saveDreamSymbol = async (symbol: AdminDreamSymbol) => {
+  if (symbol.id == null) return
+  dreamSymbolsError.value = null
+  dreamSymbolsSuccess.value = null
+  try {
+    await adminApi.updateDreamSymbol(symbol.id, symbol)
+    dreamSymbolsSuccess.value = `Символ «${symbol.name}» сохранён`
+  } catch (e: any) {
+    dreamSymbolsError.value = e.response?.data?.message || 'Ошибка при сохранении символа'
+  }
+}
+
+const toggleDreamSymbol = async (symbol: AdminDreamSymbol) => {
+  symbol.isActive = !symbol.isActive
+  await saveDreamSymbol(symbol)
+}
+
+const removeDreamSymbol = async (symbol: AdminDreamSymbol) => {
+  if (symbol.id == null) return
+  if (!confirm(`Удалить символ «${symbol.name}» насовсем? Для временного скрытия используйте выключатель.`)) return
+  dreamSymbolsError.value = null
+  try {
+    await adminApi.deleteDreamSymbol(symbol.id)
+    dreamSymbolsSuccess.value = `Символ «${symbol.name}» удалён`
+    await loadDreamSymbols()
+  } catch (e: any) {
+    dreamSymbolsError.value = e.response?.data?.message || 'Ошибка при удалении символа'
+  }
 }
 
 // ── Блокировки чувствительного контента ───────────────────────────────────
@@ -3021,6 +3166,33 @@ input[type="checkbox"] {
 
 .success-msg { font-size: 13px; color: #86efac; margin: 4px 0 0; }
 .error-msg   { font-size: 13px; color: #fca5a5; margin: 4px 0 0; }
+
+/* ── Символы снов (Сонник) ── */
+.dream-symbols-hint { font-size: 13px; color: #64748b; margin-bottom: 14px; line-height: 1.5; }
+.dream-symbols-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+.dream-symbols-table th {
+  text-align: left;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  padding: 6px 8px 6px 0;
+}
+.dream-symbols-table td { padding: 4px 8px 4px 0; }
+.symbol-inactive { opacity: 0.45; }
+.symbol-input { width: 100%; box-sizing: border-box; }
+.symbol-input--wide { min-width: 200px; }
+.symbol-actions { display: flex; gap: 6px; white-space: nowrap; }
+.btn-small { padding: 5px 9px; font-size: 12px; }
+.btn-danger { color: #fca5a5; border-color: rgba(252,165,165,0.3); }
+.dream-symbol-new {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid #1e293b;
+}
+.dream-symbol-new .symbol-input--wide { flex: 1; min-width: 220px; }
 
 /* ── Tickets tab ── */
 .badge-open   { background: rgba(250,204,21,0.15); color: #fde68a; }

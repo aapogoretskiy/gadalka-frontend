@@ -18,6 +18,7 @@ const DEFAULT_COSTS: FeatureCostsResponse = {
   celticCross: 9,
   compatibilityUnlock: 3,
   numerologyWeek: 3,
+  dream: 3,
 }
 
 // Общий реактивный стейт на всё приложение
