@@ -14,7 +14,7 @@
         <div class="astro-card-icon">🌙</div>
         <div class="astro-card-text">
           <h3 class="serif">Сонник</h3>
-          <p>AI-разбор вашего сна с учётом знака зодиака и числа жизни</p>
+          <p>Разбор вашего сна с учётом знака зодиака и числа жизни</p>
         </div>
         <div class="astro-card-arrow">›</div>
       </div>
