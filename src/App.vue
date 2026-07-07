@@ -47,6 +47,7 @@ import TarotDayDetailedScreen from './components/screens/TarotDayDetailedScreen.
 import HoroscopeDetailedScreen from './components/screens/HoroscopeDetailedScreen.vue'
 import NumerologyScreen    from './components/screens/NumerologyScreen.vue'
 import WeekSpreadScreen    from './components/screens/WeekSpreadScreen.vue'
+import MonthSpreadScreen   from './components/screens/MonthSpreadScreen.vue'
 import NumerologyPortraitScreen from './components/screens/NumerologyPortraitScreen.vue'
 import CompatibilityScreen from './components/screens/CompatibilityScreen.vue'
 import AstroScreen         from './components/screens/AstroScreen.vue'
@@ -88,6 +89,7 @@ const currentScreen = computed(() => {
     numerology:    NumerologyPortraitScreen,
     'numerology-day':     NumerologyScreen,
     'numerology-week':    WeekSpreadScreen,
+    'numerology-month':   MonthSpreadScreen,
     compatibility: CompatibilityScreen,
     astro:         AstroScreen,
     dream:         DreamScreen,
@@ -105,10 +107,16 @@ const currentScreen = computed(() => {
 // «Совместимость» убрана из вкладок (осталась кнопка на главной), на её месте — «Астро».
 const tabOrder = ['home', 'numerology', 'fortune', 'astro', 'profile']
 
-const navigate = (route: string) => {
+// Параметры для текущего перехода (например, дата конкретной недели при переходе
+// из месячного разбора). Сбрасываются на null при каждом navigate() без явных params,
+// чтобы не "утекали" в последующие обычные переходы на тот же экран.
+const routeParams = ref<Record<string, any> | null>(null)
+
+const navigate = (route: string, params?: Record<string, any>) => {
   const prev = currentRoute.value
   historyStack.value.push(prev)
   currentRoute.value = route
+  routeParams.value = params ?? null
 
   // Синхронизируем подсветку нижней панели вне зависимости от источника перехода
   if (tabOrder.includes(route)) {
@@ -139,6 +147,7 @@ const previousRoute = computed(() => historyStack.value[historyStack.value.lengt
 
 provide('navigate', navigate)
 provide('previousRoute', previousRoute)
+provide('routeParams', routeParams)
 
 // ── Telegram BackButton ──────────────────────────────────────────────────────
 // Единый master-handler: компоненты могут переопределить действие через

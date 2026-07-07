@@ -183,11 +183,11 @@
             <div class="period-desc">Прогноз на 7 дней</div>
             <div class="period-price">{{ weekCost }} знака</div>
           </div>
-          <div class="period-card period-card--disabled">
+          <div class="period-card haptic" @click="navigate?.('numerology-month')">
             <div class="period-icon">🌙</div>
             <div class="period-title serif">Месяц</div>
             <div class="period-desc">Детальный анализ</div>
-            <ComingSoonBadge />
+            <div class="period-price">{{ monthCost }} знаков</div>
           </div>
           <div class="period-card period-card--disabled">
             <div class="period-icon">⭐</div>
@@ -218,10 +218,11 @@ const nameInputOpen = ref(false)
 const nameInput    = ref('')
 const savingName   = ref(false)
 
-// Цена расклада на неделю подтягивается с бэкенда (админ может её менять) —
-// см. useFeatureCosts.ts, тот же паттерн что и в WeekSpreadScreen.
+// Цены раскладов подтягиваются с бэкенда (админ может их менять) —
+// см. useFeatureCosts.ts, тот же паттерн что и в WeekSpreadScreen/MonthSpreadScreen.
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const weekCost = computed(() => featureCosts.value.numerologyWeek)
+const monthCost = computed(() => featureCosts.value.numerologyMonth)
 
 onMounted(async () => {
   loadFeatureCosts()

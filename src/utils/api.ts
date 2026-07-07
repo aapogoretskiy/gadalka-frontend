@@ -260,6 +260,49 @@ export interface NumerologyWeekResponse {
   finance?: string | null
 }
 
+// GET /api/numerology/month
+export interface NumerologyMonthLifeAreaDto {
+  score: number   // 1–5
+  text: string
+}
+
+export interface NumerologyMonthLifeAreasDto {
+  relationships: NumerologyMonthLifeAreaDto
+  career: NumerologyMonthLifeAreaDto
+  finance: NumerologyMonthLifeAreaDto
+  health: NumerologyMonthLifeAreaDto
+}
+
+export interface NumerologyMonthKeyDateDto {
+  date: string          // YYYY-MM-DD
+  badge: string          // "Пик" | "Осторожно" | "Решения" | "Встреча"
+  description: string
+}
+
+// Превью одной из 4 недель месяца — полный расклад открывается через getNumerologyWeekByDate(startDate)
+export interface NumerologyMonthWeekPreviewDto {
+  weekIndex: number      // 1–4
+  startDate: string
+  endDate: string
+  weekNumber: number
+  weekNumberTitle: string
+  resonanceLabel: string
+}
+
+export interface NumerologyMonthResponse {
+  id: number
+  monthStart: string
+  monthEnd: string
+  monthNumber: number
+  monthNumberTitle: string
+  mainTheme: string
+  lifeAreas: NumerologyMonthLifeAreasDto
+  keyDates: NumerologyMonthKeyDateDto[]
+  whatToAvoid: string
+  advice: string
+  weekPreviews: NumerologyMonthWeekPreviewDto[]
+}
+
 // GET /api/numerology/today
 export interface NumerologyTodayResponse {
   id: number
@@ -331,7 +374,7 @@ export interface PaymentConfig {
 }
 
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'DAILY_HOROSCOPE' | 'DREAM'
+export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DAILY_HOROSCOPE' | 'DREAM'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -372,6 +415,7 @@ export interface FeatureCostsResponse {
   celticCross: number
   compatibilityUnlock: number
   numerologyWeek: number
+  numerologyMonth: number
   dream: number
 }
 
@@ -528,6 +572,21 @@ export const api = {
   getNumerologyWeekCurrent: () =>
     apiClient.get<NumerologyWeekResponse>('/api/numerology/week/current', { skipGlobalError: true }),
 
+  // Расклад на неделю по точной дате начала (YYYY-MM-DD) — бесплатно и без создания,
+  // используется для перехода на одну из 4 недель внутри купленного месяца.
+  // 404, если расклада с такой датой ещё нет.
+  getNumerologyWeekByDate: (date: string) =>
+    apiClient.get<NumerologyWeekResponse>('/api/numerology/week/by-date', { params: { date }, skipGlobalError: true }),
+
+  // Нумерология месяца (платно — 10 знаков; повторный вызов в течение действующего месяца бесплатен).
+  // 4 недели внутри месяца включены в стоимость и создаются автоматически.
+  getNumerologyMonth: () =>
+    apiClient.get<NumerologyMonthResponse>('/api/numerology/month', { skipGlobalError: true }),
+
+  // Тихая проверка уже оплаченного разбора на месяц — НЕ создаёт новый и НЕ списывает знаки.
+  getNumerologyMonthCurrent: () =>
+    apiClient.get<NumerologyMonthResponse>('/api/numerology/month/current', { skipGlobalError: true }),
+
   // Платежи
   getProducts: () =>
     apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
@@ -606,10 +665,10 @@ export const api = {
     ),
 
   // Оценка платного действия (👍/👎)
-  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'DREAM'
+  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DREAM'
   // skipGlobalError: true — виджет сам обрабатывает ошибку (не мешаем UI)
   submitActionFeedback: (
-    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'DREAM',
+    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DREAM',
     actionId: number,
     rating: 'POSITIVE' | 'NEGATIVE',
     comment?: string,

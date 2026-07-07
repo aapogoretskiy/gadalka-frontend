@@ -18,6 +18,7 @@ const DEFAULT_COSTS: FeatureCostsResponse = {
   celticCross: 9,
   compatibilityUnlock: 3,
   numerologyWeek: 3,
+  numerologyMonth: 10,
   dream: 3,
 }
 

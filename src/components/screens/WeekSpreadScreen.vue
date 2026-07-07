@@ -114,6 +114,14 @@
         <div class="loading-spinner-sm"></div>
       </div>
 
+      <!-- ══ Неделя из месяца не нашлась (крайний случай) — без пейволла и кнопки покупки ══ -->
+      <div v-else-if="fixedWeekStart" class="week-paywall glass">
+        <div class="paywall-lock">⚠️</div>
+        <div class="paywall-title serif">Не удалось открыть неделю</div>
+        <div class="paywall-sub">{{ weekErrorMsg }}</div>
+        <button class="action-btn haptic" @click="navigate?.('numerology')">К разбору на месяц</button>
+      </div>
+
       <!-- ══ Пейволл ═════════════════════════════════════════════════ -->
       <div v-else class="week-paywall glass">
         <div class="paywall-lock">🔒</div>
@@ -122,7 +130,7 @@
 
         <div v-if="weekErrorMsg" class="week-error">{{ weekErrorMsg }}</div>
 
-        <button v-if="canAffordWeek" class="action-btn haptic" @click="getWeeklyAnalysis">
+        <button v-if="canAffordWeek" class="action-btn haptic" @click="showPurchaseModal = true">
           🔮 Открыть за {{ WEEK_COST }} знака
         </button>
         <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
@@ -131,6 +139,23 @@
       </div>
 
     </div>
+
+    <PeriodPurchaseModal
+      :open="showPurchaseModal"
+      title="Расклад на неделю"
+      icon="🗓"
+      description="7 дней вперёд, число недели, лучший и сложный день, аффирмация недели"
+      :features="[
+        '7-дневный персональный прогноз',
+        'Число недели и лучший/сложный день',
+        'Три пиковых дня с советами',
+        'Сохранится в истории навсегда',
+      ]"
+      :cost="WEEK_COST"
+      :loading="weekLoading"
+      @confirm="confirmPurchase"
+      @close="showPurchaseModal = false"
+    />
   </div>
 </template>
 
@@ -141,8 +166,14 @@ import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
+import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
 
-const navigate = inject<(r: string) => void>('navigate')
+const navigate = inject<(r: string, params?: Record<string, any>) => void>('navigate')
+// Если экран открыт из месячного разбора — сюда приходит { weekStart: 'YYYY-MM-DD' } конкретного
+// недельного блока. Такая неделя уже создана бесплатно при покупке месяца (см. NumerologyMonthService),
+// поэтому здесь мы просто тихо её запрашиваем, без пейволла и без лоадера «сложного расчёта».
+const routeParams = inject<{ value: Record<string, any> | null }>('routeParams')
+const fixedWeekStart = routeParams?.value?.weekStart as string | undefined
 
 // Стоимость берётся с бэка (настраивается в админке), реактивна. Бэк: NumerologyWeekService.WEEK_COST
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
@@ -154,6 +185,7 @@ const canAffordWeek = computed(() => (balance.value ?? 0) >= WEEK_COST.value)
 const weekResult   = ref<NumerologyWeekResponse | null>(null)
 const weekLoading  = ref(false)
 const weekErrorMsg = ref('')
+const showPurchaseModal = ref(false)
 
 // ── Тихая проверка при открытии экрана ──────────────────────────────────────
 // Если расклад на эту неделю уже куплен — бэкенд (NumerologyWeekService.getWeek)
@@ -165,6 +197,20 @@ const checkingExisting = ref(true)
 onMounted(async () => {
   // Свежая цена при каждом заходе на экран (не блокирует проверку существующего расклада)
   loadFeatureCosts()
+
+  if (fixedWeekStart) {
+    // Переход из месяца на конкретную неделю — она уже существует и бесплатна
+    try {
+      const res = await api.getNumerologyWeekByDate(fixedWeekStart)
+      weekResult.value = res.data
+    } catch {
+      weekErrorMsg.value = 'Не удалось загрузить эту неделю. Попробуйте открыть её из разбора на месяц ещё раз.'
+    } finally {
+      checkingExisting.value = false
+    }
+    return
+  }
+
   try {
     const res = await api.getNumerologyWeekCurrent()
     weekResult.value = res.data
@@ -174,6 +220,11 @@ onMounted(async () => {
     checkingExisting.value = false
   }
 })
+
+function confirmPurchase() {
+  showPurchaseModal.value = false
+  getWeeklyAnalysis()
+}
 
 // ── Искусственная задержка лоадера ──────────────────────────────────────────
 // Расчёт на бэкенде алгоритмический и почти мгновенный — но мы хотим, чтобы
