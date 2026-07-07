@@ -67,6 +67,23 @@ export interface AdminUsersPage {
   size: number
 }
 
+/** Строка истории отправок во "Входящие" (вкладка Рассылка) — см. миграцию V60 на бэке */
+export interface InboxMessageStats {
+  id: number
+  text: string
+  createdAt: string
+  recipientsCount: number
+  readCount: number
+}
+
+export interface InboxMessageStatsPage {
+  content: InboxMessageStats[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
 export interface FeatureCosts {
   threeCard: number
   horseshoe: number
@@ -175,9 +192,12 @@ export const adminApi = {
    * @param userIds     список ID пользователей (пусто — все или только админы)
    * @param onlyAdmins  если true — рассылка только администраторам
    * @param photo       файл изображения (null — только текст)
-   * @param segment     именованный сегмент аудитории (INACTIVE — «нулевые» без единого
-   *                    действия); резолвится в userIds на бэке.
-   *                    Приоритет: userIds > segment > onlyAdmins > все
+   * @param segment     именованный сегмент аудитории: INACTIVE («нулевые» без единого
+   *                    действия) или UNREACHABLE (отключили уведомления от бота);
+   *                    резолвится в userIds на бэке. Приоритет: userIds > segment > onlyAdmins > все
+   * @param toTelegram  слать ли в Telegram (по умолчанию true)
+   * @param toInbox     слать ли во "Входящие" внутри приложения — гарантированная доставка,
+   *                    не зависит от Telegram. Несовместимо с giftAmount (проверяется на бэке)
    */
   broadcast: (
     message: string,
@@ -186,6 +206,8 @@ export const adminApi = {
     onlyAdmins: boolean,
     photo?: File | null,
     segment?: string | null,
+    toTelegram: boolean = true,
+    toInbox: boolean = false,
   ) => {
     const form = new FormData()
     form.append('data', new Blob([JSON.stringify({
@@ -194,6 +216,8 @@ export const adminApi = {
       userIds: userIds.length > 0 ? userIds : null,
       onlyAdmins,
       segment: segment ?? null,
+      toTelegram,
+      toInbox,
     })], { type: 'application/json' }))
     if (photo) {
       form.append('photo', photo)
@@ -210,6 +234,10 @@ export const adminApi = {
    */
   getBroadcastSegments: () =>
     adminAxios.get<{ inactive: number; notificationsAllowed: number; totalUsers: number }>('/api/admin/broadcast/segments'),
+
+  /** История отправок во "Входящие" со статистикой прочтения (см. миграцию V60) */
+  getInboxMessageHistory: (page = 0, size = 20) =>
+    adminAxios.get<InboxMessageStatsPage>('/api/admin/inbox/messages', { params: { page, size } }),
 
   /** Lazy-история действий пользователя (гадания, совместимость, нумерология, карта дня) */
   getUserActions: (id: number, limit = 30) =>

@@ -263,6 +263,11 @@
                 :class="{ active: broadcastTarget === 'inactive' }"
                 @click="broadcastTarget = 'inactive'"
               >😴 Неактивированным — 0 действий{{ segmentCounts ? ` (${segmentCounts.inactive})` : '' }}</button>
+              <button
+                class="bc-recipient-btn"
+                :class="{ active: broadcastTarget === 'unreachable' }"
+                @click="broadcastTarget = 'unreachable'; toInboxChannel = true; toTelegramChannel = false"
+              >🔕 Отключили уведомления от бота{{ segmentCounts ? ` (${unreachableCount})` : '' }}</button>
             </template>
           </div>
         </section>
@@ -325,36 +330,59 @@
           </div>
         </section>
 
+        <!-- Куда отправить -->
+        <section class="bc-section">
+          <h3 class="bc-label">Куда отправить</h3>
+          <div class="bc-channels">
+            <label class="bc-toggle-row">
+              <input type="checkbox" v-model="toTelegramChannel" />
+              <span>📨 В Telegram</span>
+            </label>
+            <label class="bc-toggle-row">
+              <input type="checkbox" v-model="toInboxChannel" />
+              <span>📥 Во Входящие (внутри приложения)</span>
+            </label>
+          </div>
+          <p v-if="!toTelegramChannel && !toInboxChannel" class="bc-hint bc-hint--warn">Выберите хотя бы один канал</p>
+          <p v-if="toInboxChannel" class="bc-hint">Входящие — гарантированная доставка, не зависит от того, может ли бот писать пользователю</p>
+        </section>
+
         <!-- Подарок знаков -->
         <section class="bc-section">
-          <label class="bc-toggle-row">
-            <input type="checkbox" v-model="withGift" />
-            <span>Добавить подарок знаков</span>
-          </label>
-          <div v-if="withGift" class="bc-gift-row">
-            <input
-              v-model.number="broadcastGiftAmount"
-              type="number"
-              min="1"
-              max="1000"
-              placeholder="Количество знаков"
-              class="bc-number-input"
-            />
-            <span class="bc-hint">знаков каждому получателю</span>
-          </div>
+          <template v-if="!toInboxChannel">
+            <label class="bc-toggle-row">
+              <input type="checkbox" v-model="withGift" />
+              <span>Добавить подарок знаков</span>
+            </label>
+            <div v-if="withGift" class="bc-gift-row">
+              <input
+                v-model.number="broadcastGiftAmount"
+                type="number"
+                min="1"
+                max="1000"
+                placeholder="Количество знаков"
+                class="bc-number-input"
+              />
+              <span class="bc-hint">знаков каждому получателю</span>
+            </div>
+          </template>
+          <p v-else class="bc-hint">🎁 Подарок знаков доступен только при отправке в Telegram</p>
         </section>
 
         <!-- Кнопки отправки -->
         <section class="bc-section bc-actions">
           <button
             class="btn-primary btn-send"
-            :disabled="broadcastLoading || !broadcastMessage.trim() || (withGift && (!broadcastGiftAmount || broadcastGiftAmount <= 0))"
+            :disabled="broadcastLoading || !broadcastMessage.trim()
+              || (!toTelegramChannel && !toInboxChannel)
+              || (withGift && !toInboxChannel && (!broadcastGiftAmount || broadcastGiftAmount <= 0))"
             @click="sendBroadcast"
           >
             <span v-if="broadcastLoading">⏳ Запуск рассылки...</span>
             <span v-else-if="selectedIds.size > 0">📣 Отправить выбранным ({{ selectedIds.size }})</span>
             <span v-else-if="broadcastTarget === 'admins'">📣 Отправить администраторам</span>
             <span v-else-if="broadcastTarget === 'inactive'">📣 Отправить неактивированным{{ segmentCounts ? ` (${segmentCounts.inactive})` : '' }}</span>
+            <span v-else-if="broadcastTarget === 'unreachable'">📣 Отправить недостижимым{{ segmentCounts ? ` (${unreachableCount})` : '' }}</span>
             <span v-else>📣 Отправить всем</span>
           </button>
         </section>
@@ -362,6 +390,20 @@
         <!-- Статус -->
         <p v-if="broadcastSuccess" class="success-msg">{{ broadcastSuccess }}</p>
         <p v-if="broadcastError" class="error-msg">{{ broadcastError }}</p>
+
+        <!-- История отправок во Входящие -->
+        <section class="bc-section" v-if="inboxHistory.length > 0">
+          <h3 class="bc-label">История отправок во Входящие</h3>
+          <div class="inbox-history-list">
+            <div v-for="m in inboxHistory" :key="m.id" class="inbox-history-item">
+              <div class="inbox-history-text">{{ truncateText(m.text) }}</div>
+              <div class="inbox-history-stats">
+                Отправлено {{ m.recipientsCount }} · Прочитано {{ m.readCount }}
+                <span v-if="m.recipientsCount > 0">({{ Math.round(m.readCount / m.recipientsCount * 100) }}%)</span>
+              </div>
+            </div>
+          </div>
+        </section>
 
       </div>
     </template>
@@ -1730,7 +1772,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -2046,12 +2088,17 @@ const activeTemplate = ref<string>('custom')
 const broadcastMessage = ref('')
 const broadcastPhoto = ref<File | null>(null)
 const broadcastPhotoPreview = ref<string | null>(null)
-const broadcastTarget = ref<'all' | 'admins' | 'inactive'>('all')
+const broadcastTarget = ref<'all' | 'admins' | 'inactive' | 'unreachable'>('all')
 const withGift = ref(false)
 const broadcastGiftAmount = ref<number | null>(null)
 const broadcastLoading = ref(false)
 const broadcastSuccess = ref<string | null>(null)
 const broadcastError = ref<string | null>(null)
+
+// Каналы доставки. Telegram включён по умолчанию, Входящие — нет (это доп. канал).
+// При выборе сегмента "unreachable" клик по кнопке сам переключает каналы (см. template).
+const toTelegramChannel = ref(true)
+const toInboxChannel = ref(false)
 
 // Счётчики сегментов аудитории. inactive — «нулевые» без единого действия.
 // notificationsAllowed/totalUsers — сколько пользователей реально достижимы ботом
@@ -2065,6 +2112,13 @@ const notifAllowedPercent = computed(() => {
   return Math.round((segmentCounts.value.notificationsAllowed / segmentCounts.value.totalUsers) * 100)
 })
 
+// "Отключили уведомления от бота" = totalUsers - notificationsAllowed.
+// Отдельного поля с бэка не нужно — той же арифметики достаточно (см. AdminController#getBroadcastSegments).
+const unreachableCount = computed(() => {
+  if (!segmentCounts.value) return 0
+  return segmentCounts.value.totalUsers - segmentCounts.value.notificationsAllowed
+})
+
 const loadSegmentCounts = async () => {
   try {
     const res = await adminApi.getBroadcastSegments()
@@ -2074,8 +2128,24 @@ const loadSegmentCounts = async () => {
   }
 }
 
+// История отправок во Входящие со статистикой прочтения (см. миграцию V60 на бэке)
+const inboxHistory = ref<InboxMessageStats[]>([])
+
+const loadInboxHistory = async () => {
+  try {
+    const res = await adminApi.getInboxMessageHistory()
+    inboxHistory.value = res.data.content
+  } catch {
+    // Не критично — просто не покажем историю в этот раз
+  }
+}
+
+const truncateText = (text: string, max = 80) =>
+  text.length > max ? text.slice(0, max) + '…' : text
+
 watch(activeTab, (tab) => {
   if (tab === 'broadcast' && !segmentCounts.value) loadSegmentCounts()
+  if (tab === 'broadcast' && inboxHistory.value.length === 0) loadInboxHistory()
 })
 
 const onPhotoSelected = (event: Event) => {
@@ -2107,9 +2177,11 @@ const sendBroadcast = async () => {
   broadcastError.value = null
 
   const userIds = Array.from(selectedIds.value)
-  const giftAmt = withGift.value ? broadcastGiftAmount.value : null
+  const giftAmt = (withGift.value && !toInboxChannel.value) ? broadcastGiftAmount.value : null
   const onlyAdmins = selectedIds.value.size === 0 && broadcastTarget.value === 'admins'
-  const segment = selectedIds.value.size === 0 && broadcastTarget.value === 'inactive' ? 'INACTIVE' : null
+  const segment = selectedIds.value.size === 0 && broadcastTarget.value === 'inactive' ? 'INACTIVE'
+    : selectedIds.value.size === 0 && broadcastTarget.value === 'unreachable' ? 'UNREACHABLE'
+    : null
 
   try {
     const res = await adminApi.broadcast(
@@ -2119,9 +2191,12 @@ const sendBroadcast = async () => {
       onlyAdmins,
       broadcastPhoto.value,
       segment,
+      toTelegramChannel.value,
+      toInboxChannel.value,
     )
     broadcastSuccess.value = res.data.message + '. Рассылка идёт в фоне — это может занять несколько минут.'
     selectedIds.value = new Set()
+    if (toInboxChannel.value) inboxHistory.value = [] // сбросим кэш истории, подтянется свежая при следующем открытии вкладки
   } catch (e: any) {
     broadcastError.value = e.response?.data?.message || 'Ошибка при запуске рассылки'
   } finally {
@@ -3046,6 +3121,34 @@ input[type="checkbox"] {
   outline: none;
 }
 .bc-number-input:focus { border-color: #6366f1; }
+
+.bc-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bc-hint--warn { color: #fbbf24; }
+
+.inbox-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inbox-history-item {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.inbox-history-text {
+  font-size: 13px;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+.inbox-history-stats {
+  font-size: 11px;
+  color: #64748b;
+}
 
 .bc-actions { flex-direction: row; }
 .btn-send {

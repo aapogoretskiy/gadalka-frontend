@@ -39,6 +39,7 @@ import WebApp from '@twa-dev/sdk'
 import { useTelegram } from './composables/useTelegram'
 import { useUser } from './composables/useUser'
 import { useToast } from './composables/useToast'
+import { useInbox } from './composables/useInbox'
 
 // Screens
 import HomeScreen          from './components/screens/HomeScreen.vue'
@@ -59,6 +60,7 @@ import DeckShopScreen      from './components/screens/DeckShopScreen.vue'
 import FortuneScreen          from './components/screens/FortuneScreen.vue'
 import PaymentScreen          from './components/screens/PaymentScreen.vue'
 import FeedbackScreen         from './components/screens/FeedbackScreen.vue'
+import InboxScreen            from './components/screens/InboxScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
@@ -66,6 +68,7 @@ import ToastContainer from './components/ui/ToastContainer.vue'
 const { hapticFeedback } = useTelegram()
 const { authWithTelegram, fetchProfile, hasProfile, termsAccepted } = useUser()
 const { addToast } = useToast()
+const { refreshUnreadCount } = useInbox()
 
 const currentRoute   = ref<string>('onboarding')
 const historyStack   = ref<string[]>([])
@@ -97,6 +100,7 @@ const currentScreen = computed(() => {
     payment:           PaymentScreen,
     profile:           ProfileScreen,
     feedback:          FeedbackScreen,
+    inbox:         InboxScreen,
     diary:         CardDiaryScreen,
     shop:          DeckShopScreen,
   }
@@ -248,6 +252,7 @@ onMounted(async () => {
       addToast('Добро пожаловать! Вам начислено 5 знаков в подарок 🔮', 'success')
     }
     try { await fetchProfile() } catch {}
+    refreshUnreadCount() // не ждём — шилдик на кнопке "Входящие" подтянется когда придёт
 
     // Гейт онбординга: раньше в приложение пускали только с заполненным профилем,
     // теперь профиль опционален — достаточно принятой оферты (welcome-экран).

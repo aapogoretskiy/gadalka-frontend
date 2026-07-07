@@ -392,6 +392,25 @@ export interface DiaryHistoryResponse {
   entries: DiaryEntryDto[]
 }
 
+// ── Входящие (сообщения от администратора внутри приложения) ────────────────
+// Второй канал доставки рассылок, не зависящий от Telegram (см. User.notificationsAllowed
+// и баннер requestWriteAccess на HomeScreen) — MiniApp доступен пользователю напрямую,
+// вне зависимости от того, может ли бот писать ему проактивно.
+export interface InboxMessageDto {
+  id: number
+  text: string
+  createdAt: string
+  read: boolean
+}
+
+export interface InboxPageResponse {
+  content: InboxMessageDto[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
 // GET /api/question-presets
 export interface QuestionPresetDto {
   id: number
@@ -605,6 +624,16 @@ export const api = {
 
   createRobokassaPayment: (data: CreatePaymentRequest) =>
     apiClient.post<CreatePaymentResponse>('/api/v1/payments/robokassa/create', data),
+
+  // Входящие
+  getInbox: (page = 0, size = 20) =>
+    apiClient.get<InboxPageResponse>('/api/inbox', { params: { page, size } }),
+
+  getInboxUnreadCount: () =>
+    apiClient.get<{ unreadCount: number }>('/api/inbox/unread-count'),
+
+  markInboxRead: () =>
+    apiClient.post<void>('/api/inbox/read-all'),
 
   // Пресеты вопросов по категориям (экран "О чём спросить карты?")
   // Данные почти статичны — composable useQuestionPresets кэширует результат.

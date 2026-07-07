@@ -72,6 +72,16 @@
           <div class="menu-arrow">›</div>
         </button>
 
+        <button class="menu-item glass haptic" @click="navigate?.('inbox')">
+          <div class="menu-icon">📥</div>
+          <div class="menu-body">
+            <div class="menu-title">Входящие</div>
+            <div class="menu-sub">Сообщения от Liora</div>
+          </div>
+          <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+          <div class="menu-arrow">›</div>
+        </button>
+
         <button class="menu-item glass haptic menu-item--referral" @click="openReferralSheet">
           <div class="menu-icon">🎁</div>
           <div class="menu-body">
@@ -210,6 +220,7 @@
 import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
+import { useInbox } from '@/composables/useInbox'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
 import { api, type Goal, type NotificationTime } from '@/utils/api'
@@ -218,6 +229,7 @@ const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { telegramUser, profile, updateProfile, resetProfile } = useUser()
 const { balance } = useBalance()
+const { unreadCount } = useInbox()
 
 const balancePluralLabel = computed(() => {
   const n = balance.value
@@ -479,6 +491,21 @@ function shareReferralLink() {
 .menu-sub   { font-size: 11px; color: rgba(255,255,255,.45); }
 .menu-arrow { font-size: 24px; color: rgba(255,255,255,.3); }
 .menu-item--disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.unread-badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(233,74,168,0.5);
+}
 
 /* Reset */
 .reset-btn {

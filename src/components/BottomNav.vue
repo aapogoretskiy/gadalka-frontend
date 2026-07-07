@@ -36,19 +36,29 @@
     </button>
 
     <!-- Профиль -->
-    <button class="tab-btn" :class="{ active: activeTab === 'profile' }" @click="$emit('change', 'profile')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-      </svg>
+    <button class="tab-btn tab-btn--profile" :class="{ active: activeTab === 'profile' }" @click="$emit('change', 'profile')">
+      <span class="tab-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+        <span v-if="unreadCount > 0" class="tab-unread-dot"></span>
+      </span>
       <span>Профиль</span>
     </button>
   </nav>
 </template>
 
 <script setup lang="ts">
+import { useInbox } from '@/composables/useInbox'
+
 defineProps<{ activeTab: string }>()
 defineEmits<{ change: [tab: string] }>()
+
+// Красная точка на вкладке "Профиль" — чтобы пользователь узнал о новом сообщении
+// во "Входящих", даже не заходя в сам раздел. Тот же синглтон-счётчик, что и шилдик
+// с числом внутри Profile (см. ProfileScreen.vue) — обновляется сам после markAllRead.
+const { unreadCount } = useInbox()
 </script>
 
 <style scoped>
@@ -154,4 +164,15 @@ defineEmits<{ change: [tab: string] }>()
 
 .tab-btn:active svg { transform: scale(0.88); }
 .tab-btn.center:active .center-circle { transform: scale(0.92); }
+
+/* Шилдик непрочитанных на вкладке "Профиль" */
+.tab-icon-wrap { position: relative; display: inline-flex; }
+.tab-unread-dot {
+  position: absolute;
+  top: -1px; right: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  box-shadow: 0 0 6px rgba(233,74,168,0.7), 0 0 0 2px rgba(10,5,20,0.92);
+}
 </style>
