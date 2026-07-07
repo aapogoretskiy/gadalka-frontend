@@ -27,6 +27,16 @@
 
       <!-- Menu -->
       <div class="menu-list">
+        <button class="menu-item glass haptic" @click="navigate?.('inbox')">
+          <div class="menu-icon">📥</div>
+          <div class="menu-body">
+            <div class="menu-title">Входящие</div>
+            <div class="menu-sub">Сообщения от Liora</div>
+          </div>
+          <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+          <div class="menu-arrow">›</div>
+        </button>
+
         <button class="menu-item glass haptic" @click="navigate('shop')">
           <div class="menu-icon">🃏</div>
           <div class="menu-body">
@@ -69,16 +79,6 @@
             <div class="menu-title">Уведомления</div>
             <div class="menu-sub">{{ notifSubtitle }}</div>
           </div>
-          <div class="menu-arrow">›</div>
-        </button>
-
-        <button class="menu-item glass haptic" @click="navigate?.('inbox')">
-          <div class="menu-icon">📥</div>
-          <div class="menu-body">
-            <div class="menu-title">Входящие</div>
-            <div class="menu-sub">Сообщения от Liora</div>
-          </div>
-          <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
           <div class="menu-arrow">›</div>
         </button>
 
