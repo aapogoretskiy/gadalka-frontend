@@ -37,6 +37,24 @@
         </div>
       </div>
 
+      <!-- Баннер разрешения на уведомления: показывается, если бот не может писать
+           пользователю напрямую (зашёл в MiniApp по прямой ссылке, минуя /start) -->
+      <div v-if="notifBannerVisible" class="notif-banner">
+        <div class="notif-left">
+          <span class="notif-badge">🔔</span>
+          <div class="notif-text">
+            <div class="notif-title">Не пропусти расклад дня</div>
+            <div class="notif-sub">Разреши боту писать тебе, чтобы получать уведомления</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <button class="notif-allow haptic" :disabled="notifRequesting" @click="onAllowNotifications">
+            {{ notifRequesting ? '...' : 'Разрешить' }}
+          </button>
+          <button class="notif-close" @click="dismissNotifBanner">✕</button>
+        </div>
+      </div>
+
       <!-- Card of the Day -->
       <div class="tarot-day-card gradient-card haptic" @click="navigate('tarot-day')">
         <div class="tarot-hero-label">
@@ -156,7 +174,9 @@ import { useDailyCard } from '@/composables/useDailyCard'
 import { useHoroscope } from '@/composables/useHoroscope'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
+import { useToast } from '@/composables/useToast'
 import { zodiacGlyph } from '@/utils/zodiac'
+import { canRequestWriteAccess, requestWriteAccess } from '@/utils/telegram'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
@@ -165,10 +185,54 @@ const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { horoscope, isLoading: horoscopeLoading, needsBirthDate: horoscopeNeedsBirthDate, fetchHoroscope } = useHoroscope()
 const { isDev, toggleDevMode } = useDevMode()
 const { balance, hasCredits } = useBalance()
+const { addToast } = useToast()
 
 const cardFlipped    = ref(false)
 const betaVisible    = ref(true)
 const numerologyData = ref<NumerologyTodayResponse | null>(null)
+
+// ── Баннер разрешения на уведомления ────────────────────────────────────────
+// Дизмисс не насовсем — храним таймстемп в localStorage и не показываем банер
+// повторно N дней, чтобы не превращать это в надоедливый попап (см. обсуждение
+// с администратором проекта: "баннер не надолго").
+const NOTIF_BANNER_DISMISS_KEY = 'notif_banner_dismissed_at'
+const NOTIF_BANNER_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000 // 3 дня
+
+const notifRequesting = ref(false)
+const notifDismissedThisSession = ref(false)
+
+const notifBannerVisible = computed(() => {
+  if (notifDismissedThisSession.value) return false
+  if (telegramUser.value?.notificationsAllowed) return false
+  if (!canRequestWriteAccess()) return false
+
+  const dismissedAt = Number(localStorage.getItem(NOTIF_BANNER_DISMISS_KEY) || 0)
+  if (dismissedAt && Date.now() - dismissedAt < NOTIF_BANNER_COOLDOWN_MS) return false
+
+  return true
+})
+
+const dismissNotifBanner = () => {
+  localStorage.setItem(NOTIF_BANNER_DISMISS_KEY, String(Date.now()))
+  notifDismissedThisSession.value = true
+}
+
+const onAllowNotifications = async () => {
+  notifRequesting.value = true
+  try {
+    const allowed = await requestWriteAccess()
+    if (allowed) {
+      // Оптимистично обновляем локальное состояние — реальный флаг на бэке
+      // проставится чуть позже, когда боту придёт write_access_allowed
+      if (telegramUser.value) telegramUser.value.notificationsAllowed = true
+      addToast('Отлично! Теперь бот сможет присылать уведомления 🔮', 'success')
+    } else {
+      dismissNotifBanner()
+    }
+  } finally {
+    notifRequesting.value = false
+  }
+}
 
 // Секретный триггер: 5 тапов по BETA-бейджу за 3 секунды → включить/выключить DEV MODE
 const betaTapCount = ref(0)
@@ -274,6 +338,73 @@ onMounted(async () => {
   background: rgba(255,200,87,0.12);
   border: none;
   color: rgba(255,200,87,0.6);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Notifications permission banner */
+.notif-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(182,84,255,0.14), rgba(233,74,168,0.08));
+  border: 1px solid rgba(182,84,255,0.35);
+  border-radius: 14px;
+}
+.notif-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.notif-badge {
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+.notif-text { min-width: 0; }
+.notif-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e0b8ff;
+  margin-bottom: 2px;
+}
+.notif-sub {
+  font-size: 11px;
+  color: rgba(224,184,255,0.65);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-allow {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.notif-allow:disabled { opacity: 0.6; }
+.notif-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(182,84,255,0.12);
+  border: none;
+  color: rgba(224,184,255,0.6);
   font-size: 10px;
   cursor: pointer;
   display: flex;

@@ -55,6 +55,42 @@ export const closeApp = () => {
   WebApp.close()
 }
 
+// ── Разрешение на проактивные сообщения от бота ─────────────────────────────
+// Пользователи, открывшие Mini App по прямой ссылке (?startapp=...), никогда
+// не писали боту — Telegram не даёт ему право слать им сообщения ("chat not found"
+// при рассылках). requestWriteAccess() показывает нативный диалог прямо в MiniApp:
+// при согласии Telegram присылает боту служебное сообщение write_access_allowed,
+// и бэкенд помечает пользователя notificationsAllowed=true (см. GadalkaTelegramBot).
+// Доступно с версии клиента Telegram 6.9.
+
+/** Поддерживает ли текущий клиент Telegram метод requestWriteAccess (>= 6.9) */
+export const canRequestWriteAccess = (): boolean => {
+  try {
+    const version = parseFloat(WebApp.version || '6.0')
+    return version >= 6.9 && typeof WebApp.requestWriteAccess === 'function'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Запрашивает у пользователя разрешение получать сообщения от бота.
+ * @returns true если пользователь разрешил, false если отклонил или метод недоступен
+ */
+export const requestWriteAccess = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (!canRequestWriteAccess()) {
+      resolve(false)
+      return
+    }
+    try {
+      WebApp.requestWriteAccess((access) => resolve(!!access))
+    } catch {
+      resolve(false)
+    }
+  })
+}
+
 // Получить тему Telegram
 export const getTelegramTheme = () => {
   return WebApp.colorScheme // 'light' или 'dark'

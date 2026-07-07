@@ -66,6 +66,10 @@ export interface TelegramUserDto {
   username?: string
   first_name?: string
   last_name?: string
+  // Может ли бот проактивно писать пользователю в Telegram (см. User.notificationsAllowed
+  // на бэке). false — вероятно, зашёл в MiniApp по прямой ссылке (?startapp=...) минуя /start,
+  // и рассылки/уведомления до него не доходят. Используется для баннера requestWriteAccess.
+  notificationsAllowed?: boolean
 }
 
 export interface TelegramAuthResponse {

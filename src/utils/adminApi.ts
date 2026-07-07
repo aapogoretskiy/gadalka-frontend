@@ -202,9 +202,13 @@ export const adminApi = {
     })
   },
 
-  /** Счётчики сегментов аудитории для вкладки рассылки (сейчас: inactive) */
+  /**
+   * Счётчики сегментов аудитории для вкладки рассылки.
+   * notificationsAllowed/totalUsers — сколько пользователей реально достижимы ботом
+   * (не зашли в MiniApp по прямой ссылке в обход /start). См. миграцию V59 на бэке.
+   */
   getBroadcastSegments: () =>
-    adminAxios.get<{ inactive: number }>('/api/admin/broadcast/segments'),
+    adminAxios.get<{ inactive: number; notificationsAllowed: number; totalUsers: number }>('/api/admin/broadcast/segments'),
 
   /** Lazy-история действий пользователя (гадания, совместимость, нумерология, карта дня) */
   getUserActions: (id: number, limit = 30) =>

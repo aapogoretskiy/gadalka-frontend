@@ -221,6 +221,24 @@
     <template v-else-if="activeTab === 'broadcast'">
       <div class="broadcast-wrap">
 
+        <!-- Достижимость аудитории ботом -->
+        <section class="bc-section" v-if="segmentCounts">
+          <h3 class="bc-label">
+            Разрешили уведомления
+            <span class="bc-hint">— смогут получить рассылку</span>
+          </h3>
+          <div class="stats-row">
+            <div class="stat">
+              <div class="stat-value">{{ segmentCounts.notificationsAllowed }}</div>
+              <div class="stat-label">разрешили</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">{{ notifAllowedPercent }}%</div>
+              <div class="stat-label">от {{ segmentCounts.totalUsers }} всего</div>
+            </div>
+          </div>
+        </section>
+
         <!-- Кому -->
         <section class="bc-section">
           <h3 class="bc-label">Кому</h3>
@@ -2023,10 +2041,17 @@ const broadcastLoading = ref(false)
 const broadcastSuccess = ref<string | null>(null)
 const broadcastError = ref<string | null>(null)
 
-// Счётчики сегментов (сейчас только inactive — «нулевые» без единого действия).
-// Подгружаются при первом открытии вкладки рассылки, чтобы кнопка сегмента
-// показывала живое число получателей до отправки.
-const segmentCounts = ref<{ inactive: number } | null>(null)
+// Счётчики сегментов аудитории. inactive — «нулевые» без единого действия.
+// notificationsAllowed/totalUsers — сколько пользователей реально достижимы ботом
+// (не зашли в MiniApp по прямой ссылке ?startapp=... в обход /start, из-за чего
+// у Telegram нет чата с ними и sendMessage падает с "chat not found").
+// Подгружаются при первом открытии вкладки рассылки.
+const segmentCounts = ref<{ inactive: number; notificationsAllowed: number; totalUsers: number } | null>(null)
+
+const notifAllowedPercent = computed(() => {
+  if (!segmentCounts.value || segmentCounts.value.totalUsers === 0) return 0
+  return Math.round((segmentCounts.value.notificationsAllowed / segmentCounts.value.totalUsers) * 100)
+})
 
 const loadSegmentCounts = async () => {
   try {
