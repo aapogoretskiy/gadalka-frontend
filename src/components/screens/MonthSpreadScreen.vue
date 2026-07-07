@@ -450,8 +450,11 @@ function badgeClass(badge: string): string {
 .kd-day { font-size: 18px; font-weight: 700; font-family: 'Cormorant Garamond', serif; color: #F5ECFF; }
 .kd-mon { font-size: 9px; text-transform: uppercase; color: rgba(255,255,255,.4); }
 .kd-badge {
-  flex-shrink: 0; font-size: 9px; font-weight: 700; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+  /* Фиксированная ширина под самый длинный бейдж («ОСТОРОЖНО») — иначе описание
+     справа стартует в разных местах в зависимости от длины слова в бейдже. */
+  flex-shrink: 0; width: 92px; box-sizing: border-box; text-align: center;
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  padding: 3px 4px; border-radius: 6px; white-space: nowrap;
 }
 .badge-peak     { background: rgba(112,224,168,.18); color: #70e0a8; }
 .badge-caution  { background: rgba(233,74,108,.18);  color: #e94a6c; }
