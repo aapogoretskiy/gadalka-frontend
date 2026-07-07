@@ -4,7 +4,7 @@
 
       <div class="header-bar">
         <div style="width:36px"></div>
-        <div class="header-title serif">Нумерология</div>
+        <div class="header-title serif">Расклад на день</div>
         <div style="width:36px"></div>
       </div>
 
@@ -53,17 +53,6 @@
           </div>
         </div>
 
-        <!-- Постоянный код (число жизни) — над энергией дня -->
-        <div class="portrait-banner glass haptic" @click="navigate?.('numerology-portrait')">
-          <div class="portrait-num">{{ data.lifePathNumber }}</div>
-          <div class="portrait-text">
-            <div class="portrait-label">ВАШ ПОСТОЯННЫЙ КОД</div>
-            <div class="portrait-title serif">Число жизни — {{ data.lifePathTitle }}</div>
-            <div class="portrait-sub">Число имени, души и дня рождения</div>
-          </div>
-          <div class="portrait-cta">Открыть портрет →</div>
-        </div>
-
         <!-- Detail cards -->
         <div class="detail-card glass">
           <h4 class="serif detail-title">⚡ Энергия дня</h4>
@@ -88,32 +77,6 @@
           <div class="aff-text serif">"{{ data.affirmation }}"</div>
         </div>
 
-        <!-- Deep analysis section -->
-        <div class="section-header">
-          <div class="section-title serif">А теперь глубже</div>
-        </div>
-
-        <div class="period-grid">
-          <div
-            v-for="p in periods" :key="p.label"
-            class="period-card haptic"
-            :class="{ selected: selectedPeriod === p.label, 'period-card--new': p.isNew }"
-            @click="selectPeriod(p.label)"
-          >
-            <div v-if="p.isNew" class="period-ribbon">✨ Новинка</div>
-            <div v-if="p.popular" class="period-badge">ХИТ</div>
-            <div class="period-icon">{{ p.icon }}</div>
-            <div class="period-title serif">{{ p.label }}</div>
-            <div class="period-desc">{{ p.desc }}</div>
-          </div>
-        </div>
-
-        <!-- Месяц / Год: пока недоступно. Неделя уводит на отдельный экран (см. selectPeriod) -->
-        <button v-if="selectedPeriod !== 'Неделя'" class="action-btn action-btn--disabled" disabled>
-          <span>Получить глубокий анализ</span>
-          <ComingSoonBadge />
-        </button>
-
       </template>
 
     </div>
@@ -122,7 +85,6 @@
 
 <script setup lang="ts">
 import { ref, inject, onMounted } from 'vue'
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
 
 const navigate = inject<(r: string) => void>('navigate')
@@ -144,21 +106,6 @@ onMounted(async () => {
   }
 })
 
-const selectedPeriod = ref('Месяц')
-const periods = [
-  { label: 'Неделя', icon: '🌱', desc: 'Прогноз на 7 дней', popular: false, isNew: true },
-  { label: 'Месяц',  icon: '🌙', desc: 'Детальный анализ',  popular: false, isNew: false },
-  { label: 'Год',    icon: '⭐', desc: 'Стратегия судьбы', popular: false, isNew: false },
-]
-
-// Неделя — отдельный экран (см. WeekSpreadScreen.vue), остальные периоды
-// пока недоступны и просто переключают выбранную карточку.
-function selectPeriod(label: string) {
-  selectedPeriod.value = label
-  if (label === 'Неделя') {
-    navigate?.('numerology-week')
-  }
-}
 </script>
 
 <style scoped>
@@ -221,76 +168,7 @@ function selectPeriod(label: string) {
 .aff-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:#ffc857; font-weight:600; margin-bottom:8px; }
 .aff-text  { font-size:18px; line-height:1.4; font-style:italic; color:rgba(255,255,255,.9); }
 
-/* Section */
-.section-header { display:flex; justify-content:space-between; margin-bottom:12px; padding-top:8px; }
-.section-title  { font-size:20px; }
-
-/* Period grid */
-.period-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px; padding-top:11px; }
-.period-card {
-  padding:14px 8px; text-align:center; cursor:pointer;
-  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
-  border-radius:14px; transition:all .2s; position:relative; overflow:hidden;
-}
-.period-card.selected {
-  background: linear-gradient(135deg, rgba(255,200,87,.2), rgba(233,74,168,.1));
-  border-color: rgba(255,200,87,.4);
-}
-.period-card--new {
-  overflow: visible;
-  border-color: rgba(182,84,255,.55);
-  box-shadow: 0 0 0 1px rgba(182,84,255,.35), 0 0 18px rgba(182,84,255,.35);
-}
-.period-ribbon {
-  position: absolute;
-  top: -11px; left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  background: linear-gradient(135deg, #b654ff, #e94aa8);
-  color: #fff; font-size: 9px; font-weight: 700;
-  padding: 3px 9px; border-radius: 8px;
-  letter-spacing: .03em;
-  box-shadow: 0 4px 10px rgba(182,84,255,.5);
-  z-index: 1;
-}
-.period-badge {
-  position:absolute; top:5px; right:5px;
-  background:#ffc857; color:#1a0529; font-size:7px; font-weight:700;
-  padding:1px 5px; border-radius:4px; letter-spacing:.04em; text-transform:uppercase;
-}
-.period-icon  { font-size:20px; margin-bottom:4px; }
-.period-title { font-size:14px; margin-bottom:2px; }
-.period-desc  { font-size:9.5px; color:rgba(255,255,255,.5); margin-bottom:6px; line-height:1.3; }
-
-/* Portrait banner */
-.portrait-banner {
-  display: flex; align-items: center; gap: 14px;
-  padding: 16px 18px; margin-bottom: 20px; cursor: pointer;
-  flex-wrap: wrap;
-}
-.portrait-num {
-  width: 52px; height: 52px; flex-shrink: 0;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255,200,87,.2), rgba(233,74,168,.15));
-  border: 1px solid rgba(255,200,87,.35);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px; font-weight: 600; color: #ffc857;
-}
-.portrait-text { flex: 1; min-width: 0; }
-.portrait-label {
-  font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
-  color: #ffc857; font-weight: 700; margin-bottom: 3px;
-}
-.portrait-title { font-size: 15px; margin-bottom: 2px; }
-.portrait-sub   { font-size: 11px; color: rgba(255,255,255,.45); }
-.portrait-cta {
-  width: 100%; font-size: 13px; color: #b654ff; font-weight: 600;
-  padding-top: 10px; border-top: 1px solid rgba(255,255,255,.07);
-  margin-top: 2px;
-}
-
-/* Button */
+/* Button (используется на error-card «Заполнить профиль») */
 .action-btn {
   width:100%; padding:15px; border-radius:16px;
   background:linear-gradient(135deg,#b654ff,#e94aa8);
@@ -298,17 +176,6 @@ function selectPeriod(label: string) {
   font-family:'Manrope',sans-serif; border:none; cursor:pointer;
   box-shadow:0 8px 24px rgba(182,84,255,.4);
   display:flex; align-items:center; justify-content:center; gap:10px;
-}
-.action-btn--disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-.action-btn--buy {
-  background: linear-gradient(135deg, rgba(255,200,87,0.2), rgba(233,74,168,0.15));
-  border: 1px solid rgba(255,200,87,0.4);
-  color: #ffc857;
-  box-shadow: none;
 }
 
 </style>

@@ -161,14 +161,52 @@
           <div class="compat-cta-arrow">›</div>
         </div>
 
+        <!-- Персональный прогноз: точка входа для День/Неделя/Месяц/Год.
+             «Числа» теперь открываются на портрете, а расклады по периодам —
+             ниже по скроллу (см. фичу «перестановка экранов вкладки Числа»). -->
+        <div class="periods-divider"><span>Текущие числа</span></div>
+
+        <div class="section-title serif periods-title">Персональный прогноз</div>
+        <div class="periods-subtitle">От дня до года — выберите период, который хотите разобрать.</div>
+
+        <div class="period-grid period-grid--4">
+          <div class="period-card haptic" @click="navigate?.('numerology-day')">
+            <div class="period-free-badge">+ Бесплатно</div>
+            <div class="period-icon">☀️</div>
+            <div class="period-title serif">День</div>
+            <div class="period-desc">Число дня сейчас</div>
+          </div>
+          <div class="period-card period-card--new haptic" @click="navigate?.('numerology-week')">
+            <div class="period-badge">Хит</div>
+            <div class="period-icon">🌱</div>
+            <div class="period-title serif">Неделя</div>
+            <div class="period-desc">Прогноз на 7 дней</div>
+            <div class="period-price">{{ weekCost }} знака</div>
+          </div>
+          <div class="period-card period-card--disabled">
+            <div class="period-icon">🌙</div>
+            <div class="period-title serif">Месяц</div>
+            <div class="period-desc">Детальный анализ</div>
+            <ComingSoonBadge />
+          </div>
+          <div class="period-card period-card--disabled">
+            <div class="period-icon">⭐</div>
+            <div class="period-title serif">Год</div>
+            <div class="period-desc">365 дней + код года</div>
+            <ComingSoonBadge />
+          </div>
+        </div>
+
       </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyPortraitResponse } from '@/utils/api'
+import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -180,7 +218,13 @@ const nameInputOpen = ref(false)
 const nameInput    = ref('')
 const savingName   = ref(false)
 
+// Цена расклада на неделю подтягивается с бэкенда (админ может её менять) —
+// см. useFeatureCosts.ts, тот же паттерн что и в WeekSpreadScreen.
+const { featureCosts, loadFeatureCosts } = useFeatureCosts()
+const weekCost = computed(() => featureCosts.value.numerologyWeek)
+
 onMounted(async () => {
+  loadFeatureCosts()
   try {
     const res = await api.getNumerologyPortrait()
     data.value = res.data
@@ -395,6 +439,62 @@ function barColor(pct: number): string {
 .compat-cta-title { font-size: 14px; font-weight: 600; color: #F5ECFF; margin-bottom: 2px; }
 .compat-cta-sub { font-size: 11px; color: rgba(255,255,255,.45); }
 .compat-cta-arrow { font-size: 24px; color: rgba(255,255,255,.3); }
+
+/* Персональный прогноз (карточки День/Неделя/Месяц/Год) */
+.periods-divider {
+  display: flex; align-items: center; text-align: center;
+  margin: 32px 0 18px; gap: 12px;
+}
+.periods-divider::before, .periods-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: rgba(255,255,255,.1);
+}
+.periods-divider span {
+  font-size: 11px; font-style: italic; color: rgba(255,255,255,.4);
+  font-family: 'Cormorant Garamond', serif;
+  white-space: nowrap;
+}
+.periods-title { margin-bottom: 6px; }
+.periods-subtitle { font-size: 13px; color: rgba(255,255,255,.5); line-height: 1.5; margin-bottom: 16px; }
+
+.period-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;
+}
+.period-card {
+  padding:14px 8px; text-align:center; cursor:pointer;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:14px; transition:all .2s; position:relative; overflow:hidden;
+}
+.period-card--new {
+  border-color: rgba(182,84,255,.55);
+  box-shadow: 0 0 0 1px rgba(182,84,255,.35), 0 0 18px rgba(182,84,255,.35);
+}
+.period-badge {
+  position:absolute; top:5px; right:5px;
+  background:#ffc857; color:#1a0529; font-size:7px; font-weight:700;
+  padding:1px 5px; border-radius:4px; letter-spacing:.04em; text-transform:uppercase;
+}
+.period-icon  { font-size:20px; margin-bottom:4px; }
+.period-title { font-size:14px; margin-bottom:2px; }
+.period-desc  { font-size:9.5px; color:rgba(255,255,255,.5); margin-bottom:6px; line-height:1.3; }
+
+.period-grid--4 { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.period-grid--4 .period-card { padding: 12px 6px; }
+.period-grid--4 .period-title { font-size: 12px; }
+.period-grid--4 .period-desc { font-size: 8.5px; }
+
+.period-card--disabled { opacity: .55; cursor: default; }
+
+.period-free-badge {
+  position: absolute; top: 5px; right: 5px;
+  background: rgba(74,222,128,.18); color: #4ade80;
+  font-size: 7px; font-weight: 700;
+  padding: 1px 5px; border-radius: 4px; letter-spacing: .03em; text-transform: uppercase;
+}
+.period-price {
+  font-size: 10px; font-weight: 700; color: #ffc857;
+  margin-top: 2px;
+}
 
 /* Transitions */
 .expand-enter-active, .expand-leave-active { transition: opacity .25s ease, transform .25s ease; }
