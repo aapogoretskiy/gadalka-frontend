@@ -10,7 +10,8 @@
     </button>
 
     <!-- Числа -->
-    <button class="tab-btn" :class="{ active: activeTab === 'numerology' }" @click="$emit('change', 'numerology')">
+    <button class="tab-btn" :class="{ active: activeTab === 'numerology' }" @click="onTabClick('numerology')">
+      <span v-if="hasUnseenNew('numerology')" class="nav-new-dot"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/>
         <path d="M12 8v4l3 3"/>
@@ -27,7 +28,8 @@
     </button>
 
     <!-- Астро (Сонник, Гороскоп) -->
-    <button class="tab-btn" :class="{ active: activeTab === 'astro' }" @click="$emit('change', 'astro')">
+    <button class="tab-btn" :class="{ active: activeTab === 'astro' }" @click="onTabClick('astro')">
+      <span v-if="hasUnseenNew('astro')" class="nav-new-dot"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>
         <path d="M17 4l.9 2.1L20 7l-2.1.9L17 10l-.9-2.1L14 7l2.1-.9L17 4z"/>
@@ -50,15 +52,34 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useInbox } from '@/composables/useInbox'
+import { useFeatureBadges } from '@/composables/useFeatureBadges'
+import { useNewFeatureDots } from '@/composables/useNewFeatureDots'
 
 defineProps<{ activeTab: string }>()
-defineEmits<{ change: [tab: string] }>()
+const emit = defineEmits<{ change: [tab: string] }>()
 
 // Красная точка на вкладке "Профиль" — чтобы пользователь узнал о новом сообщении
 // во "Входящих", даже не заходя в сам раздел. Тот же синглтон-счётчик, что и шилдик
 // с числом внутри Profile (см. ProfileScreen.vue) — обновляется сам после markAllRead.
 const { unreadCount } = useInbox()
+
+// Жёлтые точки «Новинка» на вкладках — управляются админом (вкладка «Цены»),
+// см. useNewFeatureDots.ts. Грузим бейджи здесь же (а не только на конкретных
+// экранах), чтобы точки были актуальны независимо от того, какой экран сейчас
+// открыт — BottomNav виден всегда.
+const { loadFeatureBadges } = useFeatureBadges()
+const { hasUnseenNew, acknowledgeTab } = useNewFeatureDots()
+
+onMounted(() => {
+  loadFeatureBadges()
+})
+
+function onTabClick(tab: string) {
+  acknowledgeTab(tab)
+  emit('change', tab)
+}
 </script>
 
 <style scoped>
@@ -174,5 +195,17 @@ const { unreadCount } = useInbox()
   border-radius: 50%;
   background: linear-gradient(135deg, #b654ff, #e94aa8);
   box-shadow: 0 0 6px rgba(233,74,168,0.7), 0 0 0 2px rgba(10,5,20,0.92);
+}
+
+/* Жёлтая точка «есть непросмотренная новинка» на вкладках Числа/Астро */
+.nav-new-dot {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  margin-left: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ffc857;
+  box-shadow: 0 0 6px rgba(255,200,87,0.8), 0 0 0 2px rgba(10,5,20,0.92);
 }
 </style>

@@ -176,15 +176,31 @@
             <div class="period-title serif">День</div>
             <div class="period-desc">Число дня сейчас</div>
           </div>
-          <div class="period-card period-card--new haptic" @click="navigate?.('numerology-week')">
-            <div class="period-badge" :class="{ 'period-badge--opened': weekOpened }">{{ weekOpened ? 'Открыто' : 'Хит' }}</div>
+          <div
+            class="period-card haptic"
+            :class="{ 'period-card--new': weekBadge.isNew || weekBadge.isHot }"
+            @click="navigate?.('numerology-week')"
+          >
+            <div
+              v-if="weekOpened || weekBadge.isNew || weekBadge.isHot"
+              class="period-badge"
+              :class="{ 'period-badge--opened': weekOpened }"
+            >{{ weekOpened ? 'Открыто' : (weekBadge.isNew ? 'Новинка' : 'Хит') }}</div>
             <div class="period-icon">🌱</div>
             <div class="period-title serif">Неделя</div>
             <div class="period-desc">Прогноз на 7 дней</div>
             <div v-if="!weekOpened" class="period-price">{{ weekCost }} знака</div>
           </div>
-          <div class="period-card haptic" @click="navigate?.('numerology-month')">
-            <div v-if="monthOpened" class="period-badge period-badge--opened">Открыто</div>
+          <div
+            class="period-card haptic"
+            :class="{ 'period-card--new': monthBadge.isNew || monthBadge.isHot }"
+            @click="navigate?.('numerology-month')"
+          >
+            <div
+              v-if="monthOpened || monthBadge.isNew || monthBadge.isHot"
+              class="period-badge"
+              :class="{ 'period-badge--opened': monthOpened }"
+            >{{ monthOpened ? 'Открыто' : (monthBadge.isNew ? 'Новинка' : 'Хит') }}</div>
             <div class="period-icon">🌙</div>
             <div class="period-title serif">Месяц</div>
             <div class="period-desc">Детальный анализ</div>
@@ -208,6 +224,7 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyPortraitResponse } from '@/utils/api'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import { useFeatureBadges } from '@/composables/useFeatureBadges'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -226,6 +243,13 @@ const weekCost = computed(() => featureCosts.value.numerologyWeek)
 const monthCost = computed(() => featureCosts.value.numerologyMonth)
 const yearCost = computed(() => featureCosts.value.numerologyYear)
 
+// Отметки «Новинка»/«Хит» — настраиваются админом на той же вкладке «Цены»,
+// см. useFeatureBadges.ts. Раньше «Хит» на карточке «Неделя» был захардкожен —
+// теперь это тоже управляется отсюда.
+const { featureBadges, loadFeatureBadges } = useFeatureBadges()
+const weekBadge  = computed(() => featureBadges.value.numerologyWeek)
+const monthBadge = computed(() => featureBadges.value.numerologyMonth)
+
 // Уже открытые в этом периоде расклады — тихая проверка (без создания и без списания знаков),
 // чтобы на карточке показать «Открыто» вместо цены/бейджа «Хит».
 const weekOpened  = ref(false)
@@ -234,6 +258,7 @@ const yearOpened  = ref(false)
 
 onMounted(async () => {
   loadFeatureCosts()
+  loadFeatureBadges()
   api.getNumerologyWeekCurrent().then(() => { weekOpened.value = true }).catch(() => {})
   api.getNumerologyMonthCurrent().then(() => { monthOpened.value = true }).catch(() => {})
   api.getNumerologyYearCurrent().then(() => { yearOpened.value = true }).catch(() => {})

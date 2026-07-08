@@ -475,6 +475,27 @@ export interface FeatureCostsResponse {
   dream: number
 }
 
+// Отметки «Новинка»/«Хит» — включаются и выключаются из админ-панели (вкладка «Цены»),
+// без деплоя. newSince — момент, когда «Новинка» была проставлена последний раз;
+// нужен, чтобы корректно решать, показывать ли пользователю жёлтую точку в навигации
+// заново (см. useNewFeatureDots.ts).
+export interface FeatureBadge {
+  isNew: boolean
+  isHot: boolean
+  newSince: string | null
+}
+
+export interface FeatureBadgesResponse {
+  threeCard: FeatureBadge
+  horseshoe: FeatureBadge
+  celticCross: FeatureBadge
+  compatibilityUnlock: FeatureBadge
+  numerologyWeek: FeatureBadge
+  numerologyMonth: FeatureBadge
+  numerologyYear: FeatureBadge
+  dream: FeatureBadge
+}
+
 // ── Сонник ──────────────────────────────────────────────────────────────────
 
 // GET /api/dreams/symbols — чипы «Частые символы в снах»
@@ -710,6 +731,10 @@ export const api = {
   // Актуальная стоимость платных функций (расклады, совместимость, нумерология недели, сонник)
   getFeatureCosts: () =>
     apiClient.get<FeatureCostsResponse>('/api/feature-costs'),
+
+  // Отметки «Новинка»/«Хит» по всем платным функциям
+  getFeatureBadges: () =>
+    apiClient.get<FeatureBadgesResponse>('/api/feature-badges'),
 
   // ── Сонник ────────────────────────────────────────────────────────────────
 

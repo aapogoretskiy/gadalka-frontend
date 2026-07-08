@@ -1083,14 +1083,26 @@
               <div class="price-field">
                 <label class="price-label">Три карты</label>
                 <input v-model.number="featureCosts.threeCard" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.threeCard.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.threeCard.isHot" /> Хит</label>
+                </div>
               </div>
               <div class="price-field">
                 <label class="price-label">Подкова</label>
                 <input v-model.number="featureCosts.horseshoe" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.horseshoe.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.horseshoe.isHot" /> Хит</label>
+                </div>
               </div>
               <div class="price-field">
                 <label class="price-label">Кельтский крест</label>
                 <input v-model.number="featureCosts.celticCross" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.celticCross.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.celticCross.isHot" /> Хит</label>
+                </div>
               </div>
             </div>
           </div>
@@ -1101,18 +1113,34 @@
               <div class="price-field">
                 <label class="price-label">Разблокировка совместимости</label>
                 <input v-model.number="featureCosts.compatibilityUnlock" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.compatibilityUnlock.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.compatibilityUnlock.isHot" /> Хит</label>
+                </div>
               </div>
               <div class="price-field">
                 <label class="price-label">Расклад на неделю</label>
                 <input v-model.number="featureCosts.numerologyWeek" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.numerologyWeek.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.numerologyWeek.isHot" /> Хит</label>
+                </div>
               </div>
               <div class="price-field">
                 <label class="price-label">Разбор на месяц</label>
                 <input v-model.number="featureCosts.numerologyMonth" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.numerologyMonth.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.numerologyMonth.isHot" /> Хит</label>
+                </div>
               </div>
               <div class="price-field">
                 <label class="price-label">Разбор на год</label>
                 <input v-model.number="featureCosts.numerologyYear" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.numerologyYear.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.numerologyYear.isHot" /> Хит</label>
+                </div>
               </div>
             </div>
           </div>
@@ -1123,6 +1151,10 @@
               <div class="price-field">
                 <label class="price-label">Разбор сна</label>
                 <input v-model.number="featureCosts.dream" type="number" min="1" class="price-input" />
+                <div v-if="featureBadges" class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.dream.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.dream.isHot" /> Хит</label>
+                </div>
               </div>
             </div>
           </div>
@@ -1784,7 +1816,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -2449,13 +2481,21 @@ const pricesError = ref<string | null>(null)
 const pricesSaveError = ref<string | null>(null)
 const pricesSuccess = ref<string | null>(null)
 
+// Отметки «Новинка»/«Хит» — управляются теми же чекбоксами на этой же вкладке
+// и сохраняются вместе с ценами одной кнопкой, чтобы не плодить лишний UI.
+const featureBadges = ref<FeatureBadges | null>(null)
+
 const loadFeatureCosts = async () => {
   pricesLoading.value = true
   pricesError.value = null
   pricesSuccess.value = null
   try {
-    const res = await adminApi.getFeatureCosts()
-    featureCosts.value = res.data
+    const [costsRes, badgesRes] = await Promise.all([
+      adminApi.getFeatureCosts(),
+      adminApi.getFeatureBadges(),
+    ])
+    featureCosts.value = costsRes.data
+    featureBadges.value = badgesRes.data
   } catch {
     pricesError.value = 'Не удалось загрузить цены'
   } finally {
@@ -2464,13 +2504,17 @@ const loadFeatureCosts = async () => {
 }
 
 const saveFeatureCosts = async () => {
-  if (!featureCosts.value) return
+  if (!featureCosts.value || !featureBadges.value) return
   pricesSaving.value = true
   pricesSaveError.value = null
   pricesSuccess.value = null
   try {
-    const res = await adminApi.updateFeatureCosts(featureCosts.value)
-    featureCosts.value = res.data
+    const [costsRes, badgesRes] = await Promise.all([
+      adminApi.updateFeatureCosts(featureCosts.value),
+      adminApi.updateFeatureBadges(featureBadges.value),
+    ])
+    featureCosts.value = costsRes.data
+    featureBadges.value = badgesRes.data
     pricesSuccess.value = 'Цены обновлены'
   } catch (e: any) {
     pricesSaveError.value = e.response?.data?.message || 'Ошибка при сохранении цен'
@@ -3874,6 +3918,24 @@ input[type="checkbox"] {
   width: 100%;
 }
 .price-input:focus { border-color: #6366f1; }
+
+.price-badges {
+  display: flex;
+  gap: 12px;
+}
+.price-badge-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+}
+.price-badge-check input[type="checkbox"] {
+  accent-color: #6366f1;
+  cursor: pointer;
+}
 
 /* ── Source filter ── */
 .source-select {

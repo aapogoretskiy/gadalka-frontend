@@ -95,6 +95,26 @@ export interface FeatureCosts {
   dream: number
 }
 
+// Отметка «Новинка»/«Хит» для одной функции. newSince приходит только на чтение
+// (сервер сам проставляет момент последнего включения «Новинка») — при сохранении
+// это поле игнорируется бэкендом, можно не трогать.
+export interface FeatureBadge {
+  isNew: boolean
+  isHot: boolean
+  newSince: string | null
+}
+
+export interface FeatureBadges {
+  threeCard: FeatureBadge
+  horseshoe: FeatureBadge
+  celticCross: FeatureBadge
+  compatibilityUnlock: FeatureBadge
+  numerologyWeek: FeatureBadge
+  numerologyMonth: FeatureBadge
+  numerologyYear: FeatureBadge
+  dream: FeatureBadge
+}
+
 // Символ сна (чип Сонника) — CRUD в админке
 export interface AdminDreamSymbol {
   id: number | null   // null при создании
@@ -294,6 +314,14 @@ export const adminApi = {
   /** Обновить стоимость всех платных функций сразу */
   updateFeatureCosts: (costs: FeatureCosts) =>
     adminAxios.put<FeatureCosts>('/api/admin/feature-costs', costs),
+
+  /** Текущие отметки «Новинка»/«Хит» по всем платным функциям */
+  getFeatureBadges: () =>
+    adminAxios.get<FeatureBadges>('/api/admin/feature-badges'),
+
+  /** Обновить отметки «Новинка»/«Хит» сразу по всем функциям */
+  updateFeatureBadges: (badges: FeatureBadges) =>
+    adminAxios.put<FeatureBadges>('/api/admin/feature-badges', badges),
 
   // ── Символы снов (чипы Сонника) ──────────────────────────────────────────
 
