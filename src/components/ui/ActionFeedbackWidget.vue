@@ -46,7 +46,7 @@ import { api } from '@/utils/api'
 
 const props = defineProps<{
   /** Тип платного действия */
-  actionType: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DREAM'
+  actionType: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'NUMEROLOGY_YEAR' | 'DREAM'
   /** ID записи — виджет не показывается пока undefined/null */
   actionId: number | null | undefined
 }>()

@@ -190,11 +190,12 @@
             <div class="period-desc">Детальный анализ</div>
             <div v-if="!monthOpened" class="period-price">{{ monthCost }} знаков</div>
           </div>
-          <div class="period-card period-card--disabled">
+          <div class="period-card haptic" @click="navigate?.('numerology-year')">
+            <div v-if="yearOpened" class="period-badge period-badge--opened">Открыто</div>
             <div class="period-icon">⭐</div>
             <div class="period-title serif">Год</div>
             <div class="period-desc">365 дней + код года</div>
-            <ComingSoonBadge />
+            <div v-if="!yearOpened" class="period-price">{{ yearCost }} знаков</div>
           </div>
         </div>
 
@@ -207,7 +208,6 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyPortraitResponse } from '@/utils/api'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
-import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -224,16 +224,19 @@ const savingName   = ref(false)
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const weekCost = computed(() => featureCosts.value.numerologyWeek)
 const monthCost = computed(() => featureCosts.value.numerologyMonth)
+const yearCost = computed(() => featureCosts.value.numerologyYear)
 
 // Уже открытые в этом периоде расклады — тихая проверка (без создания и без списания знаков),
 // чтобы на карточке показать «Открыто» вместо цены/бейджа «Хит».
 const weekOpened  = ref(false)
 const monthOpened = ref(false)
+const yearOpened  = ref(false)
 
 onMounted(async () => {
   loadFeatureCosts()
   api.getNumerologyWeekCurrent().then(() => { weekOpened.value = true }).catch(() => {})
   api.getNumerologyMonthCurrent().then(() => { monthOpened.value = true }).catch(() => {})
+  api.getNumerologyYearCurrent().then(() => { yearOpened.value = true }).catch(() => {})
   try {
     const res = await api.getNumerologyPortrait()
     data.value = res.data

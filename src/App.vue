@@ -49,6 +49,7 @@ import HoroscopeDetailedScreen from './components/screens/HoroscopeDetailedScree
 import NumerologyScreen    from './components/screens/NumerologyScreen.vue'
 import WeekSpreadScreen    from './components/screens/WeekSpreadScreen.vue'
 import MonthSpreadScreen   from './components/screens/MonthSpreadScreen.vue'
+import YearSpreadScreen    from './components/screens/YearSpreadScreen.vue'
 import NumerologyPortraitScreen from './components/screens/NumerologyPortraitScreen.vue'
 import CompatibilityScreen from './components/screens/CompatibilityScreen.vue'
 import AstroScreen         from './components/screens/AstroScreen.vue'
@@ -93,6 +94,7 @@ const currentScreen = computed(() => {
     'numerology-day':     NumerologyScreen,
     'numerology-week':    WeekSpreadScreen,
     'numerology-month':   MonthSpreadScreen,
+    'numerology-year':    YearSpreadScreen,
     compatibility: CompatibilityScreen,
     astro:         AstroScreen,
     dream:         DreamScreen,

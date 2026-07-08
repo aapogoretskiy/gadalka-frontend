@@ -303,6 +303,42 @@ export interface NumerologyMonthResponse {
   weekPreviews: NumerologyMonthWeekPreviewDto[]
 }
 
+// GET /api/numerology/year
+// Один из 4 ключевых периодов года (квартал) — позиция бейджа зафиксирована
+// (Старт/Пауза/Пик/Итоги), а месяц-победитель внутри квартала определяется резонансом.
+export interface NumerologyYearKeyPeriodDto {
+  badge: string          // "Старт" | "Пауза" | "Пик" | "Итоги"
+  calendarMonth: number  // 1-12
+  monthName: string
+  monthNumber: number
+  monthNumberTitle: string
+  description: string
+}
+
+// Лёгкое превью одного из 12 месяцев года — считается на лету, без создания записи.
+// Полный разбор месяца открывается по клику через getNumerologyMonthByDate(date).
+export interface NumerologyYearMonthPreviewDto {
+  calendarMonth: number  // 1-12
+  monthName: string
+  monthNumber: number
+  monthNumberTitle: string
+  resonanceLabel: string
+}
+
+export interface NumerologyYearResponse {
+  id: number
+  yearStart: string
+  yearEnd: string
+  yearNumber: number
+  yearTitle: string
+  mainTheme: string
+  lifeAreas: NumerologyMonthLifeAreasDto
+  keyPeriods: NumerologyYearKeyPeriodDto[]
+  whatToAvoid: string
+  advice: string
+  monthPreviews: NumerologyYearMonthPreviewDto[]
+}
+
 // GET /api/numerology/today
 export interface NumerologyTodayResponse {
   id: number
@@ -374,7 +410,7 @@ export interface PaymentConfig {
 }
 
 // GET/POST /api/diary
-export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DAILY_HOROSCOPE' | 'DREAM'
+export type FeatureType = 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY' | 'DAILY_CARD' | 'NUMEROLOGY_DAY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'NUMEROLOGY_YEAR' | 'DAILY_HOROSCOPE' | 'DREAM'
 
 export interface DiarySaveRequest {
   featureType: FeatureType
@@ -435,6 +471,7 @@ export interface FeatureCostsResponse {
   compatibilityUnlock: number
   numerologyWeek: number
   numerologyMonth: number
+  numerologyYear: number
   dream: number
 }
 
@@ -606,6 +643,20 @@ export const api = {
   getNumerologyMonthCurrent: () =>
     apiClient.get<NumerologyMonthResponse>('/api/numerology/month/current', { skipGlobalError: true }),
 
+  // Открыть конкретный месяц (любой из 12) внутри уже купленного годового разбора — бесплатно,
+  // создаётся по клику. 402, если год на этот год ещё не куплен; 422 без даты рождения.
+  getNumerologyMonthByDate: (date: string) =>
+    apiClient.get<NumerologyMonthResponse>('/api/numerology/month/by-date', { params: { date }, skipGlobalError: true }),
+
+  // Нумерология года (платно — 18 знаков; повторный вызов в течение действующего года бесплатен).
+  // 12 месяцев показаны как лёгкие превью и открываются бесплатно по клику (см. getNumerologyMonthByDate).
+  getNumerologyYear: () =>
+    apiClient.get<NumerologyYearResponse>('/api/numerology/year', { skipGlobalError: true }),
+
+  // Тихая проверка уже оплаченного разбора на год — НЕ создаёт новый и НЕ списывает знаки.
+  getNumerologyYearCurrent: () =>
+    apiClient.get<NumerologyYearResponse>('/api/numerology/year/current', { skipGlobalError: true }),
+
   // Платежи
   getProducts: () =>
     apiClient.get<PaymentProduct[]>('/api/v1/payments/products'),
@@ -694,10 +745,10 @@ export const api = {
     ),
 
   // Оценка платного действия (👍/👎)
-  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DREAM'
+  // type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'NUMEROLOGY_YEAR' | 'DREAM'
   // skipGlobalError: true — виджет сам обрабатывает ошибку (не мешаем UI)
   submitActionFeedback: (
-    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'DREAM',
+    type: 'FORTUNE' | 'COMPATIBILITY' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'NUMEROLOGY_YEAR' | 'DREAM',
     actionId: number,
     rating: 'POSITIVE' | 'NEGATIVE',
     comment?: string,

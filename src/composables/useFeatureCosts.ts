@@ -19,6 +19,7 @@ const DEFAULT_COSTS: FeatureCostsResponse = {
   compatibilityUnlock: 3,
   numerologyWeek: 3,
   numerologyMonth: 10,
+  numerologyYear: 18,
   dream: 3,
 }
 

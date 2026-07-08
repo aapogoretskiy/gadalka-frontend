@@ -4,12 +4,12 @@
 
       <div class="header-bar">
         <div style="width:36px"></div>
-        <div class="header-title serif">Разбор на месяц</div>
+        <div class="header-title serif">Разбор на год</div>
         <div style="width:36px"></div>
       </div>
 
       <!-- ══ Загрузка ════════════════════════════════════════════════ -->
-      <template v-if="monthLoading">
+      <template v-if="yearLoading">
         <div class="loader-wrap">
           <div class="ai-orb">
             <div class="orb-core"></div>
@@ -17,7 +17,7 @@
             <div class="orb-ring r2"></div>
           </div>
           <h2 class="serif loader-title">{{ loadingMessages[msgIdx] }}</h2>
-          <p class="loader-sub">Раскладываем месяц на недели и дни...</p>
+          <p class="loader-sub">Раскладываем год на 12 месяцев...</p>
           <div class="progress-bar-wrap">
             <div class="progress-bar-fill" :style="`width:${progress}%`"></div>
           </div>
@@ -25,48 +25,64 @@
       </template>
 
       <!-- ══ Результат ═══════════════════════════════════════════════ -->
-      <template v-else-if="monthResult">
+      <template v-else-if="yearResult">
 
         <!-- Баннер «оплата прошла» — только сразу после покупки в этой сессии -->
         <div v-if="justPurchased" class="success-banner glass">
           <span class="success-icon">✅</span>
-          <span>Оплата прошла. Прогноз открыт — доступен в истории.</span>
+          <span>Оплата прошла. Разбор на год открыт — доступен в истории.</span>
         </div>
 
-        <!-- Код месяца -->
+        <!-- Код года -->
         <div class="num-hero gradient-card">
-          <div class="num-label">Код месяца</div>
-          <div class="num-mega">{{ monthResult.monthNumber }}</div>
-          <div class="num-short serif">«{{ monthResult.monthNumberTitle }}»</div>
+          <div class="num-label">Код года</div>
+          <div class="num-mega">{{ yearResult.yearNumber }}</div>
+          <div class="num-short serif">«{{ yearResult.yearTitle }}»</div>
         </div>
 
-        <!-- 4 недели месяца -->
+        <!-- 4 ключевых периода -->
         <div class="section-header">
-          <div class="section-title serif">Выберите неделю для детального разбора</div>
+          <div class="section-title serif">Ключевые периоды года</div>
         </div>
-        <div class="week-preview-grid">
+        <div class="period-preview-grid">
           <div
-            v-for="wp in monthResult.weekPreviews" :key="wp.weekIndex"
-            class="week-preview-card glass haptic"
-            @click="openWeek(wp)"
+            v-for="kp in yearResult.keyPeriods" :key="kp.badge"
+            class="period-preview-card glass haptic"
+            @click="openMonth(kp.calendarMonth)"
           >
-            <div class="wp-label">НЕДЕЛЯ {{ wp.weekIndex }}</div>
-            <div class="wp-dates">{{ shortDate(wp.startDate) }}–{{ shortDate(wp.endDate) }}</div>
-            <div class="wp-number serif">{{ wp.weekNumber }}</div>
-            <div class="wp-title">{{ wp.weekNumberTitle }}</div>
-            <div class="wp-resonance" :class="resonanceClass(wp.resonanceLabel)">{{ wp.resonanceLabel }}</div>
+            <div class="pp-badge" :class="periodBadgeClass(kp.badge)">{{ kp.badge }}</div>
+            <div class="pp-month">{{ kp.monthName }}</div>
+            <div class="pp-number serif">{{ kp.monthNumber }}</div>
+            <div class="pp-title">{{ kp.monthNumberTitle }}</div>
+            <div class="pp-desc">{{ kp.description }}</div>
+          </div>
+        </div>
+
+        <!-- 12 месяцев -->
+        <div class="section-header">
+          <div class="section-title serif">Все 12 месяцев</div>
+        </div>
+        <div class="month-preview-grid">
+          <div
+            v-for="mp in yearResult.monthPreviews" :key="mp.calendarMonth"
+            class="month-preview-card glass haptic"
+            @click="openMonth(mp.calendarMonth)"
+          >
+            <div class="mp-name">{{ mp.monthName }}</div>
+            <div class="mp-number serif">{{ mp.monthNumber }}</div>
+            <div class="mp-resonance" :class="resonanceClass(mp.resonanceLabel)">{{ mp.resonanceLabel }}</div>
           </div>
         </div>
 
         <!-- Главная тема -->
         <div class="detail-card glass">
-          <h4 class="serif detail-title">☀️ Главная тема месяца</h4>
-          <p class="detail-body">{{ monthResult.mainTheme }}</p>
+          <h4 class="serif detail-title">☀️ Главная тема года</h4>
+          <p class="detail-body">{{ yearResult.mainTheme }}</p>
         </div>
 
         <!-- Сферы жизни -->
         <div class="section-header">
-          <div class="section-title serif">Сферы жизни в этом месяце</div>
+          <div class="section-title serif">Сферы жизни в этом году</div>
         </div>
         <div class="life-areas glass">
           <div v-for="a in lifeAreaRows" :key="a.key" class="life-area-row">
@@ -84,38 +100,23 @@
           <p class="detail-body">{{ a.data.text }}</p>
         </div>
 
-        <!-- Ключевые даты -->
-        <div class="section-header">
-          <div class="section-title serif">Ключевые даты {{ keyDatesMonthGenitive }}</div>
-        </div>
-        <div class="key-dates glass">
-          <div v-for="kd in monthResult.keyDates" :key="kd.date" class="key-date-row">
-            <div class="kd-date">
-              <div class="kd-day">{{ dayOfMonth(kd.date) }}</div>
-              <div class="kd-mon">{{ shortMonth(kd.date) }}</div>
-            </div>
-            <div class="kd-badge" :class="badgeClass(kd.badge)">{{ kd.badge }}</div>
-            <div class="kd-desc">{{ kd.description }}</div>
-          </div>
-        </div>
-
         <!-- Чего избегать -->
         <div class="detail-card glass detail-card--warn">
           <h4 class="serif detail-title">⚠️ Чего избегать</h4>
-          <p class="detail-body">{{ monthResult.whatToAvoid }}</p>
+          <p class="detail-body">{{ yearResult.whatToAvoid }}</p>
         </div>
 
-        <!-- Совет месяца -->
+        <!-- Совет года -->
         <div class="affirmation-card gradient-card">
-          <div class="aff-label">🔮 Совет месяца</div>
-          <div class="aff-text serif">{{ monthResult.advice }}</div>
+          <div class="aff-label">🔮 Совет года</div>
+          <div class="aff-text serif">{{ yearResult.advice }}</div>
         </div>
 
         <!-- Фидбэк на разбор -->
         <ActionFeedbackWidget
-          v-if="monthResult.id"
-          action-type="NUMEROLOGY_MONTH"
-          :action-id="monthResult.id"
+          v-if="yearResult.id"
+          action-type="NUMEROLOGY_YEAR"
+          :action-id="yearResult.id"
         />
       </template>
 
@@ -124,24 +125,16 @@
         <div class="loading-spinner-sm"></div>
       </div>
 
-      <!-- ══ Месяц из года не нашёлся (крайний случай) — без пейволла и кнопки покупки ══ -->
-      <div v-else-if="fixedMonthStart" class="week-paywall glass">
-        <div class="paywall-lock">⚠️</div>
-        <div class="paywall-title serif">Не удалось открыть месяц</div>
-        <div class="paywall-sub">{{ monthErrorMsg }}</div>
-        <button class="action-btn haptic" @click="navigate?.('numerology-year')">К разбору на год</button>
-      </div>
-
       <!-- ══ Пейволл ═════════════════════════════════════════════════ -->
       <div v-else class="week-paywall glass">
-        <div class="paywall-lock">🌙</div>
-        <div class="paywall-title serif">Разбор на месяц</div>
-        <div class="paywall-sub">Код месяца, сферы жизни, ключевые даты и детальный разбор всех 4 недель</div>
+        <div class="paywall-lock">⭐</div>
+        <div class="paywall-title serif">Разбор на год</div>
+        <div class="paywall-sub">Код года, сферы жизни, ключевые периоды и все 12 месяцев с резонансом</div>
 
-        <div v-if="monthErrorMsg" class="week-error">{{ monthErrorMsg }}</div>
+        <div v-if="yearErrorMsg" class="week-error">{{ yearErrorMsg }}</div>
 
-        <button v-if="canAffordMonth" class="action-btn haptic" @click="showPurchaseModal = true">
-          🌙 Открыть за {{ MONTH_COST }} знаков
+        <button v-if="canAffordYear" class="action-btn haptic" @click="showPurchaseModal = true">
+          ⭐ Открыть за {{ YEAR_COST }} знаков
         </button>
         <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
           Купить знаки →
@@ -152,18 +145,18 @@
 
     <PeriodPurchaseModal
       :open="showPurchaseModal"
-      title="Разбор на месяц"
-      icon="🌙"
-      description="30-дневный персональный разбор с ключевыми датами и разбивкой по неделям"
+      title="Разбор на год"
+      icon="⭐"
+      description="Годовой персональный разбор с ключевыми периодами и разбивкой по месяцам"
       :features="[
-        '30-дневный персональный календарь',
-        'Ключевые даты и циклы месяца',
-        'Сферы жизни: отношения, карьера, финансы, здоровье',
-        '4 недели включены бесплатно — открываются отдельно',
+        'Код года и главная тема',
+        '4 ключевых периода — Старт, Пауза, Пик, Итоги',
+        'Резонанс всех 12 месяцев года',
+        'Каждый месяц открывается бесплатно по клику',
         'Сохранится в истории навсегда',
       ]"
-      :cost="MONTH_COST"
-      :loading="monthLoading"
+      :cost="YEAR_COST"
+      :loading="yearLoading"
       @confirm="confirmPurchase"
       @close="showPurchaseModal = false"
     />
@@ -172,7 +165,7 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, onMounted } from 'vue'
-import { api, type NumerologyMonthResponse, type NumerologyMonthWeekPreviewDto } from '@/utils/api'
+import { api, type NumerologyYearResponse } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { hapticFeedback } from '@/utils/telegram'
@@ -180,70 +173,51 @@ import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
 
 const navigate = inject<(r: string, params?: Record<string, any>) => void>('navigate')
-// Если экран открыт из годового разбора — сюда приходит { monthStart: 'YYYY-MM-01' } конкретного
-// месяца. Такой месяц уже создан бесплатно по клику (см. NumerologyYearService.openIncludedMonth),
-// поэтому здесь мы просто запрашиваем его напрямую по дате — без пейволла и без лоадера «сложного расчёта».
-const routeParams = inject<{ value: Record<string, any> | null }>('routeParams')
-const fixedMonthStart = routeParams?.value?.monthStart as string | undefined
 
-// Стоимость берётся с бэка (настраивается в админке). Бэк: FeatureCostService.getNumerologyMonthCost
+// Стоимость берётся с бэка (настраивается в админке). Бэк: FeatureCostService.getNumerologyYearCost
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
-const MONTH_COST = computed(() => featureCosts.value.numerologyMonth)
+const YEAR_COST = computed(() => featureCosts.value.numerologyYear)
 
 const { balance, refreshBalance } = useBalance()
-const canAffordMonth = computed(() => (balance.value ?? 0) >= MONTH_COST.value)
+const canAffordYear = computed(() => (balance.value ?? 0) >= YEAR_COST.value)
 
-const monthResult   = ref<NumerologyMonthResponse | null>(null)
-const monthLoading  = ref(false)
-const monthErrorMsg = ref('')
+const yearResult   = ref<NumerologyYearResponse | null>(null)
+const yearLoading  = ref(false)
+const yearErrorMsg = ref('')
 const showPurchaseModal = ref(false)
 // true только если разбор был куплен в текущей сессии (не при обычном повторном открытии)
 const justPurchased = ref(false)
 
-// ── Тихая проверка при открытии экрана (см. аналогичную логику в WeekSpreadScreen) ──
+// ── Тихая проверка при открытии экрана (см. аналогичную логику в MonthSpreadScreen) ──
 const checkingExisting = ref(true)
 
 onMounted(async () => {
   loadFeatureCosts()
-
-  if (fixedMonthStart) {
-    // Переход из годового разбора на конкретный месяц — он уже существует и бесплатен
-    try {
-      const res = await api.getNumerologyMonthByDate(fixedMonthStart)
-      monthResult.value = res.data
-    } catch {
-      monthErrorMsg.value = 'Не удалось загрузить этот месяц. Попробуйте открыть его из разбора на год ещё раз.'
-    } finally {
-      checkingExisting.value = false
-    }
-    return
-  }
-
   try {
-    const res = await api.getNumerologyMonthCurrent()
-    monthResult.value = res.data
+    const res = await api.getNumerologyYearCurrent()
+    yearResult.value = res.data
   } catch {
-    // 404 — разбора на этот месяц ещё нет, остаёмся на пейволле
+    // 404 — разбора на этот год ещё нет, остаёмся на пейволле
   } finally {
     checkingExisting.value = false
   }
 })
 
-// ── Лоадер месячного расчёта — заметно дольше недельного (~7с, 10 фраз),
-// чтобы ощущался как более «глубокий» расчёт ──────────────────────────────────
-const MIN_LOADER_MS = 7000
+// ── Лоадер годового расчёта — самый долгий из всех уровней матрёшки (~9с) ──────
+const MIN_LOADER_MS = 9000
 
 const loadingMessages = [
-  'Считаем персональный код месяца...',
-  'Раскладываем месяц на 4 недели...',
-  'Ищем резонанс каждого дня...',
+  'Считаем персональный код года...',
+  'Раскладываем год на 12 месяцев...',
+  'Ищем резонанс каждого месяца...',
+  'Определяем ключевые периоды — Старт, Пауза, Пик, Итоги...',
   'Сопоставляем со сферами жизни...',
-  'Вычисляем пиковые даты...',
+  'Вычисляем самые сильные месяцы...',
   'Анализируем отношения и карьеру...',
-  'Считаем финансовые окна месяца...',
+  'Считаем финансовые окна года...',
   'Проверяем совместимость с числом жизни...',
-  'Собираем ключевые даты...',
-  'Формируем разбор месяца...',
+  'Собираем ключевые периоды...',
+  'Формируем разбор года...',
 ]
 const msgIdx   = ref(0)
 const progress = ref(0)
@@ -254,54 +228,58 @@ function delay(ms: number): Promise<void> {
 
 function confirmPurchase() {
   showPurchaseModal.value = false
-  getMonthlyAnalysis()
+  getYearlyAnalysis()
 }
 
-async function getMonthlyAnalysis() {
-  if (monthLoading.value) return
-  monthLoading.value = true
-  monthErrorMsg.value = ''
+async function getYearlyAnalysis() {
+  if (yearLoading.value) return
+  yearLoading.value = true
+  yearErrorMsg.value = ''
   msgIdx.value = 0
   progress.value = 0
 
   const msgInterval = setInterval(() => {
     msgIdx.value = (msgIdx.value + 1) % loadingMessages.length
-    progress.value = Math.min(progress.value + 10, 96)
+    progress.value = Math.min(progress.value + 8, 96)
   }, 700)
 
   try {
     const [res] = await Promise.all([
-      api.getNumerologyMonth(),
+      api.getNumerologyYear(),
       delay(MIN_LOADER_MS),
     ])
     progress.value = 100
-    monthResult.value = res.data
+    yearResult.value = res.data
     justPurchased.value = true
     await refreshBalance()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {
-      monthErrorMsg.value = 'Недостаточно знаков для этого разбора.'
+      yearErrorMsg.value = 'Недостаточно знаков для этого разбора.'
       await refreshBalance()
     } else if (err.response?.status === 422) {
-      monthErrorMsg.value = 'Укажите дату рождения в профиле, чтобы рассчитать разбор.'
+      yearErrorMsg.value = 'Укажите дату рождения в профиле, чтобы рассчитать разбор.'
     } else {
-      monthErrorMsg.value = 'Не удалось получить разбор. Попробуйте ещё раз.'
+      yearErrorMsg.value = 'Не удалось получить разбор. Попробуйте ещё раз.'
     }
   } finally {
     clearInterval(msgInterval)
-    monthLoading.value = false
+    yearLoading.value = false
   }
 }
 
-function openWeek(wp: NumerologyMonthWeekPreviewDto) {
-  navigate?.('numerology-week', { weekStart: wp.startDate })
+// Переход на конкретный месяц года — открывается бесплатно по клику (см. NumerologyYearService.openIncludedMonth)
+function openMonth(calendarMonth: number) {
+  if (!yearResult.value) return
+  const year = parseInt(yearResult.value.yearStart.split('-')[0], 10)
+  const mm = String(calendarMonth).padStart(2, '0')
+  navigate?.('numerology-month', { monthStart: `${year}-${mm}-01` })
 }
 
 // ── Сферы жизни: собираем в массив для v-for, с иконками и подписями ────────
 const lifeAreaRows = computed(() => {
-  if (!monthResult.value) return []
-  const areas = monthResult.value.lifeAreas
+  if (!yearResult.value) return []
+  const areas = yearResult.value.lifeAreas
   return [
     { key: 'relationships', icon: '💗', label: 'Отношения', data: areas.relationships },
     { key: 'career',        icon: '🚀', label: 'Карьера',   data: areas.career },
@@ -310,40 +288,17 @@ const lifeAreaRows = computed(() => {
   ]
 })
 
-// Короткая дата вида "ДД.ММ" из ISO-строки YYYY-MM-DD
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split('-')
-  return `${d}.${m}`
-}
-
-function dayOfMonth(iso: string): string {
-  return iso.split('-')[2]
-}
-
-const MONTHS_SHORT_RU = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
-function shortMonth(iso: string): string {
-  const m = parseInt(iso.split('-')[1], 10)
-  return MONTHS_SHORT_RU[m - 1]
-}
-
-const MONTHS_GENITIVE_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
-const keyDatesMonthGenitive = computed(() => {
-  if (!monthResult.value) return ''
-  const m = parseInt(monthResult.value.monthStart.split('-')[1], 10)
-  return MONTHS_GENITIVE_RU[m - 1]
-})
-
 function resonanceClass(label: string): string {
   if (label === 'Благоприятный') return 'res-good'
   if (label === 'Нейтральный') return 'res-neutral'
   return 'res-warn'
 }
 
-function badgeClass(badge: string): string {
+function periodBadgeClass(badge: string): string {
+  if (badge === 'Старт') return 'badge-start'
+  if (badge === 'Пауза') return 'badge-pause'
   if (badge === 'Пик') return 'badge-peak'
-  if (badge === 'Осторожно') return 'badge-caution'
-  if (badge === 'Решения') return 'badge-decision'
-  return 'badge-meeting'
+  return 'badge-finale'
 }
 </script>
 
@@ -427,23 +382,40 @@ function badgeClass(badge: string): string {
 .section-header { margin-bottom: 12px; padding-top: 8px; }
 .section-title  { font-size: 18px; }
 
-/* 4 недели */
-.week-preview-grid {
+/* 4 ключевых периода */
+.period-preview-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
-.week-preview-card {
+.period-preview-card {
   padding: 14px; text-align: center; cursor: pointer; transition: transform .15s;
 }
-.wp-label { font-size: 9px; letter-spacing: .08em; color: rgba(255,255,255,.4); font-weight: 700; margin-bottom: 4px; }
-.wp-dates { font-size: 10px; color: rgba(255,255,255,.4); margin-bottom: 6px; }
-.wp-number {
-  font-size: 30px; font-weight: 600; color: #ffc857;
+.pp-badge {
+  display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; padding: 3px 8px; border-radius: 6px; margin-bottom: 8px;
 }
-.wp-title { font-size: 12px; color: rgba(255,255,255,.75); margin: 2px 0 8px; }
-.wp-resonance {
-  display: inline-block; font-size: 8px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .02em; padding: 3px 8px; border-radius: 6px;
+.badge-start  { background: rgba(112,224,168,.18); color: #70e0a8; }
+.badge-pause  { background: rgba(255,200,87,.18);  color: #ffc857; }
+.badge-peak   { background: rgba(182,84,255,.18);  color: #c084fc; }
+.badge-finale { background: rgba(233,74,108,.18);  color: #e94a6c; }
+.pp-month  { font-size: 11px; color: rgba(255,255,255,.5); margin-bottom: 4px; }
+.pp-number { font-size: 28px; font-weight: 600; color: #ffc857; }
+.pp-title  { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 2px; }
+.pp-desc   { font-size: 10.5px; line-height: 1.4; color: rgba(255,255,255,.5); margin-top: 8px; text-align: left; }
+
+/* 12 месяцев */
+.month-preview-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-bottom: 18px;
+}
+.month-preview-card {
+  padding: 10px 6px; text-align: center; cursor: pointer; transition: transform .15s;
+}
+.mp-name { font-size: 10px; color: rgba(255,255,255,.55); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.mp-number { font-size: 20px; font-weight: 600; color: #ffc857; }
+.mp-resonance {
+  display: inline-block; margin-top: 4px; font-size: 7.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .02em; padding: 2px 6px; border-radius: 6px;
 }
 .res-good    { background: rgba(112,224,168,.18); color: #70e0a8; }
 .res-neutral { background: rgba(255,200,87,.18);  color: #ffc857; }
@@ -465,29 +437,6 @@ function badgeClass(badge: string): string {
 .la-bar-wrap { height: 5px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
 .la-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #b654ff, #e94aa8); }
 .la-score { font-size: 12px; font-weight: 700; color: #ffc857; flex-shrink: 0; width: 28px; text-align: right; }
-
-/* Ключевые даты */
-.key-dates { padding: 6px 16px; margin-bottom: 10px; }
-.key-date-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.06);
-}
-.key-date-row:last-child { border-bottom: none; }
-.kd-date { flex-shrink: 0; width: 34px; text-align: center; }
-.kd-day { font-size: 18px; font-weight: 700; font-family: 'Cormorant Garamond', serif; color: #F5ECFF; }
-.kd-mon { font-size: 9px; text-transform: uppercase; color: rgba(255,255,255,.4); }
-.kd-badge {
-  /* Фиксированная ширина под самый длинный бейдж («ОСТОРОЖНО») — иначе описание
-     справа стартует в разных местах в зависимости от длины слова в бейдже. */
-  flex-shrink: 0; width: 92px; box-sizing: border-box; text-align: center;
-  font-size: 9px; font-weight: 700; text-transform: uppercase;
-  padding: 3px 4px; border-radius: 6px; white-space: nowrap;
-}
-.badge-peak     { background: rgba(112,224,168,.18); color: #70e0a8; }
-.badge-caution  { background: rgba(233,74,108,.18);  color: #e94a6c; }
-.badge-decision { background: rgba(182,84,255,.18);  color: #c084fc; }
-.badge-meeting  { background: rgba(255,200,87,.18);  color: #ffc857; }
-.kd-desc { flex: 1; font-size: 12px; line-height: 1.4; color: rgba(255,255,255,.7); }
 
 /* Affirmation / advice */
 .affirmation-card { padding: 20px; margin-bottom: 20px; }

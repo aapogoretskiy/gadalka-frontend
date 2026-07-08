@@ -255,6 +255,50 @@
           </div>
         </template>
 
+        <!-- NUMEROLOGY_YEAR -->
+        <template v-if="selected.featureType === 'NUMEROLOGY_YEAR'">
+          <div class="modal-type-label">⭐ Разбор на год</div>
+          <div class="modal-date">{{ formatDate(selected.createdAt) }}</div>
+          <div class="modal-numerology-hero">
+            <div class="modal-day-code">{{ selected.data?.yearNumber }}</div>
+            <div class="modal-day-title serif">{{ selected.data?.yearTitle }}</div>
+          </div>
+          <div v-if="selected.data?.mainTheme" class="modal-section">
+            <div class="modal-section-label">☀️ Главная тема</div>
+            <div class="modal-section-body">{{ selected.data.mainTheme }}</div>
+          </div>
+          <div v-if="selected.data?.keyPeriods?.length" class="modal-section">
+            <div class="modal-section-label">📅 Ключевые периоды</div>
+            <div v-for="kp in selected.data.keyPeriods" :key="kp.badge" class="modal-section-body" style="margin-bottom:8px;">
+              <b>{{ kp.badge }} — {{ kp.monthName }}</b>. {{ kp.description }}
+            </div>
+          </div>
+          <div v-if="selected.data?.lifeAreas" class="modal-section">
+            <div class="modal-section-label">💗 Отношения</div>
+            <div class="modal-section-body">{{ selected.data.lifeAreas.relationships?.text }}</div>
+          </div>
+          <div v-if="selected.data?.lifeAreas" class="modal-section">
+            <div class="modal-section-label">🚀 Карьера</div>
+            <div class="modal-section-body">{{ selected.data.lifeAreas.career?.text }}</div>
+          </div>
+          <div v-if="selected.data?.lifeAreas" class="modal-section">
+            <div class="modal-section-label">💰 Финансы</div>
+            <div class="modal-section-body">{{ selected.data.lifeAreas.finance?.text }}</div>
+          </div>
+          <div v-if="selected.data?.lifeAreas" class="modal-section">
+            <div class="modal-section-label">🌿 Здоровье</div>
+            <div class="modal-section-body">{{ selected.data.lifeAreas.health?.text }}</div>
+          </div>
+          <div v-if="selected.data?.whatToAvoid" class="modal-section">
+            <div class="modal-section-label">⚠️ Чего избегать</div>
+            <div class="modal-section-body">{{ selected.data.whatToAvoid }}</div>
+          </div>
+          <div v-if="selected.data?.advice" class="modal-section modal-section--affirmation">
+            <div class="modal-section-label">🔮 Совет года</div>
+            <div class="modal-section-body modal-affirmation-text serif">{{ selected.data.advice }}</div>
+          </div>
+        </template>
+
         <!-- COMPATIBILITY -->
         <template v-if="selected.featureType === 'COMPATIBILITY'">
           <div class="modal-type-label">💕 Совместимость</div>
@@ -476,6 +520,7 @@ const tabs: { value: TabValue; label: string }[] = [
   { value: 'NUMEROLOGY_DAY', label: 'Числа' },
   { value: 'NUMEROLOGY_WEEK', label: 'Неделя' },
   { value: 'NUMEROLOGY_MONTH', label: 'Месяц' },
+  { value: 'NUMEROLOGY_YEAR', label: 'Год' },
   { value: 'DAILY_HOROSCOPE', label: 'Гороскоп' },
   { value: 'DREAM',          label: 'Сонник' },
 ]
@@ -509,6 +554,7 @@ async function loadAll() {
       api.getDiaryHistory('NUMEROLOGY_DAY', from, to),
       api.getDiaryHistory('NUMEROLOGY_WEEK', from, to),
       api.getDiaryHistory('NUMEROLOGY_MONTH', from, to),
+      api.getDiaryHistory('NUMEROLOGY_YEAR', from, to),
       api.getDiaryHistory('DAILY_HOROSCOPE', from, to),
       api.getDiaryHistory('DREAM', from, to),
     ])
@@ -533,6 +579,7 @@ function entryIcon(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY')  return '🔢'
   if (entry.featureType === 'NUMEROLOGY_WEEK') return '🗓'
   if (entry.featureType === 'NUMEROLOGY_MONTH') return '🌕'
+  if (entry.featureType === 'NUMEROLOGY_YEAR')  return '⭐'
   if (entry.featureType === 'DAILY_HOROSCOPE') return zodiacGlyph(entry.data?.zodiacSign)
   if (entry.featureType === 'DREAM')           return '🌙'
   return '🔮'
@@ -544,6 +591,7 @@ function entryBg(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY')  return 'linear-gradient(135deg, #2a1a00, #4a3200)'
   if (entry.featureType === 'NUMEROLOGY_WEEK') return 'linear-gradient(135deg, #1a0036, #3a0a4e)'
   if (entry.featureType === 'NUMEROLOGY_MONTH') return 'linear-gradient(135deg, #0a0e3a, #2a1a5e)'
+  if (entry.featureType === 'NUMEROLOGY_YEAR')  return 'linear-gradient(135deg, #3a2a00, #6e4a0a)'
   if (entry.featureType === 'DAILY_HOROSCOPE') return 'linear-gradient(135deg, #2e0a4e, #4a1a6e)'
   if (entry.featureType === 'DREAM')           return 'linear-gradient(135deg, #1a1b5e, #2a2b8e)'
   return 'linear-gradient(135deg, #3a1b6e, #1a0b2e)'
@@ -571,6 +619,9 @@ function entryTitle(entry: DiaryEntryDto): string {
   }
   if (entry.featureType === 'NUMEROLOGY_MONTH') {
     return d.monthNumber != null ? `Месяц числа ${d.monthNumber}` : 'Разбор на месяц'
+  }
+  if (entry.featureType === 'NUMEROLOGY_YEAR') {
+    return d.yearNumber != null ? `Год числа ${d.yearNumber}` : 'Разбор на год'
   }
   if (entry.featureType === 'DAILY_HOROSCOPE') {
     return d.zodiacSign ? `Гороскоп — ${d.zodiacSign}` : 'Гороскоп на день'
@@ -615,6 +666,12 @@ function entryKeywords(entry: DiaryEntryDto): string[] {
     if (d.monthStart && d.monthEnd) kws.push(`${formatShort(d.monthStart)}–${formatShort(d.monthEnd)}`)
     return kws
   }
+  if (entry.featureType === 'NUMEROLOGY_YEAR') {
+    const kws: string[] = []
+    if (d.yearTitle) kws.push(d.yearTitle)
+    if (d.yearStart) kws.push(d.yearStart.split('-')[0])
+    return kws
+  }
   if (entry.featureType === 'DAILY_HOROSCOPE') {
     return d.generalScore != null ? [`${d.generalScore}/5`] : []
   }
@@ -639,6 +696,7 @@ function entryNote(entry: DiaryEntryDto): string {
   if (entry.featureType === 'NUMEROLOGY_DAY') return truncate(d.energyOfDay || '', 100)
   if (entry.featureType === 'NUMEROLOGY_WEEK') return truncate(d.mainTheme || d.weekDescription || '', 100)
   if (entry.featureType === 'NUMEROLOGY_MONTH') return truncate(d.mainTheme || '', 100)
+  if (entry.featureType === 'NUMEROLOGY_YEAR')  return truncate(d.mainTheme || '', 100)
   if (entry.featureType === 'DAILY_HOROSCOPE') return truncate(d.general || '', 100)
   if (entry.featureType === 'DREAM')           return truncate(d.mainMeaning || '', 100)
   // Все расклады: если заголовок уже показывает вопрос — в note показываем карты; иначе — интерпретацию
