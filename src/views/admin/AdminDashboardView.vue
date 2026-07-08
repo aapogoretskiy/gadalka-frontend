@@ -552,6 +552,10 @@
                 <div class="metric-label">Разбор на месяц</div>
               </div>
               <div class="metric-card">
+                <div class="metric-value">{{ fmt(reports.actionsToday.numerologyYear) }}</div>
+                <div class="metric-label">Разбор на год</div>
+              </div>
+              <div class="metric-card">
                 <div class="metric-value">{{ fmt(reports.actionsToday.dream) }}</div>
                 <div class="metric-label">Разбор сна</div>
               </div>
@@ -997,6 +1001,10 @@
                 <div class="metric-label">Разбор на месяц</div>
               </div>
               <div class="metric-card">
+                <div class="metric-value">{{ fmt(rangeReport.actions.numerologyYear) }}</div>
+                <div class="metric-label">Разбор на год</div>
+              </div>
+              <div class="metric-card">
                 <div class="metric-value">{{ fmt(rangeReport.actions.dream) }}</div>
                 <div class="metric-label">Разбор сна</div>
               </div>
@@ -1101,6 +1109,10 @@
               <div class="price-field">
                 <label class="price-label">Разбор на месяц</label>
                 <input v-model.number="featureCosts.numerologyMonth" type="number" min="1" class="price-input" />
+              </div>
+              <div class="price-field">
+                <label class="price-label">Разбор на год</label>
+                <input v-model.number="featureCosts.numerologyYear" type="number" min="1" class="price-input" />
               </div>
             </div>
           </div>

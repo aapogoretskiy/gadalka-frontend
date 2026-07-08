@@ -91,6 +91,7 @@ export interface FeatureCosts {
   compatibilityUnlock: number
   numerologyWeek: number
   numerologyMonth: number
+  numerologyYear: number
   dream: number
 }
 
@@ -436,6 +437,7 @@ export interface RangeReport {
     celticCross: number
     numerologyWeek: number
     numerologyMonth: number
+    numerologyYear: number
     dream: number
   }
   returningUsers: number
@@ -476,6 +478,7 @@ export interface AdminReports {
     dailyCard: number
     numerologyWeek: number
     numerologyMonth: number
+    numerologyYear: number
     dream: number
   }
   returningUsers: {
