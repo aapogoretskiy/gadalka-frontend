@@ -206,8 +206,16 @@
             <div class="period-desc">Детальный анализ</div>
             <div v-if="!monthOpened" class="period-price">{{ monthCost }} знаков</div>
           </div>
-          <div class="period-card haptic" @click="navigate?.('numerology-year')">
-            <div v-if="yearOpened" class="period-badge period-badge--opened">Открыто</div>
+          <div
+            class="period-card haptic"
+            :class="{ 'period-card--new': yearBadge.isNew || yearBadge.isHot }"
+            @click="navigate?.('numerology-year')"
+          >
+            <div
+              v-if="yearOpened || yearBadge.isNew || yearBadge.isHot"
+              class="period-badge"
+              :class="{ 'period-badge--opened': yearOpened }"
+            >{{ yearOpened ? 'Открыто' : (yearBadge.isNew ? 'Новинка' : 'Хит') }}</div>
             <div class="period-icon">⭐</div>
             <div class="period-title serif">Год</div>
             <div class="period-desc">365 дней + код года</div>
@@ -249,6 +257,7 @@ const yearCost = computed(() => featureCosts.value.numerologyYear)
 const { featureBadges, loadFeatureBadges } = useFeatureBadges()
 const weekBadge  = computed(() => featureBadges.value.numerologyWeek)
 const monthBadge = computed(() => featureBadges.value.numerologyMonth)
+const yearBadge  = computed(() => featureBadges.value.numerologyYear)
 
 // Уже открытые в этом периоде расклады — тихая проверка (без создания и без списания знаков),
 // чтобы на карточке показать «Открыто» вместо цены/бейджа «Хит».
