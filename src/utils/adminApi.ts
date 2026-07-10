@@ -339,11 +339,30 @@ export const adminApi = {
     adminAxios.delete<{ deleted: boolean }>(`/api/admin/dream-symbols/${id}`),
 
 
-  /** Список заблокированных чувствительных запросов. category — опциональный фильтр */
-  getSensitiveQueries: (page = 0, size = 20, category?: SensitiveCategory | '') =>
+  /**
+   * Список заблокированных чувствительных запросов.
+   * category — опциональный фильтр по категории; userId — drill-down по конкретному
+   * пользователю (используется из вкладки "Рейтинг"). Указывать вместе не нужно —
+   * бэк при наличии userId игнорирует category.
+   */
+  getSensitiveQueries: (page = 0, size = 20, category?: SensitiveCategory | '', userId?: number) =>
     adminAxios.get<SensitiveQueriesPage>('/api/admin/sensitive-queries', {
-      params: { page, size, ...(category ? { category } : {}) },
+      params: { page, size, ...(category ? { category } : {}), ...(userId ? { userId } : {}) },
     }),
+
+  /** Рейтинг "склонности к чувствительным вопросам" по пользователям. riskLevel — опциональный фильтр */
+  getSensitivityProfiles: (page = 0, size = 20, riskLevel?: RiskLevel | '') =>
+    adminAxios.get<SensitivityProfilesPage>('/api/admin/sensitivity-profiles', {
+      params: { page, size, ...(riskLevel ? { riskLevel } : {}) },
+    }),
+
+  /**
+   * Разовый (перезапускаемый) проход по уже существующим вопросам keyword+LLM
+   * классификатором. Синхронный запрос — при большом объёме истории может занять
+   * заметное время. Доступен только полным ADMIN (бэк отдаст 403 для MODERATOR).
+   */
+  runSensitiveContentBackfill: () =>
+    adminAxios.post<SensitiveContentBackfillResult>('/api/admin/sensitive-queries/backfill'),
 
   // ── Транзакции (покупки знаков) ─────────────────────────────────────────────
   // Доступно только роли ADMIN — бэк отдаст 403 для MODERATOR.
@@ -545,6 +564,17 @@ export type SensitiveCategory =
   | 'POLITICAL_RELIGIOUS'
   | 'MISSING_PERSONS_GUILT'
   | 'LLM_REFUSED'
+  | 'NOT_SENSITIVE'
+  | 'CLASSIFICATION_FAILED'
+
+/** Чем обнаружен вопрос — см. DetectionSource на бэке */
+export type DetectionSource =
+  | 'KEYWORD'
+  | 'LLM_PRECHECK'
+  | 'LLM_REFUSAL_FALLBACK'
+  | 'BACKFILL_KEYWORD'
+  | 'BACKFILL_LLM'
+  | 'LEGACY_UNKNOWN'
 
 export interface SensitiveQueryLogEntry {
   id: number
@@ -553,6 +583,12 @@ export interface SensitiveQueryLogEntry {
   firstName: string | null
   question: string
   category: SensitiveCategory
+  /** null у записей, залогированных до появления этого поля */
+  source: DetectionSource | null
+  /** Сработавшее ключевое слово (keyword-источник) или пояснение от LLM (LLM-источник) */
+  explanation: string | null
+  /** Заполнено только при category = CLASSIFICATION_FAILED — сырой ответ модели для отладки промпта */
+  rawClassificationOutput: string | null
   detectedAt: string
 }
 
@@ -562,6 +598,38 @@ export interface SensitiveQueriesPage {
   totalPages: number
   number: number
   size: number
+}
+
+// ── Рейтинг склонности к чувствительным вопросам ──────────────────────────────
+
+export type RiskLevel = 'GREEN' | 'YELLOW' | 'RED'
+
+export interface UserSensitivityProfileEntry {
+  userId: number
+  username: string | null
+  firstName: string | null
+  totalTextQuestions: number
+  totalSensitiveCount: number
+  sensitivePercentage: number
+  dominantCategory: SensitiveCategory | null
+  riskLevel: RiskLevel
+  categoryCountsJson: string
+  updatedAt: string
+}
+
+export interface SensitivityProfilesPage {
+  content: UserSensitivityProfileEntry[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+export interface SensitiveContentBackfillResult {
+  scannedFortunes: number
+  scannedDreams: number
+  newlyLogged: number
+  classificationFailures: number
 }
 
 // ── Транзакции ────────────────────────────────────────────────────────────────

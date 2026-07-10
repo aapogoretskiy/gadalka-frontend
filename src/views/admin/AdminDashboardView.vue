@@ -1235,73 +1235,222 @@
     <template v-else-if="activeTab === 'sensitive'">
       <div class="reports-wrap">
 
-        <div class="reports-toolbar">
-          <div class="tickets-filter" style="flex-wrap: wrap;">
-            <button
-              class="filter-btn"
-              :class="{ active: sensitiveCategory === '' }"
-              @click="setSensitiveCategory('')"
-            >Все</button>
-            <button
-              v-for="cat in sensitiveCategories"
-              :key="cat.value"
-              class="filter-btn"
-              :class="{ active: sensitiveCategory === cat.value }"
-              @click="setSensitiveCategory(cat.value)"
-            >{{ cat.label }}</button>
+        <!-- Переключатель "История" / "Рейтинг" -->
+        <div class="tickets-filter" style="margin-bottom: 12px;">
+          <button
+            class="filter-btn"
+            :class="{ active: sensitiveView === 'history' }"
+            @click="sensitiveView = 'history'"
+          >📋 История</button>
+          <button
+            class="filter-btn"
+            :class="{ active: sensitiveView === 'rating' }"
+            @click="openRatingView"
+          >📈 Рейтинг</button>
+        </div>
+
+        <!-- ── История заблокированных вопросов ── -->
+        <template v-if="sensitiveView === 'history'">
+
+          <div v-if="sensitiveUserIdFilter" class="reports-toolbar">
+            <span class="filter-chip">
+              Фильтр по пользователю id={{ sensitiveUserIdFilter }}
+              <button class="btn-ghost" @click="clearSensitiveUserFilter">✕ Сбросить</button>
+            </span>
           </div>
-          <button class="btn-ghost" :disabled="sensitiveLoading" @click="loadSensitiveQueries(0)">
-            {{ sensitiveLoading ? '⏳' : '🔄 Обновить' }}
-          </button>
-        </div>
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Пользователь</th>
-                <th>Категория</th>
-                <th>Вопрос</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="sensitiveLoading">
-                <td colspan="4" class="td-loading">⏳ Загрузка...</td>
-              </tr>
-              <tr v-else-if="sensitiveEntries.length === 0">
-                <td colspan="4" class="td-empty">Нет заблокированных запросов</td>
-              </tr>
-              <tr v-for="entry in sensitiveEntries" :key="entry.id">
-                <td class="td-date">{{ formatDate(entry.detectedAt) }}</td>
-                <td>
-                  <span
-                    class="user-link"
-                    @click="openUserById(entry.userId)"
-                  >{{ entry.firstName || '' }}{{ entry.username ? ' (@' + entry.username + ')' : '' || 'id=' + entry.userId }}</span>
-                </td>
-                <td>
-                  <span class="sensitive-badge" :class="'sensitive-badge--' + entry.category.toLowerCase()">
-                    {{ sensitiveCategoryLabel(entry.category) }}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    class="sensitive-question"
-                    :class="{ expanded: expandedSensitiveId === entry.id }"
-                    @click="expandedSensitiveId = expandedSensitiveId === entry.id ? null : entry.id"
-                  >{{ entry.question }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <div class="reports-toolbar">
+            <div class="tickets-filter" style="flex-wrap: wrap;">
+              <button
+                class="filter-btn"
+                :class="{ active: sensitiveCategory === '' }"
+                @click="setSensitiveCategory('')"
+              >Все</button>
+              <button
+                v-for="cat in sensitiveCategories"
+                :key="cat.value"
+                class="filter-btn"
+                :class="{ active: sensitiveCategory === cat.value }"
+                @click="setSensitiveCategory(cat.value)"
+              >{{ cat.label }}</button>
+            </div>
+            <button class="btn-ghost" :disabled="sensitiveLoading" @click="loadSensitiveQueries(0)">
+              {{ sensitiveLoading ? '⏳' : '🔄 Обновить' }}
+            </button>
+          </div>
 
-        <div class="pagination">
-          <button :disabled="sensitivePage === 0" @click="loadSensitiveQueries(sensitivePage - 1)">← Назад</button>
-          <span>Страница {{ sensitivePage + 1 }} из {{ sensitiveTotalPages }}</span>
-          <button :disabled="sensitivePage >= sensitiveTotalPages - 1" @click="loadSensitiveQueries(sensitivePage + 1)">Вперёд →</button>
-        </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Пользователь</th>
+                  <th>Категория</th>
+                  <th>Источник</th>
+                  <th>Вопрос</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="sensitiveLoading">
+                  <td colspan="5" class="td-loading">⏳ Загрузка...</td>
+                </tr>
+                <tr v-else-if="sensitiveEntries.length === 0">
+                  <td colspan="5" class="td-empty">Нет заблокированных запросов</td>
+                </tr>
+                <template v-for="entry in sensitiveEntries" :key="entry.id">
+                  <tr>
+                    <td class="td-date">{{ formatDate(entry.detectedAt) }}</td>
+                    <td>
+                      <span
+                        class="user-link"
+                        @click="openDetails(entry.userId)"
+                      >{{ ((entry.firstName || '') + (entry.username ? ' (@' + entry.username + ')' : '')) || 'id=' + entry.userId }}</span>
+                    </td>
+                    <td>
+                      <span class="sensitive-badge" :class="'sensitive-badge--' + entry.category.toLowerCase()">
+                        {{ sensitiveCategoryLabel(entry.category) }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="source-badge" :class="'source-badge--' + (entry.source || 'legacy_unknown').toLowerCase()">
+                        {{ detectionSourceLabel(entry.source) }}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        class="sensitive-question"
+                        :class="{ expanded: expandedSensitiveId === entry.id }"
+                        @click="expandedSensitiveId = expandedSensitiveId === entry.id ? null : entry.id"
+                      >{{ entry.question }}</span>
+                    </td>
+                  </tr>
+                  <tr v-if="expandedSensitiveId === entry.id" class="sensitive-explanation-row">
+                    <td colspan="5">
+                      <div class="sensitive-explanation">
+                        <template v-if="entry.category === 'CLASSIFICATION_FAILED'">
+                          <strong>Сбой формата ответа LLM после всех попыток.</strong> Сырой ответ модели:
+                          <code>{{ entry.rawClassificationOutput || '—' }}</code>
+                        </template>
+                        <template v-else-if="entry.explanation">
+                          <strong>Почему заблокировано:</strong> {{ entry.explanation }}
+                        </template>
+                        <template v-else>
+                          <em>Объяснение ещё не готово (дозаполняется асинхронно) или недоступно для этой записи.</em>
+                        </template>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <button :disabled="sensitivePage === 0" @click="loadSensitiveQueries(sensitivePage - 1)">← Назад</button>
+            <span>Страница {{ sensitivePage + 1 }} из {{ sensitiveTotalPages }}</span>
+            <button :disabled="sensitivePage >= sensitiveTotalPages - 1" @click="loadSensitiveQueries(sensitivePage + 1)">Вперёд →</button>
+          </div>
+
+        </template>
+
+        <!-- ── Рейтинг склонности к чувствительным вопросам ── -->
+        <template v-else>
+
+          <div class="reports-toolbar">
+            <div class="tickets-filter">
+              <button
+                class="filter-btn"
+                :class="{ active: ratingRiskLevel === '' }"
+                @click="setRatingRiskLevel('')"
+              >Все</button>
+              <button
+                class="filter-btn"
+                :class="{ active: ratingRiskLevel === 'RED' }"
+                @click="setRatingRiskLevel('RED')"
+              >🔴 Красный</button>
+              <button
+                class="filter-btn"
+                :class="{ active: ratingRiskLevel === 'YELLOW' }"
+                @click="setRatingRiskLevel('YELLOW')"
+              >🟡 Жёлтый</button>
+              <button
+                class="filter-btn"
+                :class="{ active: ratingRiskLevel === 'GREEN' }"
+                @click="setRatingRiskLevel('GREEN')"
+              >🟢 Зелёный</button>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button
+                v-if="isAdmin"
+                class="btn-ghost"
+                :disabled="backfillRunning"
+                @click="runBackfill"
+                title="Разовый проход по уже существующим вопросам — восполняет то, что фильтр пропустил на момент вопроса"
+              >
+                {{ backfillRunning ? '⏳ Выполняется...' : '🔁 Запустить бэкафилл' }}
+              </button>
+              <button class="btn-ghost" :disabled="ratingLoading" @click="loadRatings(0)">
+                {{ ratingLoading ? '⏳' : '🔄 Обновить' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-if="backfillResult" class="backfill-result">
+            Бэкафилл завершён: просканировано {{ backfillResult.scannedFortunes }} раскладов
+            и {{ backfillResult.scannedDreams }} снов, найдено новых — {{ backfillResult.newlyLogged }},
+            сбоев классификации — {{ backfillResult.classificationFailures }}.
+          </div>
+          <div v-if="backfillError" class="backfill-result backfill-result--error">{{ backfillError }}</div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Пользователь</th>
+                  <th>Всего вопросов</th>
+                  <th>Чувствительных</th>
+                  <th>Процент</th>
+                  <th>Категория</th>
+                  <th>Обновлено</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="ratingLoading">
+                  <td colspan="6" class="td-loading">⏳ Загрузка...</td>
+                </tr>
+                <tr v-else-if="ratingEntries.length === 0">
+                  <td colspan="6" class="td-empty">Нет данных</td>
+                </tr>
+                <tr
+                  v-for="entry in ratingEntries"
+                  :key="entry.userId"
+                  class="rating-row"
+                  @click="openSensitiveHistoryForUser(entry.userId)"
+                >
+                  <td>
+                    <span class="user-link">{{ ((entry.firstName || '') + (entry.username ? ' (@' + entry.username + ')' : '')) || 'id=' + entry.userId }}</span>
+                  </td>
+                  <td>{{ entry.totalTextQuestions }}</td>
+                  <td>{{ entry.totalSensitiveCount }}</td>
+                  <td>
+                    <span class="risk-badge" :class="'risk-badge--' + entry.riskLevel.toLowerCase()">
+                      {{ riskLevelIcon(entry.riskLevel) }} {{ entry.sensitivePercentage }}%
+                    </span>
+                  </td>
+                  <td>{{ entry.dominantCategory ? sensitiveCategoryLabel(entry.dominantCategory) : '—' }}</td>
+                  <td class="td-date">{{ formatDate(entry.updatedAt) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <button :disabled="ratingPage === 0" @click="loadRatings(ratingPage - 1)">← Назад</button>
+            <span>Страница {{ ratingPage + 1 }} из {{ ratingTotalPages }}</span>
+            <button :disabled="ratingPage >= ratingTotalPages - 1" @click="loadRatings(ratingPage + 1)">Вперёд →</button>
+          </div>
+
+        </template>
 
       </div><!-- /reports-wrap sensitive -->
     </template>
@@ -1816,7 +1965,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type DetectionSource, type RiskLevel, type UserSensitivityProfileEntry, type SensitiveContentBackfillResult, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -2607,11 +2756,14 @@ const removeDreamSymbol = async (symbol: AdminDreamSymbol) => {
 
 // ── Блокировки чувствительного контента ───────────────────────────────────
 
+const sensitiveView = ref<'history' | 'rating'>('history')
+
 const sensitiveEntries = ref<SensitiveQueryLogEntry[]>([])
 const sensitiveLoading = ref(false)
 const sensitivePage = ref(0)
 const sensitiveTotalPages = ref(1)
 const sensitiveCategory = ref<SensitiveCategory | ''>('')
+const sensitiveUserIdFilter = ref<number | null>(null)
 const expandedSensitiveId = ref<number | null>(null)
 
 const sensitiveCategories: { value: SensitiveCategory; label: string }[] = [
@@ -2625,15 +2777,33 @@ const sensitiveCategories: { value: SensitiveCategory; label: string }[] = [
   { value: 'GAMBLING_INVESTMENT',    label: '🎰 Азарт/инвестиции' },
   { value: 'MISSING_PERSONS_GUILT',  label: '🔍 Поиск/вина' },
   { value: 'LLM_REFUSED',            label: '🤖 LLM отказал' },
+  { value: 'CLASSIFICATION_FAILED',  label: '❓ Сбой классификации' },
 ]
 
 const sensitiveCategoryLabel = (cat: SensitiveCategory): string =>
   sensitiveCategories.find(c => c.value === cat)?.label ?? cat
 
+const sourceLabels: Record<DetectionSource, string> = {
+  KEYWORD: '🔤 Ключевое слово',
+  LLM_PRECHECK: '🤖 LLM (до генерации)',
+  LLM_REFUSAL_FALLBACK: '🤖 LLM (отказ на генерации)',
+  BACKFILL_KEYWORD: '🔤 Бэкафилл (слово)',
+  BACKFILL_LLM: '🤖 Бэкафилл (LLM)',
+  LEGACY_UNKNOWN: '— (запись до этого поля)',
+}
+
+/** null — запись залогирована до появления поля source. Не путать с sourceLabel() выше — тот про реферальный источник регистрации, это про источник детекции чувствительного контента. */
+const detectionSourceLabel = (source: DetectionSource | null): string =>
+  source ? (sourceLabels[source] ?? source) : sourceLabels.LEGACY_UNKNOWN
+
 const loadSensitiveQueries = async (page = 0) => {
   sensitiveLoading.value = true
   try {
-    const res = await adminApi.getSensitiveQueries(page, 20, sensitiveCategory.value || undefined)
+    const res = await adminApi.getSensitiveQueries(
+      page, 20,
+      sensitiveCategory.value || undefined,
+      sensitiveUserIdFilter.value ?? undefined,
+    )
     sensitiveEntries.value = res.data.content
     sensitiveTotalPages.value = res.data.totalPages || 1
     sensitivePage.value = res.data.number
@@ -2646,12 +2816,87 @@ const loadSensitiveQueries = async (page = 0) => {
 
 const setSensitiveCategory = (cat: SensitiveCategory | '') => {
   sensitiveCategory.value = cat
+  // Категория и drill-down по пользователю — взаимоисключающие фильтры на бэке
+  // (бэк игнорирует category, если задан userId), поэтому сбрасываем userId тут же,
+  // чтобы UI не создавал впечатление, что оба фильтра применяются одновременно.
+  sensitiveUserIdFilter.value = null
+  loadSensitiveQueries(0)
+}
+
+const clearSensitiveUserFilter = () => {
+  sensitiveUserIdFilter.value = null
+  loadSensitiveQueries(0)
+}
+
+/** Переход из карточки рейтинга в историю конкретного пользователя */
+const openSensitiveHistoryForUser = (userId: number) => {
+  sensitiveView.value = 'history'
+  sensitiveCategory.value = ''
+  sensitiveUserIdFilter.value = userId
   loadSensitiveQueries(0)
 }
 
 const openSensitiveTab = () => {
   activeTab.value = 'sensitive'
   if (sensitiveEntries.value.length === 0) loadSensitiveQueries(0)
+}
+
+// ── Рейтинг склонности к чувствительным вопросам ───────────────────────────
+
+const ratingEntries = ref<UserSensitivityProfileEntry[]>([])
+const ratingLoading = ref(false)
+const ratingPage = ref(0)
+const ratingTotalPages = ref(1)
+const ratingRiskLevel = ref<RiskLevel | ''>('')
+
+const riskLevelIcon = (level: RiskLevel): string =>
+  level === 'RED' ? '🔴' : level === 'YELLOW' ? '🟡' : '🟢'
+
+const loadRatings = async (page = 0) => {
+  ratingLoading.value = true
+  try {
+    const res = await adminApi.getSensitivityProfiles(page, 20, ratingRiskLevel.value || undefined)
+    ratingEntries.value = res.data.content
+    ratingTotalPages.value = res.data.totalPages || 1
+    ratingPage.value = res.data.number
+  } catch {
+    ratingEntries.value = []
+  } finally {
+    ratingLoading.value = false
+  }
+}
+
+const setRatingRiskLevel = (level: RiskLevel | '') => {
+  ratingRiskLevel.value = level
+  loadRatings(0)
+}
+
+const openRatingView = () => {
+  sensitiveView.value = 'rating'
+  if (ratingEntries.value.length === 0) loadRatings(0)
+}
+
+// ── Бэкафилл истории чувствительного контента (только полный ADMIN) ───────
+
+const backfillRunning = ref(false)
+const backfillResult = ref<SensitiveContentBackfillResult | null>(null)
+const backfillError = ref<string | null>(null)
+
+const runBackfill = async () => {
+  backfillRunning.value = true
+  backfillResult.value = null
+  backfillError.value = null
+  try {
+    const res = await adminApi.runSensitiveContentBackfill()
+    backfillResult.value = res.data
+    // Данные рейтинга и истории изменились — обновляем открытые таблицы
+    loadRatings(ratingPage.value)
+    if (sensitiveView.value === 'history') loadSensitiveQueries(sensitivePage.value)
+  } catch {
+    backfillError.value = 'Не удалось запустить бэкафилл. Попробуйте ещё раз.'
+  } finally {
+    backfillRunning.value = false
+  }
 }
 
 // ── Транзакции (покупки знаков) ───────────────────────────────────────────
@@ -3456,6 +3701,8 @@ input[type="checkbox"] {
 .sensitive-badge--gambling_investment { background: rgba(168,85,247,0.15); color: #d8b4fe; }
 .sensitive-badge--missing_persons_guilt { background: rgba(100,116,139,0.2); color: #94a3b8; }
 .sensitive-badge--llm_refused         { background: rgba(51,65,85,0.4);    color: #64748b; }
+.sensitive-badge--classification_failed { background: rgba(234,88,12,0.15); color: #fdba74; }
+.sensitive-badge--not_sensitive        { background: rgba(34,197,94,0.15);  color: #86efac; }
 
 .sensitive-question {
   display: -webkit-box;
@@ -3475,6 +3722,77 @@ input[type="checkbox"] {
   overflow: visible;
   color: #e2e8f0;
 }
+
+/* ── Источник детекции ── */
+.source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  white-space: nowrap;
+  background: #1e293b;
+  color: #64748b;
+}
+.source-badge--keyword           { background: rgba(56,189,248,0.12);  color: #7dd3fc; }
+.source-badge--llm_precheck      { background: rgba(168,85,247,0.12);  color: #d8b4fe; }
+.source-badge--llm_refusal_fallback { background: rgba(168,85,247,0.08); color: #c4b5fd; }
+.source-badge--backfill_keyword  { background: rgba(100,116,139,0.15); color: #94a3b8; }
+.source-badge--backfill_llm      { background: rgba(100,116,139,0.15); color: #94a3b8; }
+.source-badge--legacy_unknown    { background: #1e293b; color: #475569; }
+
+/* ── Разворот "почему заблокировано" ── */
+.sensitive-explanation-row td { padding-top: 0; }
+.sensitive-explanation {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+.sensitive-explanation code {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: #1e293b;
+  border-radius: 4px;
+  color: #fdba74;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+/* ── Рейтинг склонности к чувствительным вопросам ── */
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.rating-row { cursor: pointer; }
+.rating-row:hover { background: rgba(148,163,184,0.06); }
+.risk-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.risk-badge--green  { background: rgba(34,197,94,0.15);  color: #86efac; }
+.risk-badge--yellow { background: rgba(234,179,8,0.15);  color: #fde047; }
+.risk-badge--red     { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+.backfill-result {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(34,197,94,0.1);
+  color: #86efac;
+  font-size: 13px;
+}
+.backfill-result--error { background: rgba(239,68,68,0.1); color: #fca5a5; }
 
 /* ── Overlay ── */
 .overlay {
