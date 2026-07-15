@@ -164,6 +164,8 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyWeekResponse } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
@@ -180,7 +182,12 @@ const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const WEEK_COST = computed(() => featureCosts.value.numerologyWeek)
 
 const { balance, refreshBalance } = useBalance()
-const canAffordWeek = computed(() => (balance.value ?? 0) >= WEEK_COST.value)
+const { resolveSpendMode } = useSpendConfirm()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+// Покупка доступна: хватает знаков ИЛИ есть квота подписки на недельный расклад
+const canAffordWeek = computed(() =>
+  (balance.value ?? 0) >= WEEK_COST.value || quotaRemaining('NUMEROLOGY_WEEK') > 0
+)
 
 const weekResult   = ref<NumerologyWeekResponse | null>(null)
 const weekLoading  = ref(false)
@@ -197,6 +204,7 @@ const checkingExisting = ref(true)
 onMounted(async () => {
   // Свежая цена при каждом заходе на экран (не блокирует проверку существующего расклада)
   loadFeatureCosts()
+  ensureSubscriptionLoaded()
 
   if (fixedWeekStart) {
     // Переход из месяца на конкретную неделю — она уже существует и бесплатна
@@ -221,9 +229,12 @@ onMounted(async () => {
   }
 })
 
-function confirmPurchase() {
+async function confirmPurchase() {
   showPurchaseModal.value = false
-  getWeeklyAnalysis()
+  // Выбор способа оплаты: знаки или квота подписки (модалка при необходимости)
+  const spendMode = await resolveSpendMode('NUMEROLOGY_WEEK')
+  if (!spendMode) return
+  getWeeklyAnalysis(spendMode)
 }
 
 // ── Искусственная задержка лоадера ──────────────────────────────────────────
@@ -245,7 +256,7 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function getWeeklyAnalysis() {
+async function getWeeklyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
   if (weekLoading.value) return
   weekLoading.value = true
   weekErrorMsg.value = ''
@@ -259,12 +270,13 @@ async function getWeeklyAnalysis() {
 
   try {
     const [res] = await Promise.all([
-      api.getNumerologyWeek(),
+      api.getNumerologyWeek(spendMode),
       delay(MIN_LOADER_MS),
     ])
     progress.value = 100
     weekResult.value = res.data
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshSubscription()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {

@@ -175,6 +175,8 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyMonthResponse, type NumerologyMonthWeekPreviewDto } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
@@ -191,7 +193,12 @@ const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const MONTH_COST = computed(() => featureCosts.value.numerologyMonth)
 
 const { balance, refreshBalance } = useBalance()
-const canAffordMonth = computed(() => (balance.value ?? 0) >= MONTH_COST.value)
+const { resolveSpendMode } = useSpendConfirm()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+// Покупка доступна: хватает знаков ИЛИ есть квота подписки на месячный разбор
+const canAffordMonth = computed(() =>
+  (balance.value ?? 0) >= MONTH_COST.value || quotaRemaining('NUMEROLOGY_MONTH') > 0
+)
 
 const monthResult   = ref<NumerologyMonthResponse | null>(null)
 const monthLoading  = ref(false)
@@ -205,6 +212,7 @@ const checkingExisting = ref(true)
 
 onMounted(async () => {
   loadFeatureCosts()
+  ensureSubscriptionLoaded()
 
   if (fixedMonthStart) {
     // Переход из годового разбора на конкретный месяц — он уже существует и бесплатен
@@ -252,12 +260,15 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function confirmPurchase() {
+async function confirmPurchase() {
   showPurchaseModal.value = false
-  getMonthlyAnalysis()
+  // Выбор способа оплаты: знаки или квота подписки (модалка при необходимости)
+  const spendMode = await resolveSpendMode('NUMEROLOGY_MONTH')
+  if (!spendMode) return
+  getMonthlyAnalysis(spendMode)
 }
 
-async function getMonthlyAnalysis() {
+async function getMonthlyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
   if (monthLoading.value) return
   monthLoading.value = true
   monthErrorMsg.value = ''
@@ -271,13 +282,14 @@ async function getMonthlyAnalysis() {
 
   try {
     const [res] = await Promise.all([
-      api.getNumerologyMonth(),
+      api.getNumerologyMonth(spendMode),
       delay(MIN_LOADER_MS),
     ])
     progress.value = 100
     monthResult.value = res.data
     justPurchased.value = true
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshSubscription()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {

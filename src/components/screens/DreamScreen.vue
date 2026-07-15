@@ -195,6 +195,8 @@ import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { usePrefilledQuestion } from '@/composables/usePrefilledQuestion'
 import { useDevMode } from '@/composables/useDevMode'
 import { useHoroscope } from '@/composables/useHoroscope'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { zodiacGlyph } from '@/utils/zodiac'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 
@@ -202,13 +204,15 @@ const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 
 const { profile } = useUser()
-const { balance, refreshBalance } = useBalance()
+const { refreshBalance } = useBalance()
 // Знак пользователя берём из гороскопа (по дате рождения), а НЕ из numerology/today:
 // там zodiacSign — это знак ТЕКУЩЕЙ ДАТЫ (астрологический период), не знак пользователя
 const { horoscope, fetchHoroscope } = useHoroscope()
 const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const { setPrefilledQuestion } = usePrefilledQuestion()
 const { isDev } = useDevMode()
+const { resolveSpendMode } = useSpendConfirm()
+const { refreshSubscription } = useMySubscription()
 
 // ── Состояние ────────────────────────────────────────────────────────────────
 const step              = ref<1 | 2 | 3>(1)
@@ -265,10 +269,13 @@ const toggleSymbol = (id: number) => {
 }
 
 const startAnalysis = async () => {
-  // Нет знаков — сразу на экран покупки (та же логика, что у раскладов)
-  if (!isDev.value && (balance.value ?? 0) < dreamCost.value) {
-    navigate?.('payment')
-    return
+  // Способ оплаты: знаки или квота подписки. Модалка сама разберётся
+  // (в т.ч. покажет «не хватает знаков» + подписки, если средств нет)
+  let spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS'
+  if (!isDev.value) {
+    const mode = await resolveSpendMode('DREAM')
+    if (!mode) return
+    spendMode = mode
   }
 
   error.value = ''
@@ -286,11 +293,13 @@ const startAnalysis = async () => {
     const res = await api.analyzeDream({
       dreamText: dreamText.value.trim() || null,
       symbolIds: [...selectedSymbolIds.value],
+      spendMode,
     })
     result.value = res.data
     justAnalyzed.value = true
     progress.value = 100
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshSubscription()
     loadRecentDreams()
     setTimeout(() => { step.value = 3 }, 400)
   } catch (e: any) {

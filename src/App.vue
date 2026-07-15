@@ -30,6 +30,9 @@
 
     <!-- Global error toasts -->
     <ToastContainer />
+
+    <!-- Глобальная модалка выбора способа списания (знаки / квота подписки) -->
+    <SpendConfirmModal />
   </div>
 </template>
 
@@ -65,6 +68,7 @@ import InboxScreen            from './components/screens/InboxScreen.vue'
 
 import BottomNav from './components/BottomNav.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
+import SpendConfirmModal from './components/ui/SpendConfirmModal.vue'
 
 const { hapticFeedback } = useTelegram()
 const { authWithTelegram, fetchProfile, hasProfile, termsAccepted } = useUser()

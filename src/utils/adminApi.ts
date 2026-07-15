@@ -95,6 +95,38 @@ export interface FeatureCosts {
   dream: number
 }
 
+// ── Планы подписки ──────────────────────────────────────────────────────────
+
+// Фичи, на которые можно выдавать квоты (совпадает с DiaryFeatureType на бэке)
+export type AdminQuotaFeature =
+  | 'THREE_CARD' | 'HORSESHOE' | 'CELTIC_CROSS' | 'COMPATIBILITY'
+  | 'DREAM' | 'NUMEROLOGY_WEEK' | 'NUMEROLOGY_MONTH' | 'NUMEROLOGY_YEAR'
+
+export interface AdminPlanQuota {
+  featureType: AdminQuotaFeature
+  quotaCount: number
+  quotaPeriod: 'DAILY' | 'PER_PERIOD'
+}
+
+// План подписки в админке. ВАЖНО: priceRub — в КОПЕЙКАХ (бэк хранит копейки),
+// конвертация в рубли для отображения — на форме.
+export interface AdminSubscriptionPlan {
+  id: number | null
+  name: string
+  priceRub: number
+  priceStars: number
+  durationDays: number
+  isActive: boolean
+  sortOrder: number
+  quotas: AdminPlanQuota[]
+}
+
+export interface AdminSubscriptionPlansResponse {
+  plans: AdminSubscriptionPlan[]
+  // Курс «копеек за 1 звезду» — для автоподсказки цены в Stars
+  starsRateKopecks: number
+}
+
 // Отметка «Новинка»/«Хит» для одной функции. newSince приходит только на чтение
 // (сервер сам проставляет момент последнего включения «Новинка») — при сохранении
 // это поле игнорируется бэкендом, можно не трогать.
@@ -177,6 +209,19 @@ export const adminApi = {
   /** Подарить знаки пользователю */
   giftCredits: (id: number, amount: number) =>
     adminAxios.post<{ message: string }>(`/api/admin/users/${id}/gift`, { amount }),
+
+  /**
+   * Выдать пользователю квоты подписки (аналог «Подарить знаки»).
+   * Если активной подписки нет — на бэке создаётся подарочная на durationDays.
+   */
+  giftQuota: (id: number, payload: {
+    featureType: AdminQuotaFeature
+    count: number
+    quotaPeriod: 'DAILY' | 'PER_PERIOD'
+    durationDays: number
+  }) =>
+    adminAxios.post<{ message: string; giftSubscriptionCreated: boolean; newQuotaCount: number }>(
+      `/api/admin/users/${id}/gift-quota`, payload),
 
   /** Заблокировать пользователя */
   banUser: (id: number) =>
@@ -322,6 +367,24 @@ export const adminApi = {
   /** Обновить отметки «Новинка»/«Хит» сразу по всем функциям */
   updateFeatureBadges: (badges: FeatureBadges) =>
     adminAxios.put<FeatureBadges>('/api/admin/feature-badges', badges),
+
+  // ── Планы подписки ────────────────────────────────────────────────────────
+
+  /** Все планы (включая неактивные) + курс Stars для подсказки цены */
+  getSubscriptionPlans: () =>
+    adminAxios.get<AdminSubscriptionPlansResponse>('/api/admin/subscription-plans'),
+
+  /** Создать план с квотами. Появится во вкладке «Подписки» мини-аппа */
+  createSubscriptionPlan: (plan: AdminSubscriptionPlan) =>
+    adminAxios.post<AdminSubscriptionPlan>('/api/admin/subscription-plans', plan),
+
+  /** Обновить план (квоты заменяются целиком). Не влияет на уже купленные подписки */
+  updateSubscriptionPlan: (id: number, plan: AdminSubscriptionPlan) =>
+    adminAxios.put<AdminSubscriptionPlan>(`/api/admin/subscription-plans/${id}`, plan),
+
+  /** Обновить курс «копеек за звезду» */
+  updateStarsRate: (starsRateKopecks: number) =>
+    adminAxios.put<{ starsRateKopecks: number }>('/api/admin/subscription-plans/stars-rate', { starsRateKopecks }),
 
   // ── Символы снов (чипы Сонника) ──────────────────────────────────────────
 

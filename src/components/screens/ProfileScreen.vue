@@ -25,6 +25,24 @@
         <div class="balance-action">{{ balance > 0 ? 'Пополнить' : 'Купить' }} →</div>
       </div>
 
+      <!-- Моя подписка (показывается только при активной подписке) -->
+      <div v-if="mySubscription" class="subscription-card glass">
+        <div class="sub-header">
+          <div class="sub-icon">💫</div>
+          <div class="sub-body">
+            <div class="sub-title">Подписка «{{ mySubscription.planName }}»</div>
+            <div class="sub-expiry">действует до {{ formatSubDate(mySubscription.expiresAt) }}</div>
+          </div>
+        </div>
+        <div class="sub-quotas">
+          <div v-for="q in mySubscription.quotas" :key="q.featureType" class="sub-quota-row">
+            <span class="sub-quota-emoji">{{ featureEmoji(q.featureType) }}</span>
+            <span class="sub-quota-name">{{ featureLabel(q.featureType) }}</span>
+            <span class="sub-quota-left">{{ q.remaining }}/{{ q.total }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Menu -->
       <div class="menu-list">
         <button class="menu-item glass haptic" @click="navigate?.('inbox')">
@@ -221,15 +239,28 @@ import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
 import { useInbox } from '@/composables/useInbox'
+import { useMySubscription } from '@/composables/useMySubscription'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
 import { api, type Goal, type NotificationTime } from '@/utils/api'
+import { featureLabel, featureEmoji, quotaPeriodLabel } from '@/utils/featureLabels'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { telegramUser, profile, updateProfile, resetProfile } = useUser()
 const { balance } = useBalance()
 const { unreadCount } = useInbox()
+// Активная подписка с остатками квот — блок «Моя подписка» под балансом
+const { mySubscription, refreshSubscription } = useMySubscription()
+
+function formatSubDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+}
+
+// Свежие остатки квот при каждом заходе в профиль
+onMounted(() => {
+  refreshSubscription()
+})
 
 const balancePluralLabel = computed(() => {
   const n = balance.value
@@ -477,6 +508,18 @@ function shareReferralLink() {
 .balance-val { font-size: 18px; font-weight: 700; color: #ffc857; }
 .balance-empty { color: rgba(255,255,255,.4); font-size: 16px; font-weight: 500; }
 .balance-action { font-size: 12px; color: #b654ff; font-weight: 600; white-space: nowrap; }
+
+/* Моя подписка */
+.subscription-card { padding: 16px 18px; margin-bottom: 14px; }
+.sub-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.sub-icon { font-size: 26px; flex-shrink: 0; }
+.sub-title { font-size: 15px; font-weight: 700; }
+.sub-expiry { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.sub-quotas { display: flex; flex-direction: column; gap: 7px; }
+.sub-quota-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.sub-quota-emoji { flex-shrink: 0; font-size: 14px; }
+.sub-quota-name { flex: 1; color: rgba(255,255,255,.75); }
+.sub-quota-left { color: rgba(255,255,255,.5); font-size: 12px; flex-shrink: 0; }
 
 /* Menu */
 .menu-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }

@@ -86,7 +86,7 @@
           <div
             v-for="s in spreads" :key="s.type"
             class="spread-card haptic"
-            :class="{ selected: selectedSpread === s.type, 'spread-card--locked': !isDev && (balance ?? 0) < s.cost }"
+            :class="{ selected: selectedSpread === s.type, 'spread-card--locked': !isDev && !canAfford(s.type, s.cost) }"
             @click="handleSpreadSelect(s.type, s.cost)"
           >
             <div class="spread-icon-wrap">
@@ -101,8 +101,12 @@
               <div class="spread-desc">{{ s.desc }}</div>
             </div>
             <div class="spread-right">
-              <template v-if="isDev || (balance ?? 0) >= s.cost">
-                <div class="spread-price" style="color:#70e0a8">
+              <template v-if="isDev || canAfford(s.type, s.cost)">
+                <!-- Если знаков не хватает, но есть квота — показываем её вместо цены -->
+                <div v-if="(balance ?? 0) < s.cost && quotaRemaining(s.type) > 0" class="spread-price" style="color:#70e0a8">
+                  Квота: {{ quotaRemaining(s.type) }}
+                </div>
+                <div v-else class="spread-price" style="color:#70e0a8">
                   {{ s.cost }} {{ s.cost === 1 ? 'знак' : s.cost < 5 ? 'знака' : 'знаков' }}
                 </div>
               </template>
@@ -423,11 +427,21 @@ import { useToast } from '@/composables/useToast'
 import { useQuestionPresets } from '@/composables/useQuestionPresets'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { usePrefilledQuestion } from '@/composables/usePrefilledQuestion'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { isDev } = useDevMode()
 const { balance, hasCredits, refreshBalance } = useBalance()
+const { resolveSpendMode } = useSpendConfirm()
+// Квоты активной подписки: доступ к раскладу возможен и при нулевом балансе
+const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+
+/** Может ли пользователь запустить расклад: хватает знаков ИЛИ есть квота подписки */
+function canAfford(type: SpreadType, cost: number): boolean {
+  return (balance.value ?? 0) >= cost || quotaRemaining(type) > 0
+}
 const { addToast } = useToast()
 const { fetchQuestionPresets, getPresetsByCode, isLoading: presetsLoading } = useQuestionPresets()
 // Актуальная стоимость раскладов берётся с бэка (настраивается в админке) — см. useFeatureCosts
@@ -486,6 +500,8 @@ onMounted(() => {
   fetchQuestionPresets()
   // Подтягиваем свежие цены раскладов при каждом заходе на экран
   loadFeatureCosts()
+  // Квоты подписки — для гейтов «Купить →» (доступ возможен и без знаков)
+  ensureSubscriptionLoaded()
 
   // Предзаполненный вопрос с другого экрана (кнопка «Спросить карты об этом»
   // в Соннике). consume-семантика: вопрос подставляется один раз и не «прилипает».
@@ -754,6 +770,15 @@ const selectPreset = (text: string) => {
 }
 
 const startFortune = async () => {
+  // Определяем способ оплаты ДО запуска: если есть квота подписки — модалка
+  // подтверждения/выбора; если ничего нет — модалка «не хватает знаков» с подписками
+  let spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS'
+  if (!isDev.value) {
+    const mode = await resolveSpendMode(selectedSpread.value)
+    if (!mode) return // пользователь отменил или средств нет
+    spendMode = mode
+  }
+
   step.value = 3
   error.value = ''
   progress.value = 0
@@ -769,9 +794,10 @@ const startFortune = async () => {
   }, 900)
 
   try {
-    const res = await api.getFortune(question.value, selectedCategory.value || undefined, selectedSpread.value)
+    const res = await api.getFortune(question.value, selectedCategory.value || undefined, selectedSpread.value, spendMode)
     result.value = res.data
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshSubscription() // остаток квоты изменился
     progress.value = 100
     // step → 4 запускает watcher, который вызовет startAnimation()
     setTimeout(() => { step.value = 4 }, 400)
@@ -784,7 +810,7 @@ const startFortune = async () => {
 }
 
 function handleSpreadSelect(type: SpreadType, cost: number) {
-  if (!isDev.value && (balance.value ?? 0) < cost) {
+  if (!isDev.value && !canAfford(type, cost)) {
     navigate?.('payment')
     return
   }

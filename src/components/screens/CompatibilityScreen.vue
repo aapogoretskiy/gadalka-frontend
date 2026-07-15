@@ -231,6 +231,8 @@ import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { useToast } from '@/composables/useToast'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
@@ -245,11 +247,16 @@ const { addToast } = useToast()
 // Стоимость разблокировки полного анализа берётся с бэка (настраивается в админке).
 // Реактивна: при изменении цены экран обновится сам. Бэк: CompatibilityService.COMPATIBILITY_UNLOCK_COST
 const UNLOCK_COST = computed(() => featureCosts.value.compatibilityUnlock)
-// Кнопка разблокировки доступна только если знаков хватает на полную стоимость
-const canUnlock = computed(() => (balance.value ?? 0) >= UNLOCK_COST.value)
+const { resolveSpendMode } = useSpendConfirm()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+// Кнопка разблокировки доступна: хватает знаков ИЛИ есть квота подписки
+const canUnlock = computed(() =>
+  (balance.value ?? 0) >= UNLOCK_COST.value || quotaRemaining('COMPATIBILITY') > 0
+)
 // Подтягиваем свежую цену при каждом заходе на экран
 onMounted(() => {
   loadFeatureCosts()
+  ensureSubscriptionLoaded()
 })
 const tipDismissed = ref(localStorage.getItem('compatTipDismissed') === 'true')
 
@@ -323,11 +330,16 @@ async function unlockPremium() {
     paidUnlocked.value = true
     return
   }
+  // Выбор способа оплаты (знаки / квота подписки) — модалка при необходимости
+  const spendMode = await resolveSpendMode('COMPATIBILITY')
+  if (!spendMode) return
+
   try {
-    const res = await api.unlockCompatibility(result.value!.id)
+    const res = await api.unlockCompatibility(result.value!.id, spendMode)
     result.value = res.data
     paidUnlocked.value = true
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshSubscription()
     hapticFeedback.success()
   } catch {
     addToast('Не удалось списать знаки. Попробуйте ещё раз.')

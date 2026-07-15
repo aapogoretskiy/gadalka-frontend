@@ -394,6 +394,60 @@ export interface PaymentProduct {
 export interface BalanceResponse {
   balance: number
   hasActiveSubscription: boolean
+  // Доступна ли покупка подписок (пока фича в закрытом тесте — true только для админов).
+  // Фронт показывает остальным вкладку «Подписки» задизейбленной («Будет доступна позже»).
+  subscriptionsAvailable: boolean
+}
+
+// ── Подписки ────────────────────────────────────────────────────────────────
+
+// Чем оплачивается платное действие: знаки или квота подписки.
+// Должно совпадать с enum SpendMode на бэкенде.
+export type SpendMode = 'CREDITS' | 'QUOTA'
+
+export type QuotaPeriod = 'DAILY' | 'PER_PERIOD'
+
+// GET /api/v1/subscriptions/plans — квота плана («5 × Три карты на весь срок»)
+export interface SubscriptionPlanQuota {
+  featureType: FeatureType
+  quotaCount: number
+  quotaPeriod: QuotaPeriod
+}
+
+export interface SubscriptionPlan {
+  id: number
+  name: string
+  priceRub: number       // в рублях (как PaymentProduct.priceRub)
+  priceStars: number
+  durationDays: number
+  quotas: SubscriptionPlanQuota[]
+}
+
+// GET /api/v1/subscriptions/my — остаток квоты активной подписки
+export interface SubscriptionQuotaState {
+  featureType: FeatureType
+  quotaPeriod: QuotaPeriod
+  total: number
+  remaining: number
+}
+
+export interface MySubscriptionResponse {
+  subscriptionId: number
+  planName: string
+  startedAt: string
+  expiresAt: string
+  quotas: SubscriptionQuotaState[]
+}
+
+// GET /api/v1/payments/spend-options — данные для модалки выбора способа списания
+export interface SpendOptionsResponse {
+  creditCost: number
+  balance: number
+  canSpendCredits: boolean
+  hasQuota: boolean
+  quotaRemaining: number
+  quotaTotal: number
+  quotaPeriod: QuotaPeriod | null
 }
 
 export interface CreatePaymentRequest {
@@ -509,6 +563,7 @@ export interface DreamSymbolDto {
 export interface DreamRequest {
   dreamText?: string | null   // до 1000 символов; можно не передавать, если выбраны чипы
   symbolIds?: number[]        // можно не передавать, если есть текст
+  spendMode?: SpendMode       // чем оплатить: знаки (по умолчанию) или квота подписки
 }
 
 export interface DreamSymbolMeaningDto {
@@ -592,10 +647,10 @@ export const api = {
   // Гадание (тип расклада передаётся явно; по умолчанию THREE_CARD)
   // Кельтский крест (10 карт) делает 11 последовательных запросов к AI — может занять до ~20с,
   // поэтому таймаут для этого эндпоинта выше глобального.
-  getFortune: (question: string, category?: string, spreadType: SpreadType = 'THREE_CARD') =>
+  getFortune: (question: string, category?: string, spreadType: SpreadType = 'THREE_CARD', spendMode: SpendMode = 'CREDITS') =>
     apiClient.post<FortuneResponse>(
       '/api/fortune',
-      { question, category: category || null, spreadType },
+      { question, category: category || null, spreadType, spendMode },
       { timeout: 60000 },
     ),
 
@@ -611,9 +666,9 @@ export const api = {
   getCompatibility: (data: CompatibilityRequest) =>
     apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data),
 
-  // Разблокировать полный анализ совместимости за 3 знака
-  unlockCompatibility: (id: number) =>
-    apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`),
+  // Разблокировать полный анализ совместимости (знаки или квота подписки)
+  unlockCompatibility: (id: number, spendMode: SpendMode = 'CREDITS') =>
+    apiClient.post<CompatibilityResponse>(`/api/fortune/compatibility/${id}/unlock`, null, { params: { spendMode } }),
 
   // Дневник
   getDiaryHistory: (featureType: FeatureType, from: string, to: string) =>
@@ -641,8 +696,8 @@ export const api = {
 
   // Нумерология недели (платно — 3 знака; повторный вызов в течение действующих 7 дней бесплатен)
   // skipGlobalError: true — 402 (мало знаков) и 422 (нет даты рождения) обрабатываем сами в виджете
-  getNumerologyWeek: () =>
-    apiClient.get<NumerologyWeekResponse>('/api/numerology/week', { skipGlobalError: true }),
+  getNumerologyWeek: (spendMode: SpendMode = 'CREDITS') =>
+    apiClient.get<NumerologyWeekResponse>('/api/numerology/week', { params: { spendMode }, skipGlobalError: true }),
 
   // Тихая проверка уже оплаченного расклада на неделю — НЕ создаёт новый и НЕ списывает знаки.
   // 404, если на эту неделю расклада ещё нет (нормальный случай, не показываем ошибку).
@@ -657,8 +712,8 @@ export const api = {
 
   // Нумерология месяца (платно — 10 знаков; повторный вызов в течение действующего месяца бесплатен).
   // 4 недели внутри месяца включены в стоимость и создаются автоматически.
-  getNumerologyMonth: () =>
-    apiClient.get<NumerologyMonthResponse>('/api/numerology/month', { skipGlobalError: true }),
+  getNumerologyMonth: (spendMode: SpendMode = 'CREDITS') =>
+    apiClient.get<NumerologyMonthResponse>('/api/numerology/month', { params: { spendMode }, skipGlobalError: true }),
 
   // Тихая проверка уже оплаченного разбора на месяц — НЕ создаёт новый и НЕ списывает знаки.
   getNumerologyMonthCurrent: () =>
@@ -671,8 +726,8 @@ export const api = {
 
   // Нумерология года (платно — 18 знаков; повторный вызов в течение действующего года бесплатен).
   // 12 месяцев показаны как лёгкие превью и открываются бесплатно по клику (см. getNumerologyMonthByDate).
-  getNumerologyYear: () =>
-    apiClient.get<NumerologyYearResponse>('/api/numerology/year', { skipGlobalError: true }),
+  getNumerologyYear: (spendMode: SpendMode = 'CREDITS') =>
+    apiClient.get<NumerologyYearResponse>('/api/numerology/year', { params: { spendMode }, skipGlobalError: true }),
 
   // Тихая проверка уже оплаченного разбора на год — НЕ создаёт новый и НЕ списывает знаки.
   getNumerologyYearCurrent: () =>
@@ -696,6 +751,24 @@ export const api = {
 
   createRobokassaPayment: (data: CreatePaymentRequest) =>
     apiClient.post<CreatePaymentResponse>('/api/v1/payments/robokassa/create', data),
+
+  // ── Подписки ──────────────────────────────────────────────────────────────
+
+  // Каталог планов подписки (вкладка «Подписки»)
+  getSubscriptionPlans: () =>
+    apiClient.get<SubscriptionPlan[]>('/api/v1/subscriptions/plans'),
+
+  // Моя активная подписка с остатками квот. 404 — подписки нет (не ошибка)
+  getMySubscription: () =>
+    apiClient.get<MySubscriptionResponse>('/api/v1/subscriptions/my', { skipGlobalError: true }),
+
+  // Покупка подписки: provider = 'robokassa' | 'yookassa' | 'stars'
+  createSubscriptionPayment: (provider: 'robokassa' | 'yookassa' | 'stars', planId: number) =>
+    apiClient.post<CreatePaymentResponse>(`/api/v1/subscriptions/${provider}/create`, { planId }),
+
+  // Чем можно оплатить фичу (модалка выбора способа списания)
+  getSpendOptions: (feature: FeatureType) =>
+    apiClient.get<SpendOptionsResponse>('/api/v1/payments/spend-options', { params: { feature } }),
 
   // Входящие
   getInbox: (page = 0, size = 20) =>

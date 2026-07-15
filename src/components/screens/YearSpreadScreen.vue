@@ -168,6 +168,8 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { api, type NumerologyYearResponse } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
@@ -179,7 +181,12 @@ const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const YEAR_COST = computed(() => featureCosts.value.numerologyYear)
 
 const { balance, refreshBalance } = useBalance()
-const canAffordYear = computed(() => (balance.value ?? 0) >= YEAR_COST.value)
+const { resolveSpendMode } = useSpendConfirm()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+// Покупка доступна: хватает знаков ИЛИ есть квота подписки на годовой разбор
+const canAffordYear = computed(() =>
+  (balance.value ?? 0) >= YEAR_COST.value || quotaRemaining('NUMEROLOGY_YEAR') > 0
+)
 
 const yearResult   = ref<NumerologyYearResponse | null>(null)
 const yearLoading  = ref(false)
@@ -193,6 +200,7 @@ const checkingExisting = ref(true)
 
 onMounted(async () => {
   loadFeatureCosts()
+  ensureSubscriptionLoaded()
   try {
     const res = await api.getNumerologyYearCurrent()
     yearResult.value = res.data
@@ -226,12 +234,15 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function confirmPurchase() {
+async function confirmPurchase() {
   showPurchaseModal.value = false
-  getYearlyAnalysis()
+  // Выбор способа оплаты: знаки или квота подписки (модалка при необходимости)
+  const spendMode = await resolveSpendMode('NUMEROLOGY_YEAR')
+  if (!spendMode) return
+  getYearlyAnalysis(spendMode)
 }
 
-async function getYearlyAnalysis() {
+async function getYearlyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
   if (yearLoading.value) return
   yearLoading.value = true
   yearErrorMsg.value = ''
@@ -245,13 +256,14 @@ async function getYearlyAnalysis() {
 
   try {
     const [res] = await Promise.all([
-      api.getNumerologyYear(),
+      api.getNumerologyYear(spendMode),
       delay(MIN_LOADER_MS),
     ])
     progress.value = 100
     yearResult.value = res.data
     justPurchased.value = true
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshSubscription()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {

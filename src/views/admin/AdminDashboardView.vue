@@ -66,6 +66,12 @@
         :class="{ active: activeTab === 'payments' }"
         @click="openPaymentsTab"
       >💳 Транзакции</button>
+      <button
+        v-if="isAdmin"
+        class="tab"
+        :class="{ active: activeTab === 'subscriptions' }"
+        @click="openSubscriptionsTab"
+      >📦 Подписки</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -1571,6 +1577,137 @@
       </div>
     </template>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ПОДПИСКИ (планы)
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'subscriptions'">
+      <div class="reports-wrap">
+
+        <div class="reports-toolbar">
+          <span class="reports-updated">
+            Планы подписок мини-аппа. Редактирование плана НЕ влияет на уже купленные подписки —
+            их квоты фиксируются в момент покупки.
+          </span>
+          <button class="btn-ghost" :disabled="subPlansLoading" @click="loadSubscriptionPlans">
+            {{ subPlansLoading ? '⏳ Загрузка...' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <p v-if="subPlansError" class="error-msg">{{ subPlansError }}</p>
+        <p v-if="subPlansSuccess" class="success-msg">{{ subPlansSuccess }}</p>
+
+        <!-- Курс Stars -->
+        <div class="report-group">
+          <h3 class="report-group-title">⭐ Курс Telegram Stars</h3>
+          <div class="prices-form">
+            <div class="price-field">
+              <label class="price-label">Копеек за 1 звезду (для подсказки цены)</label>
+              <input v-model.number="starsRateKopecks" type="number" min="1" class="price-input" />
+            </div>
+            <button class="btn-ghost" @click="saveStarsRate">💾 Сохранить курс</button>
+          </div>
+        </div>
+
+        <!-- Список планов -->
+        <div class="report-group">
+          <h3 class="report-group-title">📦 Планы ({{ subPlans.length }})</h3>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Название</th><th>Цена ₽</th><th>Цена ⭐</th>
+                  <th>Дней</th><th>Квоты</th><th>Активен</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="plan in subPlans" :key="plan.id ?? 'new'">
+                  <td>{{ plan.id }}</td>
+                  <td>{{ plan.name }}</td>
+                  <td>{{ (plan.priceRub / 100).toFixed(0) }} ₽</td>
+                  <td>{{ plan.priceStars }} ⭐</td>
+                  <td>{{ plan.durationDays }}</td>
+                  <td>
+                    <div v-for="q in plan.quotas" :key="q.featureType" style="font-size:12px">
+                      {{ quotaFeatureLabel(q.featureType) }}: {{ q.quotaCount }} {{ q.quotaPeriod === 'DAILY' ? 'в день' : 'на срок' }}
+                    </div>
+                  </td>
+                  <td>{{ plan.isActive ? '✅' : '—' }}</td>
+                  <td><button class="btn-ghost" @click="editPlan(plan)">✏️ Изменить</button></td>
+                </tr>
+                <tr v-if="subPlans.length === 0 && !subPlansLoading">
+                  <td colspan="8" style="text-align:center;color:rgba(255,255,255,.4)">Планов пока нет — создайте первый ниже</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Форма создания/редактирования плана -->
+        <div class="report-group">
+          <h3 class="report-group-title">{{ planForm.id ? `✏️ Редактирование плана #${planForm.id}` : '➕ Новая подписка' }}</h3>
+
+          <div class="prices-form">
+            <div class="price-field">
+              <label class="price-label">Название подписки</label>
+              <input v-model="planForm.name" type="text" class="price-input" placeholder="Например: Базовая" />
+            </div>
+            <div class="price-field">
+              <label class="price-label">Цена, ₽ в месяц</label>
+              <!-- Вводим в рублях, храним в копейках. При изменении пересчитываем подсказку Stars -->
+              <input v-model.number="planPriceRubles" type="number" min="1" class="price-input" />
+            </div>
+            <div class="price-field">
+              <label class="price-label">Цена в Stars (подсказка по курсу: {{ suggestedStars }})</label>
+              <input v-model.number="planForm.priceStars" type="number" min="1" class="price-input" />
+            </div>
+            <div class="price-field">
+              <label class="price-label">Срок действия, дней</label>
+              <input v-model.number="planForm.durationDays" type="number" min="1" class="price-input" />
+            </div>
+            <div class="price-field">
+              <label class="price-label">Порядок в каталоге (меньше = выше)</label>
+              <input v-model.number="planForm.sortOrder" type="number" class="price-input" />
+            </div>
+            <div class="price-field">
+              <label class="price-badge-check"><input type="checkbox" v-model="planForm.isActive" /> Активен (виден в каталоге)</label>
+            </div>
+          </div>
+
+          <!-- Квоты плана -->
+          <h4 style="margin:16px 0 8px;font-size:14px">Квоты</h4>
+          <div v-for="(q, idx) in planForm.quotas" :key="idx" class="prices-form" style="align-items:flex-end">
+            <div class="price-field">
+              <label class="price-label">Функция</label>
+              <select v-model="q.featureType" class="price-input">
+                <option v-for="f in QUOTA_FEATURES" :key="f" :value="f">{{ quotaFeatureLabel(f) }}</option>
+              </select>
+            </div>
+            <div class="price-field">
+              <label class="price-label">Количество</label>
+              <input v-model.number="q.quotaCount" type="number" min="1" class="price-input" />
+            </div>
+            <div class="price-field">
+              <label class="price-label">Периодичность</label>
+              <select v-model="q.quotaPeriod" class="price-input">
+                <option value="DAILY">в день</option>
+                <option value="PER_PERIOD">на весь срок подписки</option>
+              </select>
+            </div>
+            <button class="btn-ghost" @click="planForm.quotas.splice(idx, 1)">🗑</button>
+          </div>
+          <button class="btn-ghost" style="margin-top:8px" @click="addQuotaRow">➕ Добавить квоту</button>
+
+          <div style="margin-top:16px;display:flex;gap:10px">
+            <button class="btn-primary" :disabled="subPlanSaving" @click="savePlan">
+              {{ subPlanSaving ? '⏳ Сохранение...' : '💾 Сохранить подписку' }}
+            </button>
+            <button v-if="planForm.id" class="btn-ghost" @click="resetPlanForm">Отменить редактирование</button>
+          </div>
+        </div>
+
+      </div>
+    </template>
+
     <!-- ── Детали транзакции (боковая панель) ─────────────────── -->
     <Transition name="slide-panel">
       <div v-if="selectedTransaction" class="side-panel">
@@ -1868,6 +2005,49 @@
             <p v-if="giftError" class="error-msg">{{ giftError }}</p>
           </section>
 
+          <!-- Выдача квот подписки -->
+          <section v-if="isAdmin" class="info-section">
+            <h3>Выдать квоты</h3>
+            <p class="dream-symbols-hint">
+              Если у пользователя есть активная подписка — квота добавится в неё.
+              Если нет — будет создана подарочная подписка на указанный срок.
+            </p>
+            <div class="gift-row" style="flex-wrap:wrap;gap:8px">
+              <select v-model="quotaGiftFeature" style="flex:1;min-width:160px">
+                <option v-for="f in QUOTA_FEATURES" :key="f" :value="f">{{ quotaFeatureLabel(f) }}</option>
+              </select>
+              <input
+                v-model.number="quotaGiftCount"
+                type="number"
+                min="1"
+                max="100"
+                placeholder="Кол-во"
+                style="width:80px"
+              />
+              <select v-model="quotaGiftPeriod" style="min-width:130px">
+                <option value="PER_PERIOD">на весь срок</option>
+                <option value="DAILY">в день</option>
+              </select>
+              <input
+                v-model.number="quotaGiftDays"
+                type="number"
+                min="1"
+                placeholder="Срок, дней"
+                title="Срок подарочной подписки (если активной нет)"
+                style="width:100px"
+              />
+              <button
+                class="btn-primary"
+                :disabled="quotaGiftLoading || !quotaGiftCount || quotaGiftCount <= 0"
+                @click="sendQuotaGift"
+              >
+                {{ quotaGiftLoading ? '...' : '🎫 Выдать' }}
+              </button>
+            </div>
+            <p v-if="quotaGiftSuccess" class="success-msg">{{ quotaGiftSuccess }}</p>
+            <p v-if="quotaGiftError" class="error-msg">{{ quotaGiftError }}</p>
+          </section>
+
           <!-- Бан -->
           <section v-if="isAdmin" class="info-section">
             <h3>Управление доступом</h3>
@@ -1965,7 +2145,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type DetectionSource, type RiskLevel, type UserSensitivityProfileEntry, type SensitiveContentBackfillResult, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type DetectionSource, type RiskLevel, type UserSensitivityProfileEntry, type SensitiveContentBackfillResult, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats, type AdminSubscriptionPlan, type AdminPlanQuota, type AdminQuotaFeature } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -1976,7 +2156,7 @@ const userRole = ref<'ADMIN' | 'MODERATOR'>('ADMIN')
 const isAdmin = computed(() => userRole.value === 'ADMIN')
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive' | 'payments'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive' | 'payments' | 'subscriptions'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -2205,6 +2385,37 @@ const sendGift = async () => {
     giftError.value = e.response?.data?.message || 'Ошибка при отправке подарка'
   } finally {
     giftLoading.value = false
+  }
+}
+
+// ── Выдача квот подписки ───────────────────────────────────────────────────
+const quotaGiftFeature = ref<AdminQuotaFeature>('THREE_CARD')
+const quotaGiftCount   = ref<number | null>(null)
+const quotaGiftPeriod  = ref<'DAILY' | 'PER_PERIOD'>('PER_PERIOD')
+// Срок подарочной подписки — используется, только если активной подписки нет
+const quotaGiftDays    = ref<number>(30)
+const quotaGiftLoading = ref(false)
+const quotaGiftSuccess = ref<string | null>(null)
+const quotaGiftError   = ref<string | null>(null)
+
+const sendQuotaGift = async () => {
+  if (!selectedUser.value || !quotaGiftCount.value) return
+  quotaGiftLoading.value = true
+  quotaGiftSuccess.value = null
+  quotaGiftError.value = null
+  try {
+    const res = await adminApi.giftQuota(selectedUser.value.id, {
+      featureType: quotaGiftFeature.value,
+      count: quotaGiftCount.value,
+      quotaPeriod: quotaGiftPeriod.value,
+      durationDays: quotaGiftDays.value || 30,
+    })
+    quotaGiftSuccess.value = `${res.data.message}. Уведомление отправлено в бот.`
+    quotaGiftCount.value = null
+  } catch (e: any) {
+    quotaGiftError.value = e.response?.data?.message || 'Ошибка при выдаче квот'
+  } finally {
+    quotaGiftLoading.value = false
   }
 }
 
@@ -2973,6 +3184,127 @@ const resetTxFilters = () => {
 const openPaymentsTab = () => {
   activeTab.value = 'payments'
   if (transactions.value.length === 0) loadTransactions(0)
+}
+
+// ── Планы подписки ─────────────────────────────────────────────────────────
+const subPlans         = ref<AdminSubscriptionPlan[]>([])
+const subPlansLoading  = ref(false)
+const subPlanSaving    = ref(false)
+const subPlansError    = ref<string | null>(null)
+const subPlansSuccess  = ref<string | null>(null)
+const starsRateKopecks = ref(133)
+
+// Фичи, на которые выдаются квоты (бесплатные фичи в списке не нужны)
+const QUOTA_FEATURES: AdminQuotaFeature[] = [
+  'THREE_CARD', 'HORSESHOE', 'CELTIC_CROSS', 'COMPATIBILITY',
+  'DREAM', 'NUMEROLOGY_WEEK', 'NUMEROLOGY_MONTH', 'NUMEROLOGY_YEAR',
+]
+
+const QUOTA_FEATURE_LABELS: Record<AdminQuotaFeature, string> = {
+  THREE_CARD:       'Расклад «3 карты»',
+  HORSESHOE:        'Расклад «Подкова»',
+  CELTIC_CROSS:     'Расклад «Кельтский крест»',
+  COMPATIBILITY:    'Совместимость',
+  DREAM:            'Разбор сна',
+  NUMEROLOGY_WEEK:  'Нумерология недели',
+  NUMEROLOGY_MONTH: 'Нумерология месяца',
+  NUMEROLOGY_YEAR:  'Нумерология года',
+}
+
+const quotaFeatureLabel = (f: AdminQuotaFeature) => QUOTA_FEATURE_LABELS[f] ?? f
+
+// Пустая форма нового плана
+const emptyPlanForm = (): AdminSubscriptionPlan => ({
+  id: null,
+  name: '',
+  priceRub: 0,        // копейки — вводится через planPriceRubles
+  priceStars: 0,
+  durationDays: 30,
+  isActive: true,
+  sortOrder: 0,
+  quotas: [{ featureType: 'THREE_CARD', quotaCount: 1, quotaPeriod: 'PER_PERIOD' }],
+})
+
+const planForm = ref<AdminSubscriptionPlan>(emptyPlanForm())
+
+// Цена в рублях для формы (бэк хранит копейки). При изменении обновляется
+// подсказка цены в Stars (suggestedStars) — админ может поправить руками.
+const planPriceRubles = computed({
+  get: () => planForm.value.priceRub / 100,
+  set: (rub: number) => {
+    planForm.value.priceRub = Math.round((rub || 0) * 100)
+    // Автоподсказка: подставляем рассчитанные Stars, пока админ не ввёл своё
+    planForm.value.priceStars = suggestedStars.value
+  },
+})
+
+// ceil(цена в копейках / копеек за звезду)
+const suggestedStars = computed(() =>
+  starsRateKopecks.value > 0 ? Math.ceil(planForm.value.priceRub / starsRateKopecks.value) : 0
+)
+
+const openSubscriptionsTab = () => {
+  activeTab.value = 'subscriptions'
+  if (subPlans.value.length === 0) loadSubscriptionPlans()
+}
+
+const loadSubscriptionPlans = async () => {
+  subPlansLoading.value = true
+  subPlansError.value = null
+  try {
+    const res = await adminApi.getSubscriptionPlans()
+    subPlans.value = res.data.plans
+    starsRateKopecks.value = res.data.starsRateKopecks
+  } catch {
+    subPlansError.value = 'Не удалось загрузить планы подписок'
+  } finally {
+    subPlansLoading.value = false
+  }
+}
+
+const addQuotaRow = () => {
+  planForm.value.quotas.push({ featureType: 'THREE_CARD', quotaCount: 1, quotaPeriod: 'PER_PERIOD' })
+}
+
+const editPlan = (plan: AdminSubscriptionPlan) => {
+  // Глубокая копия — чтобы правки формы не меняли строку таблицы до сохранения
+  planForm.value = JSON.parse(JSON.stringify(plan))
+}
+
+const resetPlanForm = () => {
+  planForm.value = emptyPlanForm()
+}
+
+const savePlan = async () => {
+  subPlanSaving.value = true
+  subPlansError.value = null
+  subPlansSuccess.value = null
+  try {
+    if (planForm.value.id) {
+      await adminApi.updateSubscriptionPlan(planForm.value.id, planForm.value)
+      subPlansSuccess.value = `План #${planForm.value.id} обновлён`
+    } else {
+      await adminApi.createSubscriptionPlan(planForm.value)
+      subPlansSuccess.value = 'Подписка создана и появилась в каталоге'
+    }
+    resetPlanForm()
+    await loadSubscriptionPlans()
+  } catch (e: any) {
+    subPlansError.value = e?.response?.data?.message || 'Не удалось сохранить план'
+  } finally {
+    subPlanSaving.value = false
+  }
+}
+
+const saveStarsRate = async () => {
+  subPlansError.value = null
+  subPlansSuccess.value = null
+  try {
+    await adminApi.updateStarsRate(starsRateKopecks.value)
+    subPlansSuccess.value = 'Курс Stars сохранён'
+  } catch (e: any) {
+    subPlansError.value = e?.response?.data?.message || 'Не удалось сохранить курс'
+  }
 }
 
 // ── Детали транзакции ─────────────────────────────────────────────────────
