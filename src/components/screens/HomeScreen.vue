@@ -16,6 +16,15 @@
           >
             🔮 {{ balance > 0 ? `${balance} ${balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков'}` : 'Купить' }}
           </div>
+          <!-- Шилдик активной подписки: квоты намеренно не выводим на главной,
+               чтобы не перегружать шапку — детали в профиле (блок «Моя подписка») -->
+          <div
+            v-if="hasActiveSubscription"
+            class="sub-chip haptic"
+            @click="navigate('profile')"
+          >
+            💫 Подписка
+          </div>
           <div class="avatar" @click="navigate('profile')">
             {{ userInitial }}
           </div>
@@ -184,7 +193,7 @@ const { telegramUser } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { horoscope, isLoading: horoscopeLoading, needsBirthDate: horoscopeNeedsBirthDate, fetchHoroscope } = useHoroscope()
 const { isDev, toggleDevMode } = useDevMode()
-const { balance, hasCredits } = useBalance()
+const { balance, hasCredits, hasActiveSubscription, refreshBalance } = useBalance()
 const { addToast } = useToast()
 
 const cardFlipped    = ref(false)
@@ -261,6 +270,8 @@ const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle || '')
 onMounted(async () => {
   fetchDailyCard()
   fetchHoroscope()
+  // Актуальный баланс + флаг активной подписки (для шилдика в шапке)
+  refreshBalance()
   try {
     const res = await api.getNumerologyToday()
     numerologyData.value = res.data
@@ -446,6 +457,20 @@ onMounted(async () => {
   background: rgba(182,84,255,0.15);
   border-color: rgba(182,84,255,0.35);
   color: #b654ff;
+}
+
+/* Шилдик активной подписки — ведёт в профиль, к остаткам квот */
+.sub-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(182,84,255,0.15);
+  border: 1px solid rgba(182,84,255,0.35);
+  color: #d9a6ff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
 }
 
 .avatar {
