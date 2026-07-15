@@ -1,4 +1,9 @@
 <template>
+  <!-- Teleport в body обязателен: модалка смонтирована в App.vue внутри .app-shell,
+       где анимации экранов используют transform — transform у предка ломает
+       position: fixed (оверлей позиционируется относительно предка, а не вьюпорта).
+       Тот же приём, что в ToastContainer. -->
+  <Teleport to="body">
   <Transition name="sheet">
     <div v-if="visible" class="sheet-overlay" @click.self="choose(null)">
       <div class="bottom-sheet">
@@ -74,6 +79,7 @@
       </div>
     </div>
   </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
