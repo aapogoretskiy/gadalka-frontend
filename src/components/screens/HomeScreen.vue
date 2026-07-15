@@ -9,21 +9,23 @@
           <div class="name serif">{{ userName }}</div>
         </div>
         <div class="greeting-right">
-          <div
-            class="balance-chip haptic"
-            :class="{ 'balance-chip--empty': balance === 0 }"
-            @click="navigate('payment')"
-          >
-            🔮 {{ balance > 0 ? `${balance} ${balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков'}` : 'Купить' }}
-          </div>
-          <!-- Шилдик активной подписки: квоты намеренно не выводим на главной,
-               чтобы не перегружать шапку — детали в профиле (блок «Моя подписка») -->
-          <div
-            v-if="hasActiveSubscription"
-            class="sub-chip haptic"
-            @click="navigate('profile')"
-          >
-            💫 Подписка
+          <div class="chips-row">
+            <!-- Шилдик активной подписки с названием плана: квоты намеренно не выводим
+                 на главной, чтобы не перегружать шапку — детали в профиле («Моя подписка») -->
+            <div
+              v-if="mySubscription"
+              class="sub-chip haptic"
+              @click="navigate('profile')"
+            >
+              💫 {{ mySubscription.planName }}
+            </div>
+            <div
+              class="balance-chip haptic"
+              :class="{ 'balance-chip--empty': balance === 0 }"
+              @click="navigate('payment')"
+            >
+              🔮 {{ balance > 0 ? `${balance} ${balance === 1 ? 'знак' : balance < 5 ? 'знака' : 'знаков'}` : 'Купить' }}
+            </div>
           </div>
           <div class="avatar" @click="navigate('profile')">
             {{ userInitial }}
@@ -183,6 +185,7 @@ import { useDailyCard } from '@/composables/useDailyCard'
 import { useHoroscope } from '@/composables/useHoroscope'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { useToast } from '@/composables/useToast'
 import { zodiacGlyph } from '@/utils/zodiac'
 import { canRequestWriteAccess, requestWriteAccess } from '@/utils/telegram'
@@ -193,7 +196,9 @@ const { telegramUser } = useUser()
 const { dailyCard, isLoading: cardLoading, fetchDailyCard } = useDailyCard()
 const { horoscope, isLoading: horoscopeLoading, needsBirthDate: horoscopeNeedsBirthDate, fetchHoroscope } = useHoroscope()
 const { isDev, toggleDevMode } = useDevMode()
-const { balance, hasCredits, hasActiveSubscription, refreshBalance } = useBalance()
+const { balance, hasCredits, refreshBalance } = useBalance()
+// Активная подписка (название плана для шилдика в шапке)
+const { mySubscription, refreshSubscription } = useMySubscription()
 const { addToast } = useToast()
 
 const cardFlipped    = ref(false)
@@ -270,8 +275,9 @@ const lifeNumberTitle = computed(() => numerologyData.value?.dayCodeTitle || '')
 onMounted(async () => {
   fetchDailyCard()
   fetchHoroscope()
-  // Актуальный баланс + флаг активной подписки (для шилдика в шапке)
+  // Актуальный баланс + активная подписка (для шилдика в шапке)
   refreshBalance()
+  refreshSubscription()
   try {
     const res = await api.getNumerologyToday()
     numerologyData.value = res.data
@@ -459,8 +465,17 @@ onMounted(async () => {
   color: #b654ff;
 }
 
+.chips-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Шилдик активной подписки — ведёт в профиль, к остаткам квот */
 .sub-chip {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 4px 10px;
   border-radius: 20px;
   background: rgba(182,84,255,0.15);
