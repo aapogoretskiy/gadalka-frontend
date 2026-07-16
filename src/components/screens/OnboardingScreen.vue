@@ -7,7 +7,10 @@
          на этом экране (фиксируется через /api/me/accept-terms). -->
     <div v-if="step === 'welcome'" class="onb-screen welcome-screen">
       <div class="welcome-hero">
-        <div class="liora-orb"><span class="liora-orb-inner">🔮</span></div>
+        <!-- Маскот: сцена с Лиорой за столом (пиксель-арт), парящая карточка -->
+        <div class="welcome-scene-card">
+          <img :src="lioraScene" alt="Лиора" class="welcome-scene-img" draggable="false" />
+        </div>
         <h1 class="serif welcome-title">Liora</h1>
         <p class="onb-sub">Карты уже перемешаны для вас</p>
       </div>
@@ -77,8 +80,7 @@
       </div>
       <div class="onb-form">
         <div v-if="isLoading" class="onb-shuffle">
-          <div class="liora-orb"><span class="liora-orb-inner">🃏</span></div>
-          <p class="onb-sub">Готовим вопросы...</p>
+          <LioraLoader size="sm" subtitle="Готовим вопросы..." />
         </div>
         <template v-else>
           <button
@@ -98,8 +100,7 @@
          на анимации с меняющимися фразами. -->
     <div v-if="step === 'shuffling'" class="onb-screen">
       <div class="onb-form onb-shuffle-screen">
-        <div class="liora-orb"><span class="liora-orb-inner">🔮</span></div>
-        <p class="onb-shuffle-phrase serif">{{ shufflePhrase }}</p>
+        <LioraLoader :phrases="SHUFFLE_PHRASES" :phrase-interval-ms="1100" />
       </div>
     </div>
 
@@ -481,6 +482,8 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { useUser } from '@/composables/useUser'
 import { api, type Goal, type NotificationTime, type DailyCardResponse, type FortuneResponse, type CardPosition } from '@/utils/api'
+import LioraLoader from '@/components/ui/LioraLoader.vue'
+import lioraScene from '@/assets/liora-scene.png'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { createProfile, authWithTelegram, termsAccepted: termsAlreadyAccepted } = useUser()
@@ -567,20 +570,12 @@ const SHUFFLE_PHRASES = [
   'Слушаем, что говорят карты...',
 ]
 const SHUFFLE_MIN_MS = 3000
-const shufflePhrase = ref(SHUFFLE_PHRASES[0])
 
 const askQuestion = async (q: string) => {
   if (step.value === 'shuffling') return
   errorMsg.value = ''
   step.value = 'shuffling'
-
-  // Крутим фразы, пока «считаем»
-  let phraseIdx = 0
-  shufflePhrase.value = SHUFFLE_PHRASES[0]
-  const phraseTimer = setInterval(() => {
-    phraseIdx = (phraseIdx + 1) % SHUFFLE_PHRASES.length
-    shufflePhrase.value = SHUFFLE_PHRASES[phraseIdx]
-  }, 1100)
+  // Ротацию фраз делает сам LioraLoader
 
   try {
     // Запрос и минимальная пауза идут параллельно: ждём оба
@@ -599,8 +594,6 @@ const askQuestion = async (q: string) => {
       errorMsg.value = 'Не получилось разложить карты. Попробуйте другой вопрос.'
       step.value = 'question'
     }
-  } finally {
-    clearInterval(phraseTimer)
   }
 }
 
@@ -1060,26 +1053,41 @@ const handleFinish = async () => {
   color: rgba(255,255,255,.45);
 }
 
-/* Анимированный шар Лиоры: мягкое парение + пульс свечения */
-.liora-orb {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 35% 30%, rgba(182,84,255,.45), rgba(94,23,168,.25) 60%, transparent);
-  box-shadow: 0 0 42px rgba(182,84,255,.35);
-  animation: orb-float 3.6s ease-in-out infinite, orb-glow 2.8s ease-in-out infinite;
+/* Маскот на welcome: парящая карточка со сценой (пиксель-арт, пропорция 408×714) */
+.welcome-scene-card {
+  width: 216px;
+  height: 378px;
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255,200,87,.25);
+  box-shadow: 0 0 46px rgba(182,84,255,.35), 0 14px 34px rgba(0,0,0,.55);
+  margin-bottom: 10px;
+  animation: scene-float 3.6s ease-in-out infinite, scene-glow 2.8s ease-in-out infinite;
 }
-.liora-orb-inner { font-size: 44px; }
-@keyframes orb-float {
+.welcome-scene-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  image-rendering: pixelated;  /* чёткие пиксели при масштабировании */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* Затемнение снизу — мягкий переход карточки в фон экрана */
+.welcome-scene-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(19,10,40,.5) 0%, transparent 35%);
+}
+@keyframes scene-float {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-10px); }
 }
-@keyframes orb-glow {
-  0%, 100% { box-shadow: 0 0 32px rgba(182,84,255,.28); }
-  50%      { box-shadow: 0 0 56px rgba(233,74,168,.42); }
+@keyframes scene-glow {
+  0%, 100% { box-shadow: 0 0 34px rgba(182,84,255,.28), 0 14px 34px rgba(0,0,0,.55); }
+  50%      { box-shadow: 0 0 56px rgba(233,74,168,.42), 0 14px 34px rgba(0,0,0,.55); }
 }
 
 /* Заголовки экранов онбординга под служебными кнопками Telegram
@@ -1196,13 +1204,6 @@ const handleFinish = async () => {
   align-items: center;
   justify-content: center;
   gap: 24px;
-}
-.onb-shuffle-phrase {
-  font-size: 19px;
-  font-style: italic;
-  color: rgba(255,255,255,.75);
-  text-align: center;
-  animation: phrase-fade 1.1s ease-in-out infinite;
 }
 @keyframes phrase-fade {
   0%, 100% { opacity: .55; }

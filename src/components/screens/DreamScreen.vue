@@ -87,16 +87,7 @@
       <!-- ══ Step 2: Лоадер ════════════════════════════════════════════ -->
       <template v-if="step === 2">
         <div class="loader-wrap">
-          <div class="ai-orb">
-            <div class="orb-core"></div>
-            <div class="orb-ring r1"></div>
-            <div class="orb-ring r2"></div>
-          </div>
-          <h2 class="serif loader-phrase">{{ loadingPhrases[phraseIdx] }}</h2>
-          <p class="loader-sub">Толкуем язык вашего подсознания...</p>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" :style="`width:${progress}%`"></div>
-          </div>
+          <LioraLoader :phrases="loadingPhrases" subtitle="Толкуем язык вашего подсознания..." :progress="progress" />
         </div>
       </template>
 
@@ -199,6 +190,7 @@ import { useSpendConfirm } from '@/composables/useSpendConfirm'
 import { useMySubscription } from '@/composables/useMySubscription'
 import { zodiacGlyph } from '@/utils/zodiac'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
+import LioraLoader from '@/components/ui/LioraLoader.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
@@ -225,8 +217,7 @@ const error             = ref('')
 const justAnalyzed      = ref(false)  // свежий разбор (показываем баннер) vs открыт из истории
 const numerologyData    = ref<NumerologyTodayResponse | null>(null)
 
-// Лоадер
-const phraseIdx = ref(0)
+// Лоадер (ротацию фраз делает LioraLoader, здесь — только прогресс)
 const progress  = ref(0)
 let loaderTimer: ReturnType<typeof setInterval> | null = null
 
@@ -281,11 +272,9 @@ const startAnalysis = async () => {
   error.value = ''
   step.value = 2
   progress.value = 0
-  phraseIdx.value = 0
 
   // Прогресс асимптотически ползёт к 96% — как в FortuneScreen
   loaderTimer = setInterval(() => {
-    phraseIdx.value = (phraseIdx.value + 1) % loadingPhrases.length
     progress.value = progress.value + (96 - progress.value) * 0.1
   }, 2500)
 
@@ -588,43 +577,7 @@ onUnmounted(() => {
   text-align: center;
   padding: 40px 0;
 }
-.loader-phrase { font-size: 24px; margin: 24px 12px 8px; min-height: 60px; }
-.loader-sub { color: rgba(255,255,255,.55); font-size: 13px; margin-bottom: 28px; }
-
-.ai-orb { position: relative; width: 90px; height: 90px; }
-.orb-core {
-  position: absolute; inset: 18px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #b654ff, #6a2eb8);
-  box-shadow: 0 0 40px rgba(182,84,255,0.6);
-  animation: orb-breathe 2s ease-in-out infinite;
-}
-.orb-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(182,84,255,0.35);
-  animation: center-ring 2.5s ease-out infinite;
-}
-.orb-ring.r1 { inset: 9px; animation-delay: 0s; }
-.orb-ring.r2 { inset: 0;   animation-delay: 0.8s; }
-@keyframes orb-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.08); }
-}
-
-.progress-bar-wrap {
-  width: 200px;
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.1);
-  overflow: hidden;
-}
-.progress-bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #b654ff, #e94aa8);
-  transition: width 0.4s ease;
-}
+/* Лоадер: маскот, фразы и прогресс — в общем компоненте LioraLoader */
 
 /* ── Результат ── */
 .success-banner {

@@ -10,8 +10,7 @@
 
       <!-- Loading -->
       <div v-if="loading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Считаем ваше число дня…</div>
+        <LioraLoader size="sm" subtitle="Считаем ваше число дня…" />
       </div>
 
       <!-- Error: no birth date -->
@@ -86,6 +85,7 @@
 <script setup lang="ts">
 import { ref, inject, onMounted } from 'vue'
 import { api, type NumerologyTodayResponse } from '@/utils/api'
+import LioraLoader from '@/components/ui/LioraLoader.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -117,14 +117,7 @@ onMounted(async () => {
 
 /* Loading */
 .loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 60px 20px; gap: 16px; }
-.loading-spinner {
-  width: 40px; height: 40px; border-radius: 50%;
-  border: 3px solid rgba(255,255,255,.1);
-  border-top-color: #ffc857;
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 14px; color: rgba(255,255,255,.5); }
+/* Спиннер заменён на общий компонент LioraLoader (маскот) */
 
 /* Error */
 .error-card { padding: 32px 24px; text-align: center; margin-bottom: 16px; }

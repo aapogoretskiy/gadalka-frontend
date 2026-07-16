@@ -11,16 +11,7 @@
       <!-- ══ Загрузка ════════════════════════════════════════════════ -->
       <template v-if="monthLoading">
         <div class="loader-wrap">
-          <div class="ai-orb">
-            <div class="orb-core"></div>
-            <div class="orb-ring r1"></div>
-            <div class="orb-ring r2"></div>
-          </div>
-          <h2 class="serif loader-title">{{ loadingMessages[msgIdx] }}</h2>
-          <p class="loader-sub">Раскладываем месяц на недели и дни...</p>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" :style="`width:${progress}%`"></div>
-          </div>
+          <LioraLoader :phrases="loadingMessages" subtitle="Раскладываем месяц на недели и дни..." :progress="progress" />
         </div>
       </template>
 
@@ -179,6 +170,7 @@ import { useSpendConfirm } from '@/composables/useSpendConfirm'
 import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
+import LioraLoader from '@/components/ui/LioraLoader.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
 
 const navigate = inject<(r: string, params?: Record<string, any>) => void>('navigate')
@@ -253,7 +245,6 @@ const loadingMessages = [
   'Собираем ключевые даты...',
   'Формируем разбор месяца...',
 ]
-const msgIdx   = ref(0)
 const progress = ref(0)
 
 function delay(ms: number): Promise<void> {
@@ -272,11 +263,9 @@ async function getMonthlyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
   if (monthLoading.value) return
   monthLoading.value = true
   monthErrorMsg.value = ''
-  msgIdx.value = 0
   progress.value = 0
 
   const msgInterval = setInterval(() => {
-    msgIdx.value = (msgIdx.value + 1) % loadingMessages.length
     progress.value = Math.min(progress.value + 10, 96)
   }, 700)
 
@@ -371,34 +360,7 @@ function badgeClass(badge: string): string {
   min-height: 70vh; display: flex; flex-direction: column;
   align-items: center; justify-content: center; text-align: center; padding: 40px 0;
 }
-.ai-orb { position: relative; width: 100px; height: 100px; }
-.orb-core {
-  position: absolute; inset: 20px; border-radius: 50%;
-  background: radial-gradient(circle, #b654ff, #e94aa8);
-  box-shadow: 0 0 40px rgba(182,84,255,0.6);
-}
-.orb-ring {
-  position: absolute; border-radius: 50%;
-  border: 1px solid rgba(182,84,255,0.35);
-  animation: orb-ring-pulse 2.5s ease-out infinite;
-}
-.orb-ring.r1 { inset: 10px; animation-delay: 0s; }
-.orb-ring.r2 { inset: 0; animation-delay: 0.8s; }
-@keyframes orb-ring-pulse {
-  0%   { opacity: 0.7; transform: scale(1); }
-  100% { opacity: 0;   transform: scale(1.6); }
-}
-.loader-title { font-size: 22px; margin: 24px 0 8px; }
-.loader-sub   { color: rgba(255,255,255,.55); font-size: 13px; margin-bottom: 28px; }
-.progress-bar-wrap {
-  width: 200px; height: 4px; border-radius: 4px;
-  background: rgba(255,255,255,.1); overflow: hidden;
-}
-.progress-bar-fill {
-  height: 100%; border-radius: 4px;
-  background: linear-gradient(90deg, #b654ff, #e94aa8);
-  transition: width .4s ease;
-}
+/* Лоадер: маскот, фразы и прогресс — в общем компоненте LioraLoader */
 
 /* Тихая проверка */
 .loader-wrap--silent { min-height: 40vh; padding: 20px 0; }

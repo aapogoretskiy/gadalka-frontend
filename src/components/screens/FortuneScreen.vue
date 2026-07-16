@@ -144,16 +144,7 @@
       <!-- ══ Step 3: Загрузка ════════════════════════════════════════════ -->
       <template v-if="step === 3">
         <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 0">
-          <div class="ai-orb">
-            <div class="orb-core"></div>
-            <div class="orb-ring r1"></div>
-            <div class="orb-ring r2"></div>
-          </div>
-          <h2 class="serif" style="font-size:26px;margin:24px 0 8px">{{ loadingMessages[msgIdx] }}</h2>
-          <p style="color:rgba(255,255,255,.55);font-size:13px;margin-bottom:28px">Читаем знаки Вселенной...</p>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" :style="`width:${progress}%`"></div>
-          </div>
+          <LioraLoader :phrases="loadingMessages" subtitle="Читаем знаки Вселенной..." :progress="progress" />
         </div>
       </template>
 
@@ -422,6 +413,7 @@ import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
 import { useDevMode } from '@/composables/useDevMode'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
+import LioraLoader from '@/components/ui/LioraLoader.vue'
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { useQuestionPresets } from '@/composables/useQuestionPresets'
@@ -471,7 +463,6 @@ const error            = ref('')
 const result           = ref<FortuneResponse | null>(null)
 const flipped          = ref(new Set<number>())
 const openAccordions   = ref(new Set<number>())
-const msgIdx           = ref(0)
 const progress         = ref(0)
 const questionTextareaRef = ref<HTMLTextAreaElement | null>(null)
 
@@ -782,14 +773,13 @@ const startFortune = async () => {
   step.value = 3
   error.value = ''
   progress.value = 0
-  msgIdx.value = 0
 
   // Прогресс-бар растёт асимптотически к 96% — на каждом тике покрывает часть
   // оставшегося расстояния, а не фиксированный шаг. Так он никогда не "замирает"
   // на одном значении (как раньше при Math.min(+25, 90)), даже если расклад большой
   // (Кельтский крест — до 11 последовательных запросов к AI и заметно дольше тройки карт).
+  // Ротацию фраз при этом делает сам LioraLoader.
   const interval = setInterval(() => {
-    msgIdx.value = (msgIdx.value + 1) % loadingMessages.length
     progress.value = progress.value + (96 - progress.value) * 0.12
   }, 900)
 
@@ -1018,33 +1008,7 @@ const resetFortune = () => {
   font-family: 'Manrope', sans-serif; cursor: pointer;
 }
 
-/* AI Loader */
-.ai-orb { position: relative; width: 100px; height: 100px; }
-.orb-core {
-  position: absolute; inset: 20px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #b654ff, #e94aa8);
-  box-shadow: 0 0 40px rgba(182,84,255,0.6);
-}
-.orb-ring {
-  position: absolute; border-radius: 50%;
-  border: 1px solid rgba(182,84,255,0.4);
-  animation: center-ring 2.5s ease-out infinite;
-}
-.orb-ring.r1 { inset: 10px; animation-delay: 0s; }
-.orb-ring.r2 { inset: 0; animation-delay: 0.8s; }
-
-.progress-bar-wrap {
-  width: 200px; height: 3px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px; overflow: hidden;
-}
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #b654ff, #e94aa8);
-  border-radius: 3px;
-  transition: width 0.4s ease;
-}
+/* AI Loader: заменён на общий компонент LioraLoader (маскот Лиора) */
 
 /* ══ Анимация перехода фаза-фаза ═══════════════════════════════════════════ */
 .phase-fade-enter-active,
