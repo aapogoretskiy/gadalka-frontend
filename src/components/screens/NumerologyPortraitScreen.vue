@@ -19,7 +19,7 @@
         <div class="error-icon">🔢</div>
         <div class="error-title serif">Нужна дата рождения</div>
         <div class="error-body">Укажите дату рождения в профиле — без неё портрет не составить.</div>
-        <button class="action-btn" @click="navigate?.('profile')">Заполнить профиль</button>
+        <button class="action-btn" @click="navigate?.('onboarding')">Заполнить профиль</button>
       </div>
 
       <!-- Content -->

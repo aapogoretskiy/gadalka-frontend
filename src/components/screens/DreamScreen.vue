@@ -25,7 +25,7 @@
           <div class="profile-prompt-text">
             Для разбора сна нужна дата рождения — по ней мы определяем ваш знак зодиака и число жизни
           </div>
-          <button class="profile-prompt-btn haptic" @click="navigate?.('profile')">Заполнить профиль</button>
+          <button class="profile-prompt-btn haptic" @click="navigate?.('onboarding')">Заполнить профиль</button>
         </div>
 
         <template v-else>
