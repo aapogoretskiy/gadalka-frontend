@@ -186,7 +186,7 @@ const MONTH_COST = computed(() => featureCosts.value.numerologyMonth)
 
 const { balance, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
-const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
 // Покупка доступна: хватает знаков ИЛИ есть квота подписки на месячный разбор
 const canAffordMonth = computed(() =>
   (balance.value ?? 0) >= MONTH_COST.value || quotaRemaining('NUMEROLOGY_MONTH') > 0
@@ -278,7 +278,7 @@ async function getMonthlyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
     monthResult.value = res.data
     justPurchased.value = true
     await refreshBalance()
-    if (spendMode === 'QUOTA') await refreshSubscription()
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {

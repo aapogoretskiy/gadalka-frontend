@@ -1628,7 +1628,12 @@
                   <td>{{ plan.durationDays }}</td>
                   <td>
                     <div v-for="q in plan.quotas" :key="q.featureType" style="font-size:12px">
-                      {{ quotaFeatureLabel(q.featureType) }}: {{ q.quotaCount }} {{ q.quotaPeriod === 'DAILY' ? 'в день' : 'на срок' }}
+                      <template v-if="q.unlimited">
+                        {{ quotaFeatureLabel(q.featureType) }}: Безлимит (скрыто {{ q.quotaCount }}/день)
+                      </template>
+                      <template v-else>
+                        {{ quotaFeatureLabel(q.featureType) }}: {{ q.quotaCount }} {{ q.quotaPeriod === 'DAILY' ? 'в день' : 'на срок' }}
+                      </template>
                     </div>
                   </td>
                   <td>{{ plan.isActive ? '✅' : '—' }}</td>
@@ -1683,15 +1688,20 @@
               </select>
             </div>
             <div class="price-field">
-              <label class="price-label">Количество</label>
+              <label class="price-label">{{ q.unlimited ? 'Скрытый лимит в день (анти-абьюз)' : 'Количество' }}</label>
               <input v-model.number="q.quotaCount" type="number" min="1" class="price-input" />
             </div>
-            <div class="price-field">
+            <div class="price-field" v-if="!q.unlimited">
               <label class="price-label">Периодичность</label>
               <select v-model="q.quotaPeriod" class="price-input">
                 <option value="DAILY">в день</option>
                 <option value="PER_PERIOD">на весь срок подписки</option>
               </select>
+            </div>
+            <div class="price-field">
+              <!-- Безлимит: пользователь видит «Безлимит», технически — дневная квота
+                   со скрытым лимитом (защита от абьюза, число не раскрывается) -->
+              <label class="price-badge-check"><input type="checkbox" v-model="q.unlimited" @change="onUnlimitedToggle(q)" /> Безлимит</label>
             </div>
             <button class="btn-ghost" @click="planForm.quotas.splice(idx, 1)">🗑</button>
           </div>
@@ -1767,6 +1777,16 @@
               <span class="label">ID платежа у провайдера</span>
               <span class="mono">{{ selectedTransaction.payment.providerPaymentId }}</span>
             </div>
+
+            <!-- Возврат: только для успешных ПОДПИСОЧНЫХ платежей. Отменяет подписку
+                 пользователя, Stars возвращаются автоматически, рубли — вручную в ЛК Robokassa -->
+            <template v-if="selectedTransaction.payment.purchaseType === 'SUBSCRIPTION' && selectedTransaction.payment.status === 'SUCCEEDED'">
+              <button class="btn-danger" style="margin-top:10px" :disabled="refundLoading" @click="handleRefund">
+                {{ refundLoading ? '⏳ Оформляем...' : '↩️ Оформить возврат подписки' }}
+              </button>
+              <p v-if="refundMessage" class="success-msg">{{ refundMessage }}</p>
+              <p v-if="refundError" class="error-msg">{{ refundError }}</p>
+            </template>
             <div class="info-row">
               <span class="label">Создана</span>
               <span>{{ formatDate(selectedTransaction.payment.createdAt) }}</span>
@@ -3129,6 +3149,7 @@ const txStatuses: { value: TransactionStatus; label: string }[] = [
   { value: 'SUCCEEDED', label: '✅ Подтверждена' },
   { value: 'FAILED',    label: '❌ Отклонена' },
   { value: 'CANCELLED', label: '🚫 Отменена' },
+  { value: 'REFUNDED',  label: '↩️ Возврат' },
 ]
 
 const txProviders: { value: TransactionProvider; label: string }[] = [
@@ -3222,7 +3243,7 @@ const emptyPlanForm = (): AdminSubscriptionPlan => ({
   durationDays: 30,
   isActive: true,
   sortOrder: 0,
-  quotas: [{ featureType: 'THREE_CARD', quotaCount: 1, quotaPeriod: 'PER_PERIOD' }],
+  quotas: [{ featureType: 'THREE_CARD', quotaCount: 1, quotaPeriod: 'PER_PERIOD', unlimited: false }],
 })
 
 const planForm = ref<AdminSubscriptionPlan>(emptyPlanForm())
@@ -3263,7 +3284,16 @@ const loadSubscriptionPlans = async () => {
 }
 
 const addQuotaRow = () => {
-  planForm.value.quotas.push({ featureType: 'THREE_CARD', quotaCount: 1, quotaPeriod: 'PER_PERIOD' })
+  planForm.value.quotas.push({ featureType: 'THREE_CARD', quotaCount: 1, quotaPeriod: 'PER_PERIOD', unlimited: false })
+}
+
+// При включении «Безлимита» подставляем дефолтный скрытый лимит 15/день
+// (периодичность бэк форсит в DAILY автоматически)
+const onUnlimitedToggle = (q: AdminPlanQuota) => {
+  if (q.unlimited) {
+    q.quotaPeriod = 'DAILY'
+    if (!q.quotaCount || q.quotaCount < 5) q.quotaCount = 15
+  }
 }
 
 const editPlan = (plan: AdminSubscriptionPlan) => {
@@ -3309,6 +3339,33 @@ const saveStarsRate = async () => {
 
 // ── Детали транзакции ─────────────────────────────────────────────────────
 const selectedTransaction = ref<TransactionDetails | null>(null)
+
+// ── Возврат подписочного платежа ──
+const refundLoading = ref(false)
+const refundMessage = ref<string | null>(null)
+const refundError = ref<string | null>(null)
+
+const handleRefund = async () => {
+  if (!selectedTransaction.value) return
+  if (!confirm('Оформить возврат? Подписка пользователя будет отменена, платёж помечен REFUNDED. ' +
+      'Stars вернутся автоматически, рублёвый платёж нужно вернуть вручную в ЛК Robokassa.')) return
+
+  refundLoading.value = true
+  refundMessage.value = null
+  refundError.value = null
+  try {
+    const res = await adminApi.refundPayment(selectedTransaction.value.payment.id)
+    refundMessage.value = res.data.message
+    // Обновляем список и открытую панель — статус платежа поменялся
+    await loadTransactions(txPage.value)
+    const details = await adminApi.getTransaction(selectedTransaction.value.payment.id)
+    selectedTransaction.value = details.data
+  } catch (e: any) {
+    refundError.value = e.response?.data?.message || 'Не удалось оформить возврат'
+  } finally {
+    refundLoading.value = false
+  }
+}
 const showRawPayload = ref(false)
 
 const openTransactionDetails = async (id: number) => {
@@ -3621,6 +3678,7 @@ input[type="checkbox"] {
 .tx-badge--succeeded { background: rgba(34,197,94,0.15);   color: #86efac; }
 .tx-badge--failed    { background: rgba(239,68,68,0.15);   color: #fca5a5; }
 .tx-badge--cancelled { background: rgba(148,163,184,0.1);  color: #64748b; }
+.tx-badge--refunded  { background: rgba(96,165,250,0.15);  color: #93c5fd; }
 
 /* ── Pagination ── */
 .pagination {

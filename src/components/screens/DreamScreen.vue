@@ -204,7 +204,7 @@ const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const { setPrefilledQuestion } = usePrefilledQuestion()
 const { isDev } = useDevMode()
 const { resolveSpendMode } = useSpendConfirm()
-const { refreshSubscription } = useMySubscription()
+const { refreshAfterQuotaSpend } = useMySubscription()
 
 // ── Состояние ────────────────────────────────────────────────────────────────
 const step              = ref<1 | 2 | 3>(1)
@@ -288,7 +288,7 @@ const startAnalysis = async () => {
     justAnalyzed.value = true
     progress.value = 100
     await refreshBalance()
-    if (spendMode === 'QUOTA') await refreshSubscription()
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend()
     loadRecentDreams()
     setTimeout(() => { step.value = 3 }, 400)
   } catch (e: any) {

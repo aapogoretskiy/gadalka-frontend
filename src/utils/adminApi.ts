@@ -104,8 +104,11 @@ export type AdminQuotaFeature =
 
 export interface AdminPlanQuota {
   featureType: AdminQuotaFeature
+  // Для безлимита quotaCount — скрытый дневной анти-абьюз лимит (админ его видит)
   quotaCount: number
   quotaPeriod: 'DAILY' | 'PER_PERIOD'
+  // «Безлимит»: пользователь видит «Безлимит», технически DAILY со скрытым лимитом
+  unlimited: boolean
 }
 
 // План подписки в админке. ВАЖНО: priceRub — в КОПЕЙКАХ (бэк хранит копейки),
@@ -385,6 +388,14 @@ export const adminApi = {
   /** Обновить курс «копеек за звезду» */
   updateStarsRate: (starsRateKopecks: number) =>
     adminAxios.put<{ starsRateKopecks: number }>('/api/admin/subscription-plans/stars-rate', { starsRateKopecks }),
+
+  /**
+   * Оформить возврат подписочного платежа: платёж → REFUNDED, подписка отменяется.
+   * Stars возвращаются автоматически; рубли — вручную через ЛК Robokassa (см. message).
+   */
+  refundPayment: (paymentId: number) =>
+    adminAxios.post<{ message: string; subscriptionCancelled: boolean; starsRefunded: boolean }>(
+      `/api/admin/payments/${paymentId}/refund`),
 
   // ── Символы снов (чипы Сонника) ──────────────────────────────────────────
 
@@ -697,7 +708,7 @@ export interface SensitiveContentBackfillResult {
 
 // ── Транзакции ────────────────────────────────────────────────────────────────
 
-export type TransactionStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
+export type TransactionStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
 export type TransactionProvider = 'YOOKASSA' | 'ROBOKASSA' | 'TELEGRAM_STARS'
 
 export interface TransactionSummary {
@@ -714,6 +725,8 @@ export interface TransactionSummary {
   currency: string
   creditsToGrant: number
   providerPaymentId: string | null
+  // CREDITS | SUBSCRIPTION — для кнопки «Оформить возврат»
+  purchaseType: 'CREDITS' | 'SUBSCRIPTION'
   createdAt: string
   updatedAt: string
 }

@@ -61,7 +61,8 @@
               <div v-for="q in mySubscription.quotas" :key="q.featureType" class="my-sub-quota-row">
                 <span class="quota-emoji">{{ featureEmoji(q.featureType) }}</span>
                 <span class="quota-name">{{ featureLabel(q.featureType) }}</span>
-                <span class="quota-left">{{ q.remaining }} из {{ q.total }} · {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
+                <span v-if="q.unlimited" class="quota-left quota-count--unlim">Безлимит ✨</span>
+                <span v-else class="quota-left">{{ q.remaining }} из {{ q.total }} · {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
               </div>
             </div>
             <div class="my-sub-hint">Новую подписку можно оформить после окончания текущей</div>
@@ -96,7 +97,8 @@
                     <div v-for="q in plan.quotas" :key="q.featureType" class="plan-quota-row">
                       <span class="quota-emoji">{{ featureEmoji(q.featureType) }}</span>
                       <span class="quota-name">{{ featureLabel(q.featureType) }}</span>
-                      <span class="quota-count">{{ q.quotaCount }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
+                      <span v-if="q.unlimited" class="quota-count quota-count--unlim">Безлимит ✨</span>
+                      <span v-else class="quota-count">{{ q.quotaCount }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
                     </div>
                   </div>
                 </div>
@@ -586,6 +588,7 @@ async function payWithStars() {
 .quota-emoji { flex-shrink: 0; font-size: 14px; }
 .quota-name { flex: 1; color: rgba(255,255,255,.75); }
 .quota-count, .quota-left { color: rgba(255,255,255,.5); font-size: 12px; flex-shrink: 0; }
+.quota-count--unlim { color: #ffc857; font-weight: 700; }
 
 /* Моя подписка */
 .my-sub-card { padding: 18px; margin-bottom: 16px; }

@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { api, type FeatureType, type MySubscriptionResponse } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
 
 // Синглтон — активная подписка едина для всего приложения.
 // Используется для гейтов платных экранов (доступ по квоте при нулевом балансе)
@@ -29,5 +30,20 @@ export function useMySubscription() {
   const quotaRemaining = (feature: FeatureType): number =>
     mySubscription.value?.quotas.find(q => q.featureType === feature)?.remaining ?? 0
 
-  return { mySubscription, refreshSubscription, ensureLoaded, quotaRemaining }
+  /**
+   * Обновление подписки ПОСЛЕ успешного списания квоты.
+   * Если после обновления активной подписки больше нет — значит, только что
+   * списанная квота была последней и бэк завершил подписку досрочно
+   * (EXHAUSTED, см. SubscriptionQuotaService.completeIfFullyExhausted).
+   * Сообщаем об этом пользователю тостом.
+   */
+  const refreshAfterQuotaSpend = async () => {
+    await refreshSubscription()
+    if (mySubscription.value === null) {
+      const { addToast } = useToast()
+      addToast('Подписка использована полностью — можно оформить новую ✨', 'info')
+    }
+  }
+
+  return { mySubscription, refreshSubscription, refreshAfterQuotaSpend, ensureLoaded, quotaRemaining }
 }

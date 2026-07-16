@@ -410,8 +410,9 @@ export type QuotaPeriod = 'DAILY' | 'PER_PERIOD'
 // GET /api/v1/subscriptions/plans — квота плана («5 × Три карты на весь срок»)
 export interface SubscriptionPlanQuota {
   featureType: FeatureType
-  quotaCount: number
+  quotaCount: number       // 0 для безлимита (скрытый лимит не раскрывается)
   quotaPeriod: QuotaPeriod
+  unlimited: boolean       // «Безлимит» — показываем без чисел
 }
 
 export interface SubscriptionPlan {
@@ -427,8 +428,9 @@ export interface SubscriptionPlan {
 export interface SubscriptionQuotaState {
   featureType: FeatureType
   quotaPeriod: QuotaPeriod
-  total: number
-  remaining: number
+  total: number            // 0 для безлимита
+  remaining: number        // 0 для безлимита
+  unlimited: boolean       // «Безлимит» — показываем без чисел
 }
 
 export interface MySubscriptionResponse {
@@ -445,9 +447,10 @@ export interface SpendOptionsResponse {
   balance: number
   canSpendCredits: boolean
   hasQuota: boolean
-  quotaRemaining: number
-  quotaTotal: number
+  quotaRemaining: number   // для безлимита: 1 = доступна сегодня, 0 = дневной лимит исчерпан
+  quotaTotal: number       // 0 для безлимита
   quotaPeriod: QuotaPeriod | null
+  quotaUnlimited: boolean  // безлимит — списывается молча, без модалки
 }
 
 export interface CreatePaymentRequest {
@@ -769,6 +772,11 @@ export const api = {
   // Чем можно оплатить фичу (модалка выбора способа списания)
   getSpendOptions: (feature: FeatureType) =>
     apiClient.get<SpendOptionsResponse>('/api/v1/payments/spend-options', { params: { feature } }),
+
+  // Отказ от активной подписки: слот освобождается, квоты и срок сгорают,
+  // деньги автоматически НЕ возвращаются (возврат — через поддержку)
+  cancelSubscription: () =>
+    apiClient.post<void>('/api/v1/subscriptions/cancel'),
 
   // Входящие
   getInbox: (page = 0, size = 20) =>

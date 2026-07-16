@@ -428,7 +428,7 @@ const { isDev } = useDevMode()
 const { balance, hasCredits, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
 // Квоты активной подписки: доступ к раскладу возможен и при нулевом балансе
-const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
 
 /** Может ли пользователь запустить расклад: хватает знаков ИЛИ есть квота подписки */
 function canAfford(type: SpreadType, cost: number): boolean {
@@ -787,7 +787,7 @@ const startFortune = async () => {
     const res = await api.getFortune(question.value, selectedCategory.value || undefined, selectedSpread.value, spendMode)
     result.value = res.data
     await refreshBalance()
-    if (spendMode === 'QUOTA') await refreshSubscription() // остаток квоты изменился
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend() // остаток квоты изменился
     progress.value = 100
     // step → 4 запускает watcher, который вызовет startAnimation()
     setTimeout(() => { step.value = 4 }, 400)

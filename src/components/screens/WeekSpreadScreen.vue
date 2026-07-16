@@ -175,7 +175,7 @@ const WEEK_COST = computed(() => featureCosts.value.numerologyWeek)
 
 const { balance, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
-const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
 // Покупка доступна: хватает знаков ИЛИ есть квота подписки на недельный расклад
 const canAffordWeek = computed(() =>
   (balance.value ?? 0) >= WEEK_COST.value || quotaRemaining('NUMEROLOGY_WEEK') > 0
@@ -265,7 +265,7 @@ async function getWeeklyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
     progress.value = 100
     weekResult.value = res.data
     await refreshBalance()
-    if (spendMode === 'QUOTA') await refreshSubscription()
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {

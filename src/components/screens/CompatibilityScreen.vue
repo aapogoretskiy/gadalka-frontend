@@ -248,7 +248,7 @@ const { addToast } = useToast()
 // Реактивна: при изменении цены экран обновится сам. Бэк: CompatibilityService.COMPATIBILITY_UNLOCK_COST
 const UNLOCK_COST = computed(() => featureCosts.value.compatibilityUnlock)
 const { resolveSpendMode } = useSpendConfirm()
-const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
 // Кнопка разблокировки доступна: хватает знаков ИЛИ есть квота подписки
 const canUnlock = computed(() =>
   (balance.value ?? 0) >= UNLOCK_COST.value || quotaRemaining('COMPATIBILITY') > 0
@@ -339,7 +339,7 @@ async function unlockPremium() {
     result.value = res.data
     paidUnlocked.value = true
     await refreshBalance()
-    if (spendMode === 'QUOTA') await refreshSubscription()
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend()
     hapticFeedback.success()
   } catch {
     addToast('Не удалось списать знаки. Попробуйте ещё раз.')

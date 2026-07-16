@@ -45,6 +45,10 @@ export function useSpendConfirm() {
 
     const quotaUsable = opts.hasQuota && opts.quotaRemaining > 0
 
+    // Безлимитная квота (Superb) — списываем молча, без модалки: терять нечего.
+    // Если скрытый дневной лимит исчерпан (quotaUsable = false) — обычная логика ниже.
+    if (quotaUsable && opts.quotaUnlimited) return 'QUOTA'
+
     // Только знаки — без модалки (модалка подтверждения знаков отложена в v2)
     if (!quotaUsable && opts.canSpendCredits) return 'CREDITS'
 

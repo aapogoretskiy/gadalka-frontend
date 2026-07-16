@@ -174,7 +174,7 @@ const YEAR_COST = computed(() => featureCosts.value.numerologyYear)
 
 const { balance, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
-const { ensureLoaded: ensureSubscriptionLoaded, refreshSubscription, quotaRemaining } = useMySubscription()
+const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
 // Покупка доступна: хватает знаков ИЛИ есть квота подписки на годовой разбор
 const canAffordYear = computed(() =>
   (balance.value ?? 0) >= YEAR_COST.value || quotaRemaining('NUMEROLOGY_YEAR') > 0
@@ -252,7 +252,7 @@ async function getYearlyAnalysis(spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS') {
     yearResult.value = res.data
     justPurchased.value = true
     await refreshBalance()
-    if (spendMode === 'QUOTA') await refreshSubscription()
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend()
     hapticFeedback.success()
   } catch (err: any) {
     if (err.response?.status === 402) {

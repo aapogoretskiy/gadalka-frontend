@@ -38,9 +38,14 @@
           <div v-for="q in mySubscription.quotas" :key="q.featureType" class="sub-quota-row">
             <span class="sub-quota-emoji">{{ featureEmoji(q.featureType) }}</span>
             <span class="sub-quota-name">{{ featureLabel(q.featureType) }}</span>
-            <span class="sub-quota-left">{{ q.remaining }}/{{ q.total }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
+            <span v-if="q.unlimited" class="sub-quota-left sub-quota-unlim">Безлимит ✨</span>
+            <span v-else class="sub-quota-left">{{ q.remaining }}/{{ q.total }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
           </div>
         </div>
+        <!-- Отказ от подписки: слот освобождается, автовозврата нет (возврат — через поддержку) -->
+        <button class="sub-cancel-btn haptic" :disabled="isCancellingSub" @click="handleCancelSubscription">
+          {{ isCancellingSub ? 'Отменяем...' : 'Отказаться от подписки' }}
+        </button>
       </div>
 
       <!-- Menu -->
@@ -240,6 +245,7 @@ import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
 import { useInbox } from '@/composables/useInbox'
 import { useMySubscription } from '@/composables/useMySubscription'
+import { useToast } from '@/composables/useToast'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
 import { api, type Goal, type NotificationTime } from '@/utils/api'
@@ -252,6 +258,7 @@ const { balance } = useBalance()
 const { unreadCount } = useInbox()
 // Активная подписка с остатками квот — блок «Моя подписка» под балансом
 const { mySubscription, refreshSubscription } = useMySubscription()
+const { addToast } = useToast()
 
 function formatSubDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
@@ -261,6 +268,30 @@ function formatSubDate(iso: string): string {
 onMounted(() => {
   refreshSubscription()
 })
+
+// ── Отказ от подписки ──
+// Добровольное освобождение слота «одной подписки»: квоты и срок сгорают,
+// деньги автоматически не возвращаются (возврат — через поддержку, ст. 32 ЗоЗПП).
+const isCancellingSub = ref(false)
+
+const handleCancelSubscription = async () => {
+  const confirmed = await showConfirm(
+    'Отказаться от подписки? Оставшиеся квоты и срок действия сгорят. ' +
+    'Вернуть деньги за неиспользованную часть можно через поддержку.'
+  )
+  if (!confirmed) return
+
+  isCancellingSub.value = true
+  try {
+    await api.cancelSubscription()
+    await refreshSubscription()
+    addToast('Подписка отменена. Теперь можно оформить новую ✨', 'info')
+  } catch {
+    // Текст ошибки покажет глобальный перехватчик
+  } finally {
+    isCancellingSub.value = false
+  }
+}
 
 const balancePluralLabel = computed(() => {
   const n = balance.value
@@ -520,6 +551,14 @@ function shareReferralLink() {
 .sub-quota-emoji { flex-shrink: 0; font-size: 14px; }
 .sub-quota-name { flex: 1; color: rgba(255,255,255,.75); }
 .sub-quota-left { color: rgba(255,255,255,.5); font-size: 12px; flex-shrink: 0; }
+.sub-quota-unlim { color: #ffc857; font-weight: 700; }
+.sub-cancel-btn {
+  width: 100%; margin-top: 14px; padding: 10px;
+  background: none; border: 1px solid rgba(255,255,255,.15); border-radius: 12px;
+  font-family: 'Manrope', sans-serif; font-size: 13px;
+  color: rgba(255,255,255,.55); cursor: pointer;
+}
+.sub-cancel-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Menu */
 .menu-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
