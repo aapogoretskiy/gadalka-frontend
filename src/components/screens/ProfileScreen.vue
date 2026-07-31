@@ -42,6 +42,19 @@
             <span v-else class="sub-quota-left">{{ q.remaining }}/{{ q.total }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
           </div>
         </div>
+        <!-- Автопродление: статус + отключение (не трогает текущий оплаченный период) -->
+        <div class="sub-autorenew-row">
+          <span v-if="mySubscription.autoRenewEnabled" class="sub-autorenew-badge sub-autorenew-badge--on">🔄 Автопродление включено</span>
+          <span v-else class="sub-autorenew-badge">Автопродление выключено</span>
+          <button
+            v-if="mySubscription.autoRenewEnabled"
+            class="sub-autorenew-disable-btn haptic"
+            :disabled="isDisablingAutoRenew"
+            @click="handleDisableAutoRenew"
+          >
+            {{ isDisablingAutoRenew ? 'Отключаем...' : 'Отключить' }}
+          </button>
+        </div>
         <!-- Отказ от подписки: слот освобождается, автовозврата нет (возврат — через поддержку) -->
         <button class="sub-cancel-btn haptic" :disabled="isCancellingSub" @click="handleCancelSubscription">
           {{ isCancellingSub ? 'Отменяем...' : 'Отказаться от подписки' }}
@@ -290,6 +303,25 @@ const handleCancelSubscription = async () => {
     // Текст ошибки покажет глобальный перехватчик
   } finally {
     isCancellingSub.value = false
+  }
+}
+
+// ── Отключение автопродления ──
+// В отличие от отказа от подписки — НЕ трогает текущий оплаченный период,
+// только останавливает будущие автосписания (376-ФЗ: можно отозвать в любой момент).
+const isDisablingAutoRenew = ref(false)
+
+const handleDisableAutoRenew = async () => {
+  if (isDisablingAutoRenew.value) return
+  isDisablingAutoRenew.value = true
+  try {
+    await api.disableAutoRenew()
+    await refreshSubscription()
+    addToast('Автопродление отключено. Текущий период останется до конца срока ✨', 'info')
+  } catch {
+    // Текст ошибки покажет глобальный перехватчик
+  } finally {
+    isDisablingAutoRenew.value = false
   }
 }
 
@@ -552,6 +584,18 @@ function shareReferralLink() {
 .sub-quota-name { flex: 1; color: rgba(255,255,255,.75); }
 .sub-quota-left { color: rgba(255,255,255,.5); font-size: 12px; flex-shrink: 0; }
 .sub-quota-unlim { color: #ffc857; font-weight: 700; }
+.sub-autorenew-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+.sub-autorenew-badge { font-size: 12px; color: rgba(255,255,255,.5); }
+.sub-autorenew-badge--on { color: #ffc857; font-weight: 600; }
+.sub-autorenew-disable-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+  padding: 6px 12px; font-family: 'Manrope', sans-serif; font-size: 12px;
+  color: rgba(255,255,255,.7); cursor: pointer;
+}
+.sub-autorenew-disable-btn:disabled { opacity: 0.5; }
 .sub-cancel-btn {
   width: 100%; margin-top: 14px; padding: 10px;
   background: none; border: 1px solid rgba(255,255,255,.15); border-radius: 12px;

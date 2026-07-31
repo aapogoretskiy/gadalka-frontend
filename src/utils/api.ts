@@ -438,6 +438,7 @@ export interface MySubscriptionResponse {
   planName: string
   startedAt: string
   expiresAt: string
+  autoRenewEnabled: boolean
   quotas: SubscriptionQuotaState[]
 }
 
@@ -765,9 +766,12 @@ export const api = {
   getMySubscription: () =>
     apiClient.get<MySubscriptionResponse>('/api/v1/subscriptions/my', { skipGlobalError: true }),
 
-  // Покупка подписки: provider = 'robokassa' | 'yookassa' | 'stars'
-  createSubscriptionPayment: (provider: 'robokassa' | 'yookassa' | 'stars', planId: number) =>
-    apiClient.post<CreatePaymentResponse>(`/api/v1/subscriptions/${provider}/create`, { planId }),
+  // Покупка подписки: provider = 'robokassa' | 'yookassa' | 'stars'.
+  // autoRenewConsent — отдельное согласие на автопродление (376-ФЗ), НЕ проставлено
+  // по умолчанию на фронте. Бэк всё равно игнорирует его для провайдеров, отличных
+  // от robokassa (автопродление пока реализовано только через Robokassa).
+  createSubscriptionPayment: (provider: 'robokassa' | 'yookassa' | 'stars', planId: number, autoRenewConsent = false) =>
+    apiClient.post<CreatePaymentResponse>(`/api/v1/subscriptions/${provider}/create`, { planId, autoRenewConsent }),
 
   // Чем можно оплатить фичу (модалка выбора способа списания)
   getSpendOptions: (feature: FeatureType) =>
@@ -777,6 +781,11 @@ export const api = {
   // деньги автоматически НЕ возвращаются (возврат — через поддержку)
   cancelSubscription: () =>
     apiClient.post<void>('/api/v1/subscriptions/cancel'),
+
+  // Отключить автопродление — НЕ отменяет текущую подписку и не трогает
+  // оставшийся оплаченный период, только останавливает будущие автосписания.
+  disableAutoRenew: () =>
+    apiClient.post<void>('/api/v1/subscriptions/auto-renew/disable'),
 
   // Входящие
   getInbox: (page = 0, size = 20) =>

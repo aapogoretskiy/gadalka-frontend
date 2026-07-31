@@ -66,6 +66,20 @@
               </div>
             </div>
             <div class="my-sub-hint">Новую подписку можно оформить после окончания текущей</div>
+
+            <!-- Автопродление: статус + отключение (не трогает текущий оплаченный период) -->
+            <div class="autorenew-status-row">
+              <span v-if="mySubscription.autoRenewEnabled" class="autorenew-badge autorenew-badge--on">🔄 Автопродление включено</span>
+              <span v-else class="autorenew-badge">Автопродление выключено</span>
+              <button
+                v-if="mySubscription.autoRenewEnabled"
+                class="autorenew-disable-btn haptic"
+                :disabled="isDisablingAutoRenew"
+                @click="handleDisableAutoRenew"
+              >
+                {{ isDisablingAutoRenew ? 'Отключаем...' : 'Отключить' }}
+              </button>
+            </div>
           </div>
 
           <!-- Каталог планов -->
@@ -101,6 +115,21 @@
                       <span v-else class="quota-count">{{ q.quotaCount }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- Согласие на автопродление — отдельное явное действие, НЕ проставлено
+                   по умолчанию (требование 376-ФЗ). Действует только при оплате картой:
+                   для Stars автопродление пока не реализовано (см. чекбокс ниже). -->
+              <div v-if="selectedPlanId" class="autorenew-consent-row" @click="autoRenewConsent = !autoRenewConsent">
+                <div class="autorenew-checkbox" :class="{ checked: autoRenewConsent }">
+                  <span v-if="autoRenewConsent">✓</span>
+                </div>
+                <div class="autorenew-consent-text">
+                  Включить автопродление — спишем автоматически по окончании срока,
+                  за сутки пришлём уведомление в бот с возможностью отменить.
+                  <button class="autorenew-link" type="button" @click.stop="showAutoRenewTerms">Условия автопродления</button>
+                  <div class="autorenew-consent-hint">Пока доступно только при оплате картой</div>
                 </div>
               </div>
 
@@ -302,6 +331,10 @@ const plans           = ref<SubscriptionPlan[]>([])
 const selectedPlanId  = ref<number | null>(null)
 const mySubscription  = ref<MySubscriptionResponse | null>(null)
 const isLoadingPlans  = ref(true)
+// Согласие на автопродление — отдельный чекбокс, НЕ проставлен по умолчанию (376-ФЗ).
+// Действует только при оплате картой (paySubscriptionWithCard); для Stars всегда false.
+const autoRenewConsent    = ref(false)
+const isDisablingAutoRenew = ref(false)
 
 const selectedProduct = computed(() =>
   products.value.find(p => p.code === selectedCode.value) ?? null
@@ -376,7 +409,9 @@ async function paySubscriptionWithCard() {
   activeProvider.value = 'robokassa'
 
   try {
-    const res = await api.createSubscriptionPayment(rubProvider.value, selectedPlanId.value)
+    // autoRenewConsent реально сработает только если rubProvider === 'robokassa' —
+    // бэк сам игнорирует согласие для остальных провайдеров (см. PaymentService).
+    const res = await api.createSubscriptionPayment(rubProvider.value, selectedPlanId.value, autoRenewConsent.value)
     WebApp.openLink(res.data.paymentUrl, { try_instant_view: false })
     addToast('Ссылка на оплату открыта. После оплаты бот вас уведомит 🔮', 'info')
     navigate?.('home')
@@ -385,6 +420,28 @@ async function paySubscriptionWithCard() {
   } finally {
     isCreating.value     = false
     activeProvider.value = null
+  }
+}
+
+// Автопродление через Telegram Stars пока не реализовано — согласие туда не отправляем,
+// даже если пользователь успел поставить чекбокс перед переключением на Stars.
+function showAutoRenewTerms() {
+  addToast('Текст условий автопродления появится здесь после публикации оферты', 'info')
+}
+
+async function handleDisableAutoRenew() {
+  if (isDisablingAutoRenew.value) return
+  isDisablingAutoRenew.value = true
+  try {
+    await api.disableAutoRenew()
+    if (mySubscription.value) {
+      mySubscription.value = { ...mySubscription.value, autoRenewEnabled: false }
+    }
+    addToast('Автопродление отключено. Текущий период останется до конца срока ✨', 'info')
+  } catch {
+    // Текст ошибки покажет глобальный перехватчик
+  } finally {
+    isDisablingAutoRenew.value = false
   }
 }
 
@@ -598,6 +655,71 @@ async function payWithStars() {
 .my-sub-expiry { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
 .my-sub-quotas { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .my-sub-hint { font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.4; }
+
+/* Автопродление: статус в блоке «Моя подписка» */
+.autorenew-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.autorenew-badge { font-size: 12px; color: rgba(255,255,255,.5); }
+.autorenew-badge--on { color: #ffc857; font-weight: 600; }
+.autorenew-disable-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,.7);
+  cursor: pointer;
+}
+.autorenew-disable-btn:disabled { opacity: 0.5; }
+
+/* Согласие на автопродление — чекбокс при оформлении подписки (376-ФЗ: НЕ проставлен по умолчанию) */
+.autorenew-consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+}
+.autorenew-checkbox {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(182,84,255,0.5);
+  background: rgba(182,84,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+  font-size: 13px;
+  color: #fff;
+  transition: all 0.2s;
+}
+.autorenew-checkbox.checked {
+  background: linear-gradient(135deg, #b654ff, #e94aa8);
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgba(182,84,255,0.4);
+}
+.autorenew-consent-text { font-size: 12px; line-height: 1.6; color: rgba(255,255,255,.6); flex: 1; }
+.autorenew-link {
+  background: none; border: none; padding: 0;
+  color: #d89fff;
+  font-size: 12px;
+  font-family: 'Manrope', sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+  display: inline;
+}
+.autorenew-consent-hint { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 4px; }
 
 /* Пустой каталог подписок */
 .empty-plans {
