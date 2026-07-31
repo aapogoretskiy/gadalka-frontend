@@ -439,6 +439,8 @@ export interface MySubscriptionResponse {
   startedAt: string
   expiresAt: string
   autoRenewEnabled: boolean
+  status: 'ACTIVE' | 'SUSPENDED'
+  retryDeadline: string | null   // только при status='SUSPENDED' — до какой даты идут ретраи
   quotas: SubscriptionQuotaState[]
 }
 

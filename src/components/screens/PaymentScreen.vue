@@ -294,6 +294,9 @@
 
     </div>
   </div>
+
+  <!-- Условия автопродления — тот же текст соглашения, что на онбординге -->
+  <TermsAgreementModal v-model="showTermsModal" />
 </template>
 
 <script setup lang="ts">
@@ -309,6 +312,7 @@ import {
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { featureLabel, featureEmoji, quotaPeriodLabel } from '@/utils/featureLabels'
+import TermsAgreementModal from '@/components/ui/TermsAgreementModal.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { balance, subscriptionsAvailable, refreshBalance } = useBalance()
@@ -425,8 +429,9 @@ async function paySubscriptionWithCard() {
 
 // Автопродление через Telegram Stars пока не реализовано — согласие туда не отправляем,
 // даже если пользователь успел поставить чекбокс перед переключением на Stars.
+const showTermsModal = ref(false)
 function showAutoRenewTerms() {
-  addToast('Текст условий автопродления появится здесь после публикации оферты', 'info')
+  showTermsModal.value = true
 }
 
 async function handleDisableAutoRenew() {

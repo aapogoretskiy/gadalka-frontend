@@ -25,16 +25,28 @@
         <div class="balance-action">{{ balance > 0 ? 'Пополнить' : 'Купить' }} →</div>
       </div>
 
-      <!-- Моя подписка (показывается только при активной подписке) -->
+      <!-- Моя подписка (показывается при активной ИЛИ приостановленной подписке) -->
       <div v-if="mySubscription" class="subscription-card glass">
         <div class="sub-header">
-          <div class="sub-icon">💫</div>
+          <div class="sub-icon">{{ isSuspended ? '⏸' : '💫' }}</div>
           <div class="sub-body">
             <div class="sub-title">Подписка «{{ mySubscription.planName }}»</div>
-            <div class="sub-expiry">действует до {{ formatSubDate(mySubscription.expiresAt) }}</div>
+            <div v-if="isSuspended" class="sub-expiry sub-expiry--suspended">
+              оплата не прошла, приостановлена
+            </div>
+            <div v-else class="sub-expiry">действует до {{ formatSubDate(mySubscription.expiresAt) }}</div>
           </div>
         </div>
-        <div class="sub-quotas">
+
+        <!-- Приостановка из-за неудачного автосписания (п. 6.13.2 соглашения) -->
+        <div v-if="isSuspended" class="sub-suspended-banner">
+          Не получилось списать оплату за продление. Лимиты подписки временно недоступны —
+          мы автоматически повторяем попытку до
+          {{ mySubscription.retryDeadline ? formatSubDate(mySubscription.retryDeadline) : 'истечения срока ретраев' }}.
+          Если она пройдёт успешно, доступ восстановится сам.
+        </div>
+
+        <div class="sub-quotas" :class="{ 'sub-quotas--suspended': isSuspended }">
           <div v-for="q in mySubscription.quotas" :key="q.featureType" class="sub-quota-row">
             <span class="sub-quota-emoji">{{ featureEmoji(q.featureType) }}</span>
             <span class="sub-quota-name">{{ featureLabel(q.featureType) }}</span>
@@ -272,6 +284,11 @@ const { unreadCount } = useInbox()
 // Активная подписка с остатками квот — блок «Моя подписка» под балансом
 const { mySubscription, refreshSubscription } = useMySubscription()
 const { addToast } = useToast()
+
+// SUSPENDED — списание за продление не прошло, идут автоматические ретраи (см.
+// SubscriptionRenewalScheduler на бэке, п. 6.13.2 соглашения): Лимиты недоступны,
+// но подписка ещё не завершена — показываем отдельный статус, а не просто дату истечения.
+const isSuspended = computed(() => mySubscription.value?.status === 'SUSPENDED')
 
 function formatSubDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
@@ -578,7 +595,14 @@ function shareReferralLink() {
 .sub-icon { font-size: 26px; flex-shrink: 0; }
 .sub-title { font-size: 15px; font-weight: 700; }
 .sub-expiry { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.sub-expiry--suspended { color: #ffb454; font-weight: 600; }
+.sub-suspended-banner {
+  font-size: 12px; line-height: 1.5; color: rgba(255,181,84,.9);
+  background: rgba(255,181,84,.1); border: 1px solid rgba(255,181,84,.25);
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 12px;
+}
 .sub-quotas { display: flex; flex-direction: column; gap: 7px; }
+.sub-quotas--suspended { opacity: 0.45; }
 .sub-quota-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .sub-quota-emoji { flex-shrink: 0; font-size: 14px; }
 .sub-quota-name { flex: 1; color: rgba(255,255,255,.75); }
