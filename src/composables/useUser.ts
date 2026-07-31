@@ -19,14 +19,20 @@ export function useUser() {
   const hasProfile = computed(() => profile.value !== null)
 
   // Шаг 1: авторизация через Telegram initData → получаем JWT
-  const authWithTelegram = async (): Promise<boolean> => {
+  //
+  // ВАЖНО: раньше эта функция была объявлена как Promise<boolean>, но при успехе
+  // фактически возвращала объект { isNewUser } — TypeScript на это ругался
+  // (return type mismatch), но рантайм это не проверяет, поэтому баг был незаметен:
+  // { isNewUser: false } — это truthy-объект, так что вызывающий код "случайно"
+  // работал через if (authed) / if (!ok). Явный { ok, isNewUser } — без скрытой лжи в типах.
+  const authWithTelegram = async (): Promise<{ ok: boolean; isNewUser: boolean }> => {
     // В реальном Telegram Mini App WebApp.initData заполнен автоматически.
     // При локальной разработке — берём мок из .env.development
     const initData = WebApp.initData || import.meta.env.VITE_MOCK_INIT_DATA
 
     if (!initData) {
       console.warn('[useUser] Telegram initData недоступен и VITE_MOCK_INIT_DATA не задан')
-      return false
+      return { ok: false, isNewUser: false }
     }
 
     isAuthLoading.value = true
@@ -40,9 +46,13 @@ export function useUser() {
       telegramUser.value = user
       setBalance(readingBalance)
       termsAccepted.value = !!accepted
-      return { isNewUser }
-    } catch {
-      return false
+      return { ok: true, isNewUser }
+    } catch (err) {
+      // Раньше ошибка тут проглатывалась молча — вызывающий код не мог отличить
+      // "нет сети/бэк недоступен" от любого другого случая. Логируем явно, чтобы
+      // при повторении бага это было видно хотя бы в консоли (см. ?eruda=1).
+      console.error('[useUser] Ошибка авторизации через Telegram:', err)
+      return { ok: false, isNewUser: false }
     } finally {
       isAuthLoading.value = false
     }

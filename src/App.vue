@@ -253,7 +253,7 @@ onMounted(async () => {
   }, 12000)
 
   const authed = await authWithTelegram()
-  if (authed) {
+  if (authed.ok) {
     if (authed.isNewUser) {
       addToast('Добро пожаловать! Вам начислено 5 знаков в подарок 🔮', 'success')
     }
@@ -269,13 +269,22 @@ onMounted(async () => {
 
       // Deep-link из сообщений бота: кнопка «Оплатить картой» в напоминании
       // о брошенной оплате открывает Mini App с ?screen=pay (см. PaymentRecoveryService
-      // на бэке). Сначала navigate('home') выше — чтобы кнопка «Назад» с экрана
-      // оплаты вела на главную, а не в пустоту.
+      // на бэке), а уведомления об автопродлении/подписке — с ?screen=profile
+      // (см. GadalkaTelegramBot#profileKeyboard). Сначала navigate('home') выше —
+      // чтобы кнопка «Назад» с этих экранов вела на главную, а не в пустоту.
       const deepScreen = new URLSearchParams(window.location.search).get('screen')
       if (deepScreen === 'pay') {
         navigate('payment')
+      } else if (deepScreen === 'profile') {
+        navigate('profile')
       }
     }
+  } else {
+    // Авторизация не удалась (нет сети, бэк недоступен и т.п.) — раньше это молча
+    // проглатывалось: currentRoute оставался на дефолтном 'onboarding' без единого
+    // сообщения об ошибке, и пользователь видел то ли зависший, то ли пустой экран
+    // в зависимости от состояния OnboardingScreen. Явно предлагаем перезапустить.
+    addToast('Не удалось подключиться. Попробуйте закрыть и снова открыть приложение.', 'error')
   }
 
   clearTimeout(safetyTimer)

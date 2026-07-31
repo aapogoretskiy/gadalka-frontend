@@ -456,8 +456,8 @@ const startJourney = async () => {
   errorMsg.value = ''
   try {
     if (!localStorage.getItem('jwt_token')) {
-      const ok = await authWithTelegram()
-      if (!ok) {
+      const authed = await authWithTelegram()
+      if (!authed.ok) {
         errorMsg.value = 'Не удалось авторизоваться. Попробуйте перезапустить приложение.'
         return
       }
@@ -583,8 +583,8 @@ const handleFinish = async () => {
   errorMsg.value = ''
   try {
     if (!localStorage.getItem('jwt_token')) {
-      const ok = await authWithTelegram()
-      if (!ok) {
+      const authed = await authWithTelegram()
+      if (!authed.ok) {
         errorMsg.value = 'Не удалось авторизоваться. Попробуйте перезапустить приложение.'
         return
       }
