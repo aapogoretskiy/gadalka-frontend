@@ -21,7 +21,13 @@
     </Transition>
 
     <!-- Screens -->
-    <Transition :name="transitionName" mode="out-in">
+    <!-- Без mode="out-in": при этом режиме Vue вставляет новый экран в DOM только
+         после transitionend у уходящего. Если приложение в этот момент уходит в фон
+         (например, WebApp.openLink() на Robokassa сворачивает WebView сразу вслед за
+         navigate()), requestAnimationFrame останавливается, transitionend может не
+         прийти вовсе — и переход зависает навсегда с пустым экраном. Без mode новый
+         экран появляется в DOM сразу, параллельно с уходом старого. -->
+    <Transition :name="transitionName">
       <component v-if="!isInitializing" :is="currentScreen" :key="currentRoute" />
     </Transition>
 

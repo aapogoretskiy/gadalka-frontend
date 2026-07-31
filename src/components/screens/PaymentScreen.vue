@@ -315,8 +315,17 @@ import { featureLabel, featureEmoji, quotaPeriodLabel } from '@/utils/featureLab
 import TermsAgreementModal from '@/components/ui/TermsAgreementModal.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
+// Экран, откуда пользователь зашёл в оплату (Главная/Профиль/Гадание/Совместимость) —
+// после клика «Оплатить картой» возвращаем туда же, а не всегда на Главную.
+const previousRoute = inject<{ value: string }>('previousRoute')
 const { balance, subscriptionsAvailable, refreshBalance } = useBalance()
 const { addToast } = useToast()
+
+// Куда вернуть пользователя после того, как ссылка на оплату открыта.
+// Если предыдущий экран неизвестен (например, зашли по deep-link из бота) — на Главную.
+function goBackAfterPayment() {
+  navigate?.(previousRoute?.value || 'home')
+}
 
 const products        = ref<PaymentProduct[]>([])
 const selectedCode    = ref<string>('')
@@ -418,7 +427,7 @@ async function paySubscriptionWithCard() {
     const res = await api.createSubscriptionPayment(rubProvider.value, selectedPlanId.value, autoRenewConsent.value)
     WebApp.openLink(res.data.paymentUrl, { try_instant_view: false })
     addToast('Ссылка на оплату открыта. После оплаты бот вас уведомит 🔮', 'info')
-    navigate?.('home')
+    goBackAfterPayment()
   } catch {
     // Текст ошибки (409 «уже есть подписка», 403 «будет позже») покажет глобальный перехватчик
   } finally {
@@ -486,7 +495,7 @@ async function payWithRobokassa() {
     const res = await api.createRobokassaPayment({ productCode: selectedCode.value })
     WebApp.openLink(res.data.paymentUrl, { try_instant_view: false })
     addToast('Ссылка на оплату открыта. После оплаты бот вас уведомит 🔮', 'info')
-    navigate?.('home')
+    goBackAfterPayment()
   } catch {
     addToast('Не удалось создать платёж. Попробуйте ещё раз.')
   } finally {
@@ -505,7 +514,7 @@ async function payWithYooKassa() {
     const res = await api.createYooKassaPayment({ productCode: selectedCode.value })
     WebApp.openLink(res.data.paymentUrl, { try_instant_view: false })
     addToast('Ссылка на оплату открыта. После оплаты бот вас уведомит 🔮', 'info')
-    navigate?.('home')
+    goBackAfterPayment()
   } catch {
     addToast('Не удалось создать платёж. Попробуйте ещё раз.')
   } finally {
