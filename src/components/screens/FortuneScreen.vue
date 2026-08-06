@@ -106,9 +106,15 @@
                 <div v-if="(balance ?? 0) < s.cost && quotaRemaining(s.type) > 0" class="spread-price" style="color:#70e0a8">
                   Квота: {{ quotaRemaining(s.type) }}
                 </div>
-                <div v-else class="spread-price" style="color:#70e0a8">
-                  {{ s.cost }} {{ s.cost === 1 ? 'знак' : s.cost < 5 ? 'знака' : 'знаков' }}
-                </div>
+                <template v-else>
+                  <div class="spread-price" style="color:#70e0a8">
+                    {{ s.cost }} {{ s.cost === 1 ? 'знак' : s.cost < 5 ? 'знака' : 'знаков' }}
+                  </div>
+                  <!-- Знаков хватает, но есть и квота — сообщаем, что можно потратить её вместо знаков -->
+                  <div v-if="quotaRemaining(s.type) > 0" class="spread-price-sub">
+                    или квота: {{ quotaRemaining(s.type) }}
+                  </div>
+                </template>
               </template>
               <template v-else>
                 <div class="spread-price" style="color:#ffc857">Купить →</div>
@@ -965,6 +971,7 @@ const resetFortune = () => {
 .spread-desc  { font-size: 12px; color: rgba(255,255,255,.55); }
 .spread-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .spread-price { font-size: 14px; font-weight: 700; }
+.spread-price-sub { font-size: 10px; font-weight: 500; color: rgba(112,224,168,0.65); margin-top: 1px; }
 .spread-card--locked { opacity: 0.6; cursor: default; }
 
 /* ══ Подробности о выбранном раскладе ══════════════════════════════════════ */
