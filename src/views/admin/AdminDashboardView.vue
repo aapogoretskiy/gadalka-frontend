@@ -1527,6 +1527,7 @@
                 <th>ID</th>
                 <th>Пользователь</th>
                 <th>Продукт</th>
+                <th>Тип</th>
                 <th>Знаков</th>
                 <th>Система</th>
                 <th>Сумма</th>
@@ -1536,10 +1537,10 @@
             </thead>
             <tbody>
               <tr v-if="txLoading">
-                <td colspan="8" class="loading-row">Загрузка...</td>
+                <td colspan="9" class="loading-row">Загрузка...</td>
               </tr>
               <tr v-else-if="transactions.length === 0">
-                <td colspan="8" class="empty-row">Транзакции не найдены</td>
+                <td colspan="9" class="empty-row">Транзакции не найдены</td>
               </tr>
               <tr
                 v-for="tx in transactions"
@@ -1553,6 +1554,10 @@
                   <span v-if="tx.username" class="referrer-username">@{{ tx.username }}</span>
                 </td>
                 <td>{{ tx.productName }}</td>
+                <td>
+                  <span v-if="tx.automatic" class="badge tx-badge--automatic">🔁 Авто</span>
+                  <span v-else class="tx-type-manual">Вручную</span>
+                </td>
                 <td class="mono visit-count">{{ tx.creditsToGrant }}</td>
                 <td>{{ providerLabel(tx.provider) }}</td>
                 <td class="mono">{{ formatAmount(tx.amountMinor, tx.currency) }}</td>
@@ -1595,6 +1600,24 @@
 
         <p v-if="subPlansError" class="error-msg">{{ subPlansError }}</p>
         <p v-if="subPlansSuccess" class="success-msg">{{ subPlansSuccess }}</p>
+
+        <!-- Доступность подписок: закрытый тест (только админы) vs открыто всем -->
+        <div class="report-group">
+          <h3 class="report-group-title">🔓 Доступность подписок</h3>
+          <label class="price-badge-check">
+            <input
+              type="checkbox"
+              :checked="subscriptionsAvailableForAll"
+              :disabled="subAvailableSaving"
+              @change="toggleSubscriptionsAvailable"
+            />
+            Подписки доступны всем пользователям (сейчас — {{ subscriptionsAvailableForAll ? 'доступны всем' : 'только админам' }})
+          </label>
+          <p style="font-size:12px;color:rgba(255,255,255,.45);margin-top:8px">
+            Пока выключено — вкладку «Подписки» в мини-аппе видят и могут купить только админы.
+            Изменение вступает в силу сразу, без деплоя.
+          </p>
+        </div>
 
         <!-- Курс Stars -->
         <div class="report-group">
@@ -3214,6 +3237,9 @@ const subPlanSaving    = ref(false)
 const subPlansError    = ref<string | null>(null)
 const subPlansSuccess  = ref<string | null>(null)
 const starsRateKopecks = ref(133)
+// Тоггл закрытого теста: false — подписки видят/покупают только админы, true — доступно всем
+const subscriptionsAvailableForAll = ref(false)
+const subAvailableSaving = ref(false)
 
 // Фичи, на которые выдаются квоты (бесплатные фичи в списке не нужны)
 const QUOTA_FEATURES: AdminQuotaFeature[] = [
@@ -3267,6 +3293,34 @@ const suggestedStars = computed(() =>
 const openSubscriptionsTab = () => {
   activeTab.value = 'subscriptions'
   if (subPlans.value.length === 0) loadSubscriptionPlans()
+  loadSubscriptionsAvailable()
+}
+
+const loadSubscriptionsAvailable = async () => {
+  try {
+    const res = await adminApi.getSubscriptionsAvailable()
+    subscriptionsAvailableForAll.value = res.data.available
+  } catch {
+    // Молча игнорируем — тумблер останется в прежнем состоянии
+  }
+}
+
+const toggleSubscriptionsAvailable = async () => {
+  const next = !subscriptionsAvailableForAll.value
+  subAvailableSaving.value = true
+  subPlansError.value = null
+  subPlansSuccess.value = null
+  try {
+    await adminApi.updateSubscriptionsAvailable({ available: next })
+    subscriptionsAvailableForAll.value = next
+    subPlansSuccess.value = next
+      ? 'Подписки открыты всем пользователям'
+      : 'Подписки снова доступны только админам'
+  } catch (e: any) {
+    subPlansError.value = e?.response?.data?.message || 'Не удалось изменить доступность подписок'
+  } finally {
+    subAvailableSaving.value = false
+  }
 }
 
 const loadSubscriptionPlans = async () => {
@@ -3679,6 +3733,8 @@ input[type="checkbox"] {
 .tx-badge--failed    { background: rgba(239,68,68,0.15);   color: #fca5a5; }
 .tx-badge--cancelled { background: rgba(148,163,184,0.1);  color: #64748b; }
 .tx-badge--refunded  { background: rgba(96,165,250,0.15);  color: #93c5fd; }
+.tx-badge--automatic { background: rgba(168,85,247,0.15);  color: #d8b4fe; }
+.tx-type-manual { color: #64748b; font-size: 13px; }
 
 /* ── Pagination ── */
 .pagination {

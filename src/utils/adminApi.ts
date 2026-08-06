@@ -150,6 +150,12 @@ export interface FeatureBadges {
   dream: FeatureBadge
 }
 
+// Тоггл закрытого теста подписок: available=false — видят и могут купить только админы,
+// true — доступно всем пользователям приложения.
+export interface SubscriptionsAvailable {
+  available: boolean
+}
+
 // Символ сна (чип Сонника) — CRUD в админке
 export interface AdminDreamSymbol {
   id: number | null   // null при создании
@@ -370,6 +376,14 @@ export const adminApi = {
   /** Обновить отметки «Новинка»/«Хит» сразу по всем функциям */
   updateFeatureBadges: (badges: FeatureBadges) =>
     adminAxios.put<FeatureBadges>('/api/admin/feature-badges', badges),
+
+  /** Текущее состояние тоггла доступности подписок (закрытый тест) */
+  getSubscriptionsAvailable: () =>
+    adminAxios.get<SubscriptionsAvailable>('/api/admin/subscriptions-available'),
+
+  /** Включить/выключить подписки для всех пользователей */
+  updateSubscriptionsAvailable: (body: SubscriptionsAvailable) =>
+    adminAxios.put<SubscriptionsAvailable>('/api/admin/subscriptions-available', body),
 
   // ── Планы подписки ────────────────────────────────────────────────────────
 
@@ -727,6 +741,8 @@ export interface TransactionSummary {
   providerPaymentId: string | null
   // CREDITS | SUBSCRIPTION — для кнопки «Оформить возврат»
   purchaseType: 'CREDITS' | 'SUBSCRIPTION'
+  // true — списано автоматически (рекуррентное продление подписки, без участия пользователя)
+  automatic: boolean
   createdAt: string
   updatedAt: string
 }
