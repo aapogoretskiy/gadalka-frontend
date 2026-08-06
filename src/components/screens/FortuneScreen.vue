@@ -129,7 +129,7 @@
           </div>
         </Transition>
 
-        <div v-if="!hasCredits && !isDev" class="no-credits-block">
+        <div v-if="!canAffordSelected && !isDev" class="no-credits-block">
           <p>У вас закончились гадания</p>
           <button class="fortune-btn haptic" style="margin-top:12px" @click="navigate('payment')">
             🔮 Пополнить баланс
@@ -425,7 +425,7 @@ import { useMySubscription } from '@/composables/useMySubscription'
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 const { isDev } = useDevMode()
-const { balance, hasCredits, refreshBalance } = useBalance()
+const { balance, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
 // Квоты активной подписки: доступ к раскладу возможен и при нулевом балансе
 const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
@@ -434,6 +434,12 @@ const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRem
 function canAfford(type: SpreadType, cost: number): boolean {
   return (balance.value ?? 0) >= cost || quotaRemaining(type) > 0
 }
+// Доступность именно выбранного на шаге 2 расклада — используется для гейта кнопки
+// «Перейти к раскладу» (раньше гейтилась через hasCredits, которая не знала о квоте —
+// баг: пользователь с квотой, но 0 знаками, не мог запустить расклад)
+const canAffordSelected = computed(() =>
+  canAfford(selectedSpread.value, selectedSpreadInfo.value?.cost ?? 0)
+)
 const { addToast } = useToast()
 const { fetchQuestionPresets, getPresetsByCode, isLoading: presetsLoading } = useQuestionPresets()
 // Актуальная стоимость раскладов берётся с бэка (настраивается в админке) — см. useFeatureCosts
