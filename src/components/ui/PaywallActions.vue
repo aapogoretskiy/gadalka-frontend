@@ -1,8 +1,8 @@
 <template>
-  <div class="pa-root" :class="`pa-root--${layout}`">
+  <div class="pa-root" :class="[`pa-root--${layout}`, `pa-root--${shape}`]">
     <!-- ── DEV: списание эмулируется, платёжные ветки не показываем ────────── -->
     <template v-if="isDev">
-      <button class="pa-btn pa-btn--credits haptic" :disabled="loading" @click="emit('pay', 'CREDITS')">
+      <button class="pa-btn pa-btn--credits haptic" :disabled="loading || disabled" @click="emit('pay', 'CREDITS')">
         <span v-if="loading" class="pa-spinner"></span>
         <span v-else>{{ icon }} {{ creditsLabel }}</span>
       </button>
@@ -11,7 +11,7 @@
 
     <!-- ── Знаков хватает: основная кнопка + (если есть квота) вторая ──────── -->
     <template v-else-if="enoughCredits">
-      <button class="pa-btn pa-btn--credits haptic" :disabled="loading" @click="emit('pay', 'CREDITS')">
+      <button class="pa-btn pa-btn--credits haptic" :disabled="loading || disabled" @click="emit('pay', 'CREDITS')">
         <span v-if="loading" class="pa-spinner"></span>
         <span v-else>{{ icon }} {{ creditsLabel }}</span>
       </button>
@@ -23,7 +23,7 @@
       <button
         v-if="hasQuota"
         class="pa-btn pa-btn--quota haptic"
-        :disabled="loading"
+        :disabled="loading || disabled"
         @click="emit('pay', 'QUOTA')"
       >
         ✦ {{ quotaLabel }} · осталось {{ quotaRemaining }}
@@ -32,15 +32,25 @@
 
     <!-- ── Знаков не хватает, но есть квота: оплата только подпиской ───────── -->
     <template v-else-if="hasQuota">
-      <button class="pa-btn pa-btn--quota-solo haptic" :disabled="loading" @click="emit('pay', 'QUOTA')">
+      <button class="pa-btn pa-btn--quota-solo haptic" :disabled="loading || disabled" @click="emit('pay', 'QUOTA')">
         <span v-if="loading" class="pa-spinner"></span>
         <span v-else>✦ {{ quotaLabel }} · осталось {{ quotaRemaining }}</span>
       </button>
     </template>
 
     <!-- ── Ни знаков, ни квоты: ведём на пополнение ────────────────────────── -->
-    <button v-else class="pa-btn pa-btn--buy haptic" @click="emit('buy')">
+    <button v-else-if="showBuyBranch" class="pa-btn pa-btn--buy haptic" :disabled="disabled" @click="emit('buy')">
       {{ buyLabel }}
+    </button>
+
+    <!--
+      showBuyBranch=false — уводить со страницы нельзя (потеряются введённые данные).
+      Оставляем обычную кнопку: resolveSpendMode покажет модалку «не хватает знаков»
+      с предложением подписок, не разрушая заполненную форму.
+    -->
+    <button v-else class="pa-btn pa-btn--credits haptic" :disabled="loading || disabled" @click="emit('pay', 'CREDITS')">
+      <span v-if="loading" class="pa-spinner"></span>
+      <span v-else>{{ icon }} {{ creditsLabel }}</span>
     </button>
   </div>
 </template>
@@ -83,6 +93,17 @@ const props = withDefaults(defineProps<{
   buyLabel?: string
   /** block — кнопки на всю ширину (экраны раскладов), inline — по содержимому (пейвол поверх блюра) */
   layout?: 'block' | 'inline'
+  /** Форма кнопок: rounded — 16px (пейволы), pill — скруглённая (форма сонника) */
+  shape?: 'rounded' | 'pill'
+  /** Внешний гейт: форма не заполнена и т.п. Блокирует все кнопки, не меняя ветку */
+  disabled?: boolean
+  /**
+   * Показывать ли ветку «Купить знаки →», когда нет ни знаков, ни квоты.
+   * false — вместо неё остаётся обычная кнопка оплаты знаками: клик откроет
+   * модалку «не хватает знаков» с подписками. Нужно там, где уход на экран
+   * оплаты потерял бы введённые данные (сонник — набранный текст сна).
+   */
+  showBuyBranch?: boolean
 }>(), {
   quotaRemaining: 0,
   isDev: false,
@@ -92,6 +113,9 @@ const props = withDefaults(defineProps<{
   quotaLabel: 'Открыть по подписке',
   buyLabel: 'Купить знаки →',
   layout: 'block',
+  shape: 'rounded',
+  disabled: false,
+  showBuyBranch: true,
 })
 
 const emit = defineEmits<{
@@ -135,6 +159,9 @@ const creditsLabel = computed(() => `${props.verb} за ${props.cost} ${znakiWor
 .pa-root--block .pa-btn { width: 100%; padding: 15px; border-radius: 16px; }
 /* inline — компактные кнопки поверх заблюренного превью (совместимость) */
 .pa-root--inline .pa-btn { padding: 13px 28px; }
+/* pill — скруглённая форма CTA сонника */
+.pa-root--pill .pa-btn { border-radius: 100px; padding: 16px; }
+.pa-root--pill .pa-btn--quota { padding: 14px; }
 
 /* Основная кнопка — оплата знаками */
 .pa-btn--credits {

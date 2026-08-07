@@ -60,9 +60,21 @@
           <div v-if="error" class="dream-error">{{ error }}</div>
 
           <!-- CTA -->
-          <button class="dream-btn haptic" :disabled="!canSubmit" @click="startAnalysis">
-            Разобрать сон ✦ {{ dreamCost }} {{ creditsWord(dreamCost) }}
-          </button>
+          <div class="dream-cta">
+          <PaywallActions
+            :cost="dreamCost"
+            :balance="balance"
+            :quota-remaining="quotaRemaining('DREAM')"
+            :disabled="!canSubmit"
+            :is-dev="isDev"
+            verb="Разобрать сон"
+            quota-label="Разобрать по подписке"
+            icon="✦"
+            shape="pill"
+            :show-buy-branch="false"
+            @pay="startAnalysis"
+          />
+          </div>
         </template>
 
         <!-- Недавние сны -->
@@ -179,6 +191,7 @@ import {
   type DreamResponse,
   type DreamHistoryItemDto,
   type NumerologyTodayResponse,
+  type SpendMode,
 } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
@@ -191,12 +204,13 @@ import { useMySubscription } from '@/composables/useMySubscription'
 import { zodiacGlyph } from '@/utils/zodiac'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import LioraLoader from '@/components/ui/LioraLoader.vue'
+import PaywallActions from '@/components/ui/PaywallActions.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const setBackOverride = inject<(fn: (() => void) | null) => void>('setBackOverride')
 
 const { profile } = useUser()
-const { refreshBalance } = useBalance()
+const { balance, refreshBalance } = useBalance()
 // Знак пользователя берём из гороскопа (по дате рождения), а НЕ из numerology/today:
 // там zodiacSign — это знак ТЕКУЩЕЙ ДАТЫ (астрологический период), не знак пользователя
 const { horoscope, fetchHoroscope } = useHoroscope()
@@ -204,7 +218,11 @@ const { featureCosts, loadFeatureCosts } = useFeatureCosts()
 const { setPrefilledQuestion } = usePrefilledQuestion()
 const { isDev } = useDevMode()
 const { resolveSpendMode } = useSpendConfirm()
-const { refreshAfterQuotaSpend } = useMySubscription()
+const {
+  ensureLoaded: ensureSubscriptionLoaded,
+  refreshAfterQuotaSpend,
+  quotaRemaining,
+} = useMySubscription()
 
 // ── Состояние ────────────────────────────────────────────────────────────────
 const step              = ref<1 | 2 | 3>(1)
@@ -259,12 +277,16 @@ const toggleSymbol = (id: number) => {
   selectedSymbolIds.value = next
 }
 
-const startAnalysis = async () => {
-  // Способ оплаты: знаки или квота подписки. Модалка сама разберётся
-  // (в т.ч. покажет «не хватает знаков» + подписки, если средств нет)
-  let spendMode: 'CREDITS' | 'QUOTA' = 'CREDITS'
+/**
+ * @param preferred способ оплаты, выбранный кнопкой. Если знаков не хватает,
+ *                  resolveSpendMode покажет модалку «не хватает знаков» с подписками —
+ *                  поэтому мы не уводим пользователя на экран оплаты и не теряем
+ *                  набранный текст сна (см. showBuyBranch=false у PaywallActions).
+ */
+const startAnalysis = async (preferred: SpendMode) => {
+  let spendMode: SpendMode = 'CREDITS'
   if (!isDev.value) {
-    const mode = await resolveSpendMode('DREAM')
+    const mode = await resolveSpendMode('DREAM', preferred)
     if (!mode) return
     spendMode = mode
   }
@@ -330,9 +352,6 @@ const askOracle = () => {
 }
 
 // ── Вспомогательное ──────────────────────────────────────────────────────────
-const creditsWord = (n: number) =>
-  n === 1 ? 'знак' : n < 5 ? 'знака' : 'знаков'
-
 const formatDate = (iso: string) => {
   const d = new Date(iso)
   const today = new Date()
@@ -377,6 +396,8 @@ watch(step, (s) => {
 
 onMounted(async () => {
   loadFeatureCosts()
+  // Остаток квоты — для второй кнопки «Разобрать по подписке»
+  ensureSubscriptionLoaded()
   loadRecentDreams()
   fetchHoroscope() // знак пользователя для подзаголовка (кэшируется глобально)
   try {
@@ -509,6 +530,8 @@ onUnmounted(() => {
 }
 
 /* ── CTA ── */
+/* Отступ, который раньше давал margin-bottom самой кнопки .dream-btn */
+.dream-cta { margin-bottom: 24px; }
 .dream-btn {
   width: 100%;
   padding: 16px;
