@@ -104,15 +104,15 @@
               <template v-if="isDev || canAfford(s.type, s.cost)">
                 <!-- Если знаков не хватает, но есть квота — показываем её вместо цены -->
                 <div v-if="(balance ?? 0) < s.cost && quotaRemaining(s.type) > 0" class="spread-price" style="color:#70e0a8">
-                  Квота: {{ quotaRemaining(s.type) }}
+                  По подписке: {{ quotaRemaining(s.type) }}
                 </div>
                 <template v-else>
                   <div class="spread-price" style="color:#70e0a8">
-                    {{ s.cost }} {{ s.cost === 1 ? 'знак' : s.cost < 5 ? 'знака' : 'знаков' }}
+                    {{ s.cost }} {{ znakiWord(s.cost) }}
                   </div>
                   <!-- Знаков хватает, но есть и квота — сообщаем, что можно потратить её вместо знаков -->
                   <div v-if="quotaRemaining(s.type) > 0" class="spread-price-sub">
-                    или квота: {{ quotaRemaining(s.type) }}
+                    ✦ или по подписке: {{ quotaRemaining(s.type) }}
                   </div>
                 </template>
               </template>
@@ -361,7 +361,7 @@
             <div class="spread-right">
               <template v-if="isDev || (balance ?? 0) >= deeperSpread.cost">
                 <div class="spread-price" style="color:#70e0a8">
-                  {{ deeperSpread.cost }} {{ deeperSpread.cost === 1 ? 'знак' : deeperSpread.cost < 5 ? 'знака' : 'знаков' }}
+                  {{ deeperSpread.cost }} {{ znakiWord(deeperSpread.cost) }}
                 </div>
               </template>
               <template v-else>
@@ -417,6 +417,7 @@ import { ref, inject, watch, computed, nextTick, onMounted } from 'vue'
 import { api } from '@/utils/api'
 import type { FortuneResponse, SpreadType } from '@/utils/api'
 import { hapticFeedback } from '@/utils/telegram'
+import { znakiWord } from '@/utils/plural'
 import { useDevMode } from '@/composables/useDevMode'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import LioraLoader from '@/components/ui/LioraLoader.vue'
@@ -971,7 +972,7 @@ const resetFortune = () => {
 .spread-desc  { font-size: 12px; color: rgba(255,255,255,.55); }
 .spread-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .spread-price { font-size: 14px; font-weight: 700; }
-.spread-price-sub { font-size: 10px; font-weight: 500; color: rgba(112,224,168,0.65); margin-top: 1px; }
+.spread-price-sub { font-size: 11.5px; font-weight: 600; color: #ffc857; margin-top: 1px; white-space: nowrap; }
 .spread-card--locked { opacity: 0.6; cursor: default; }
 
 /* ══ Подробности о выбранном раскладе ══════════════════════════════════════ */

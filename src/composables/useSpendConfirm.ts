@@ -17,6 +17,10 @@ import {
  *  - есть квота             → модалка подтверждения «Списать 1 квоту?» (защита от случайного тапа)
  *  - есть квота И знаки     → модалка выбора «квота / знаки»
  *  - нет ни того ни другого → модалка «Не хватает знаков» + подписки с квотой на эту фичу
+ *
+ * v2: экраны с двумя кнопками оплаты (PaywallActions) знают выбор пользователя ДО
+ * вызова и передают его вторым аргументом — тогда модалка выбора не показывается,
+ * иначе пользователь выбирал бы способ оплаты дважды подряд.
  */
 
 type ModalKind = 'choice' | 'quota-confirm' | 'insufficient' | null
@@ -32,9 +36,15 @@ let resolver: ((mode: SpendMode | null) => void) | null = null
 export function useSpendConfirm() {
   /**
    * Определяет способ оплаты фичи, при необходимости показывая модалку.
+   *
+   * @param f         фича, за которую платим
+   * @param preferred способ оплаты, который пользователь уже выбрал явно —
+   *                  нажав одну из двух кнопок в PaywallActions. Если передан
+   *                  и всё ещё выполним, модалку выбора не показываем.
+   *                  Без него поведение полностью прежнее (FortuneScreen, DreamScreen).
    * @returns выбранный SpendMode или null (пользователь отменил / средств нет)
    */
-  async function resolveSpendMode(f: FeatureType): Promise<SpendMode | null> {
+  async function resolveSpendMode(f: FeatureType, preferred?: SpendMode): Promise<SpendMode | null> {
     let opts: SpendOptionsResponse
     try {
       opts = (await api.getSpendOptions(f)).data
@@ -44,6 +54,25 @@ export function useSpendConfirm() {
     }
 
     const quotaUsable = opts.hasQuota && opts.quotaRemaining > 0
+
+    // ── Явный выбор пользователя ────────────────────────────────────────────
+    // Проверяем, что выбранный способ всё ещё доступен: между рендером кнопок и
+    // тапом баланс/квота могли измениться (например, списание в другом окне).
+    // Если способ стал невыполним — молча падаем в общую логику ниже, которая
+    // покажет корректную модалку.
+    if (preferred === 'CREDITS' && opts.canSpendCredits) return 'CREDITS'
+    if (preferred === 'QUOTA' && quotaUsable) {
+      // Безлимитную квоту подтверждать нечем — терять нечего
+      if (opts.quotaUnlimited) return 'QUOTA'
+      // Обычная квота: подтверждение оставляем — списание необратимо
+      feature.value = f
+      options.value = opts
+      kind.value = 'quota-confirm'
+      visible.value = true
+      return new Promise<SpendMode | null>((resolve) => {
+        resolver = resolve
+      })
+    }
 
     // Безлимитная квота (Superb) — списываем молча, без модалки: терять нечего.
     // Если скрытый дневной лимит исчерпан (quotaUsable = false) — обычная логика ниже.

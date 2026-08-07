@@ -124,19 +124,14 @@
 
         <div v-if="yearErrorMsg" class="week-error">{{ yearErrorMsg }}</div>
 
-        <template v-if="canAffordYear">
-          <button class="action-btn haptic" @click="showPurchaseModal = true">
-            <template v-if="(balance ?? 0) >= YEAR_COST">⭐ Открыть за {{ YEAR_COST }} знаков</template>
-            <template v-else>⭐ Открыть по квоте</template>
-          </button>
-          <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
-          <div v-if="(balance ?? 0) >= YEAR_COST && quotaRemaining('NUMEROLOGY_YEAR') > 0" class="paywall-quota-hint">
-            или квота: {{ quotaRemaining('NUMEROLOGY_YEAR') }}
-          </div>
-        </template>
-        <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
-          Купить знаки →
-        </button>
+        <PaywallActions
+          :cost="YEAR_COST"
+          :balance="balance"
+          :quota-remaining="quotaRemaining('NUMEROLOGY_YEAR')"
+          icon="⭐"
+          @pay="openPurchaseModal"
+          @buy="navigate?.('payment')"
+        />
       </div>
 
     </div>
@@ -156,7 +151,7 @@
       :cost="YEAR_COST"
       :loading="yearLoading"
       :quota-remaining="quotaRemaining('NUMEROLOGY_YEAR')"
-      :pay-with-quota="(balance ?? 0) < YEAR_COST"
+      :pay-with-quota="pendingMode === 'QUOTA'"
       @confirm="confirmPurchase"
       @close="showPurchaseModal = false"
     />
@@ -165,7 +160,7 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, onMounted } from 'vue'
-import { api, type NumerologyYearResponse } from '@/utils/api'
+import { api, type NumerologyYearResponse, type SpendMode } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { useSpendConfirm } from '@/composables/useSpendConfirm'
@@ -174,6 +169,7 @@ import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import LioraLoader from '@/components/ui/LioraLoader.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
+import PaywallActions from '@/components/ui/PaywallActions.vue'
 
 const navigate = inject<(r: string, params?: Record<string, any>) => void>('navigate')
 
@@ -184,10 +180,10 @@ const YEAR_COST = computed(() => featureCosts.value.numerologyYear)
 const { balance, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
 const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
-// Покупка доступна: хватает знаков ИЛИ есть квота подписки на годовой разбор
-const canAffordYear = computed(() =>
-  (balance.value ?? 0) >= YEAR_COST.value || quotaRemaining('NUMEROLOGY_YEAR') > 0
-)
+// Ветвление «знаки / квота / купить» теперь внутри PaywallActions — отдельная
+// computed canAffordYear больше не нужна.
+// Способ оплаты, выбранный кнопкой на пейволле
+const pendingMode = ref<SpendMode>('CREDITS')
 
 const yearResult   = ref<NumerologyYearResponse | null>(null)
 const yearLoading  = ref(false)
@@ -234,10 +230,19 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/**
+ * Способ оплаты выбран кнопкой на пейволле — запоминаем и показываем описание.
+ * Bottom sheet сам служит подтверждением, поэтому модалку выбора не повторяем.
+ */
+function openPurchaseModal(mode: SpendMode) {
+  pendingMode.value = mode
+  showPurchaseModal.value = true
+}
+
 async function confirmPurchase() {
   showPurchaseModal.value = false
-  // Выбор способа оплаты: знаки или квота подписки (модалка при необходимости)
-  const spendMode = await resolveSpendMode('NUMEROLOGY_YEAR')
+  // Сверяемся с бэком: выбранный способ мог стать невыполним
+  const spendMode = await resolveSpendMode('NUMEROLOGY_YEAR', pendingMode.value)
   if (!spendMode) return
   getYearlyAnalysis(spendMode)
 }
@@ -440,11 +445,6 @@ function periodBadgeClass(badge: string): string {
   border: 1px solid rgba(255,200,87,0.4);
   color: #ffc857;
   box-shadow: none;
-}
-.paywall-quota-hint {
-  font-size: 11px;
-  color: rgba(255,200,87,.6);
-  margin-top: 6px;
 }
 
 /* Пейволл */

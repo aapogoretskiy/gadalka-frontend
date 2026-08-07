@@ -88,6 +88,7 @@ import type { SubscriptionPlan } from '@/utils/api'
 import { useSpendConfirm } from '@/composables/useSpendConfirm'
 import { useBalance } from '@/composables/useBalance'
 import { featureLabel, featureEmoji, quotaPeriodLabel } from '@/utils/featureLabels'
+import { znakiWord } from '@/utils/plural'
 
 const navigate = inject<(r: string) => void>('navigate')
 
@@ -113,13 +114,6 @@ function planQuotaSummary(plan: SubscriptionPlan): string {
   return `${q.quotaCount} ${quotaPeriodLabel(q.quotaPeriod)} · ${plan.durationDays} дней`
 }
 
-function znakiWord(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'знак'
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'знака'
-  return 'знаков'
-}
 </script>
 
 <style scoped>

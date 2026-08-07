@@ -17,18 +17,21 @@
           </div>
         </div>
 
-        <!-- Знаков не хватает, но есть квота — платим квотой, цену в знаках не показываем -->
-        <div v-if="payWithQuota" class="sheet-price">Квота: {{ quotaRemaining }}</div>
-        <div v-else class="sheet-price">
-          {{ cost }} {{ znakiWord(cost) }}
-          <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
-          <div v-if="quotaRemaining > 0" class="sheet-price-sub">или квота: {{ quotaRemaining }}</div>
+        <!--
+          Способ оплаты выбран кнопкой на пейволле ДО открытия этого шита, поэтому
+          показываем цену только выбранным способом. Подсказка «или квота» здесь
+          больше не нужна — выбор уже сделан.
+        -->
+        <div v-if="payWithQuota" class="sheet-price">
+          По подписке
+          <div class="sheet-price-sub">осталось {{ quotaRemaining }}</div>
         </div>
+        <div v-else class="sheet-price">{{ cost }} {{ znakiWord(cost) }}</div>
 
         <div style="width:100%;display:flex;flex-direction:column;gap:10px">
           <button class="sheet-btn primary haptic" :disabled="loading" @click="$emit('confirm')">
             <span v-if="loading" class="btn-spinner"></span>
-            <span v-else-if="payWithQuota">Открыть по квоте</span>
+            <span v-else-if="payWithQuota">Открыть по подписке</span>
             <span v-else>Оплатить {{ cost }} {{ znakiWord(cost) }}</span>
           </button>
           <button class="sheet-btn secondary haptic" :disabled="loading" @click="$emit('close')">
@@ -41,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { znakiWord } from '@/utils/plural'
+
 withDefaults(defineProps<{
   open: boolean
   title: string
@@ -62,15 +67,6 @@ defineEmits<{
   confirm: []
   close: []
 }>()
-
-// Правильное склонение "знак/знака/знаков" для суммы
-function znakiWord(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'знак'
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'знака'
-  return 'знаков'
-}
 </script>
 
 <style scoped>
@@ -123,7 +119,7 @@ function znakiWord(n: number): string {
 }
 .sheet-price-sub {
   font-family: 'Manrope', sans-serif;
-  font-size: 12px; font-weight: 500; color: rgba(255,200,87,0.6);
+  font-size: 13px; font-weight: 500; color: #ffc857;
   margin-top: 2px;
 }
 

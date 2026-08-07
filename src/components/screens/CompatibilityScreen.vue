@@ -186,28 +186,16 @@
             </div>
           </div>
 
-          <div v-if="!isPremiumUnlocked" class="paywall-overlay">
-            <div class="paywall-lock">🔒</div>
-            <div class="paywall-title serif">Полный анализ</div>
-            <div class="paywall-sub">Интерпретация и разбор по 5 категориям</div>
-
-            <!-- Хватает знаков — можно открыть -->
-            <button v-if="canUnlock || isDev" class="paywall-btn haptic" @click="unlockPremium">
-              <template v-if="isDev || (balance ?? 0) >= UNLOCK_COST">🔮 Открыть за {{ UNLOCK_COST }} знака</template>
-              <template v-else>🔮 Открыть по квоте</template>
-            </button>
-            <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
-            <div v-if="!isDev && (balance ?? 0) >= UNLOCK_COST && quotaRemaining('COMPATIBILITY') > 0" class="paywall-quota-hint">
-              или квота: {{ quotaRemaining('COMPATIBILITY') }}
-            </div>
-
-            <!-- Знаков не хватает — ведём на пополнение -->
-            <button v-else class="paywall-btn paywall-btn--buy haptic" @click="navigate('payment')">
-              Купить гадания →
-            </button>
-
-            <div v-if="isDev" class="paywall-dev-hint">DEV: кнопка эмулирует списание</div>
-          </div>
+          <CompatibilityPaywall
+            v-if="!isPremiumUnlocked"
+            :cost="UNLOCK_COST"
+            :balance="balance"
+            :quota-remaining="quotaRemaining('COMPATIBILITY')"
+            :is-dev="isDev"
+            :loading="isUnlocking"
+            @pay="unlockPremium"
+            @buy="navigate?.('payment')"
+          />
         </div>
 
         <!-- Фидбэк — только после разблокировки полного анализа -->
@@ -230,7 +218,7 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, onMounted } from 'vue'
-import { api, type CompatibilityResponse } from '@/utils/api'
+import { api, type CompatibilityResponse, type SpendMode } from '@/utils/api'
 import { useUser } from '@/composables/useUser'
 import { useDevMode } from '@/composables/useDevMode'
 import { useBalance } from '@/composables/useBalance'
@@ -241,6 +229,7 @@ import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
+import CompatibilityPaywall from '@/components/ui/CompatibilityPaywall.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
 const { telegramUser, profile } = useUser()
@@ -254,10 +243,8 @@ const { addToast } = useToast()
 const UNLOCK_COST = computed(() => featureCosts.value.compatibilityUnlock)
 const { resolveSpendMode } = useSpendConfirm()
 const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
-// Кнопка разблокировки доступна: хватает знаков ИЛИ есть квота подписки
-const canUnlock = computed(() =>
-  (balance.value ?? 0) >= UNLOCK_COST.value || quotaRemaining('COMPATIBILITY') > 0
-)
+// Ветвление кнопок (знаки / квота / покупка) теперь целиком внутри PaywallActions,
+// поэтому отдельная computed canUnlock здесь больше не нужна.
 // Подтягиваем свежую цену при каждом заходе на экран
 onMounted(() => {
   loadFeatureCosts()
@@ -285,6 +272,8 @@ const isLoading = ref(false)
 const errorMsg = ref('')
 const result = ref<CompatibilityResponse | null>(null)
 const paidUnlocked = ref(false)
+// Защита от двойного тапа по кнопке оплаты, пока идёт запрос разблокировки
+const isUnlocking = ref(false)
 const isPremiumUnlocked = computed(() => isDev.value || paidUnlocked.value)
 
 const isValid = computed(() =>
@@ -330,15 +319,23 @@ async function calculate() {
   }
 }
 
-async function unlockPremium() {
+/**
+ * Разблокировка полного анализа.
+ * @param preferred способ оплаты, выбранный пользователем на кнопке пейвола.
+ *                  Для QUOTA модалка покажет подтверждение, для CREDITS спишет сразу.
+ */
+async function unlockPremium(preferred: SpendMode) {
   if (isDev.value) {
     paidUnlocked.value = true
     return
   }
-  // Выбор способа оплаты (знаки / квота подписки) — модалка при необходимости
-  const spendMode = await resolveSpendMode('COMPATIBILITY')
+  if (isUnlocking.value) return
+
+  // Сверяемся с бэком: способ мог стать невыполним, если баланс изменился
+  const spendMode = await resolveSpendMode('COMPATIBILITY', preferred)
   if (!spendMode) return
 
+  isUnlocking.value = true
   try {
     const res = await api.unlockCompatibility(result.value!.id, spendMode)
     result.value = res.data
@@ -348,6 +345,8 @@ async function unlockPremium() {
     hapticFeedback.success()
   } catch {
     addToast('Не удалось списать знаки. Попробуйте ещё раз.')
+  } finally {
+    isUnlocking.value = false
   }
 }
 
@@ -543,7 +542,8 @@ function reset() {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #F5ECFF;
 }
 
-/* Paywall */
+/* Paywall — оформление замка/заголовка/кнопок живёт в CompatibilityPaywall.vue,
+   здесь остаётся только обёртка с блюром платного контента */
 .paywall-wrap { position: relative; width: 100%; display: flex; flex-direction: column; gap: 18px; }
 .paywall-wrap.locked .paywall-content {
   filter: blur(7px);
@@ -551,55 +551,4 @@ function reset() {
   user-select: none;
 }
 .paywall-content { display: flex; flex-direction: column; gap: 18px; width: 100%; }
-.paywall-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: rgba(10,5,20,0.55);
-  backdrop-filter: blur(2px);
-  border-radius: 18px;
-  padding: 24px 20px;
-}
-.paywall-lock { font-size: 32px; margin-bottom: 4px; }
-.paywall-title { font-size: 20px; color: #F5ECFF; text-align: center; }
-.paywall-sub {
-  font-size: 13px;
-  color: rgba(255,255,255,.55);
-  text-align: center;
-  line-height: 1.5;
-  margin-bottom: 8px;
-}
-.paywall-btn {
-  padding: 13px 28px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #b654ff, #e94aa8);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: 'Manrope', sans-serif;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(182,84,255,.45);
-}
-.paywall-btn--buy {
-  background: linear-gradient(135deg, rgba(255,200,87,0.2), rgba(233,74,168,0.15));
-  border: 1px solid rgba(255,200,87,0.4) !important;
-  color: #ffc857;
-  box-shadow: none;
-}
-.paywall-dev-hint {
-  font-size: 10px;
-  color: rgba(112,224,168,.7);
-  margin-top: 4px;
-  letter-spacing: .04em;
-}
-.paywall-quota-hint {
-  font-size: 11px;
-  color: rgba(255,200,87,.6);
-  margin-top: 6px;
-}
 </style>

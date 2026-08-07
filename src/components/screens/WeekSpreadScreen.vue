@@ -121,19 +121,14 @@
 
         <div v-if="weekErrorMsg" class="week-error">{{ weekErrorMsg }}</div>
 
-        <template v-if="canAffordWeek">
-          <button class="action-btn haptic" @click="showPurchaseModal = true">
-            <template v-if="(balance ?? 0) >= WEEK_COST">🔮 Открыть за {{ WEEK_COST }} знака</template>
-            <template v-else>🔮 Открыть по квоте</template>
-          </button>
-          <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
-          <div v-if="(balance ?? 0) >= WEEK_COST && quotaRemaining('NUMEROLOGY_WEEK') > 0" class="paywall-quota-hint">
-            или квота: {{ quotaRemaining('NUMEROLOGY_WEEK') }}
-          </div>
-        </template>
-        <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
-          Купить знаки →
-        </button>
+        <PaywallActions
+          :cost="WEEK_COST"
+          :balance="balance"
+          :quota-remaining="quotaRemaining('NUMEROLOGY_WEEK')"
+          icon="🔮"
+          @pay="openPurchaseModal"
+          @buy="navigate?.('payment')"
+        />
       </div>
 
     </div>
@@ -152,7 +147,7 @@
       :cost="WEEK_COST"
       :loading="weekLoading"
       :quota-remaining="quotaRemaining('NUMEROLOGY_WEEK')"
-      :pay-with-quota="(balance ?? 0) < WEEK_COST"
+      :pay-with-quota="pendingMode === 'QUOTA'"
       @confirm="confirmPurchase"
       @close="showPurchaseModal = false"
     />
@@ -161,7 +156,7 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, onMounted } from 'vue'
-import { api, type NumerologyWeekResponse } from '@/utils/api'
+import { api, type NumerologyWeekResponse, type SpendMode } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { useSpendConfirm } from '@/composables/useSpendConfirm'
@@ -170,6 +165,7 @@ import { hapticFeedback } from '@/utils/telegram'
 import ActionFeedbackWidget from '@/components/ui/ActionFeedbackWidget.vue'
 import LioraLoader from '@/components/ui/LioraLoader.vue'
 import PeriodPurchaseModal from '@/components/ui/PeriodPurchaseModal.vue'
+import PaywallActions from '@/components/ui/PaywallActions.vue'
 
 const navigate = inject<(r: string, params?: Record<string, any>) => void>('navigate')
 // Если экран открыт из месячного разбора — сюда приходит { weekStart: 'YYYY-MM-DD' } конкретного
@@ -185,15 +181,16 @@ const WEEK_COST = computed(() => featureCosts.value.numerologyWeek)
 const { balance, refreshBalance } = useBalance()
 const { resolveSpendMode } = useSpendConfirm()
 const { ensureLoaded: ensureSubscriptionLoaded, refreshAfterQuotaSpend, quotaRemaining } = useMySubscription()
-// Покупка доступна: хватает знаков ИЛИ есть квота подписки на недельный расклад
-const canAffordWeek = computed(() =>
-  (balance.value ?? 0) >= WEEK_COST.value || quotaRemaining('NUMEROLOGY_WEEK') > 0
-)
+// Ветвление «знаки / квота / купить» теперь внутри PaywallActions — отдельная
+// computed canAffordWeek больше не нужна.
 
 const weekResult   = ref<NumerologyWeekResponse | null>(null)
 const weekLoading  = ref(false)
 const weekErrorMsg = ref('')
 const showPurchaseModal = ref(false)
+// Способ оплаты, выбранный кнопкой на пейволле, — bottom sheet показывает
+// соответствующую цену, а confirmPurchase передаёт его в resolveSpendMode
+const pendingMode = ref<SpendMode>('CREDITS')
 
 // ── Тихая проверка при открытии экрана ──────────────────────────────────────
 // Если расклад на эту неделю уже куплен — бэкенд (NumerologyWeekService.getWeek)
@@ -230,10 +227,20 @@ onMounted(async () => {
   }
 })
 
+/**
+ * Пользователь выбрал способ оплаты кнопкой на пейволле — запоминаем его и
+ * показываем описание расклада. Сам bottom sheet служит подтверждением, поэтому
+ * модалка выбора способа оплаты после него уже не нужна.
+ */
+function openPurchaseModal(mode: SpendMode) {
+  pendingMode.value = mode
+  showPurchaseModal.value = true
+}
+
 async function confirmPurchase() {
   showPurchaseModal.value = false
-  // Выбор способа оплаты: знаки или квота подписки (модалка при необходимости)
-  const spendMode = await resolveSpendMode('NUMEROLOGY_WEEK')
+  // Сверяемся с бэком: выбранный способ мог стать невыполним (баланс/квота изменились)
+  const spendMode = await resolveSpendMode('NUMEROLOGY_WEEK', pendingMode.value)
   if (!spendMode) return
   getWeeklyAnalysis(spendMode)
 }
@@ -400,11 +407,6 @@ function resonanceClass(label: string): string {
   border: 1px solid rgba(255,200,87,0.4);
   color: #ffc857;
   box-shadow: none;
-}
-.paywall-quota-hint {
-  font-size: 11px;
-  color: rgba(255,200,87,.6);
-  margin-top: 6px;
 }
 
 /* Пейволл */

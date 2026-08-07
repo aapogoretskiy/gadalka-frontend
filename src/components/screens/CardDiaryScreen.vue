@@ -348,31 +348,27 @@
               </template>
             </div>
 
-            <div v-if="!isCompatUnlocked(selected)" class="modal-paywall-overlay">
-              <div class="modal-paywall-lock">🔒</div>
-              <div class="modal-paywall-title serif">Полный анализ</div>
-              <div class="modal-paywall-sub">Интерпретация и разбор по 5 категориям</div>
-
-              <!-- Есть гадания — разблокировать прямо здесь -->
-              <button
-                v-if="selected.data?.id && (hasCredits || isDev)"
-                class="modal-paywall-btn haptic"
-                :disabled="isUnlocking"
-                @click="unlockFromDiary"
-              >
-                <span v-if="isUnlocking">Открываем...</span>
-                <span v-else>🔮 Открыть за 1 знак</span>
-              </button>
-
-              <!-- Нет гаданий или нет id — перейти в раздел -->
-              <button
-                v-else
-                class="modal-paywall-btn modal-paywall-btn--nav haptic"
-                @click="selected = null; navigate('compatibility')"
-              >
-                {{ !selected.data?.id ? 'Перейти к Совместимости →' : 'Купить гадания →' }}
-              </button>
-            </div>
+            <CompatibilityPaywall
+              v-if="!isCompatUnlocked(selected)"
+              :cost="UNLOCK_COST"
+              :balance="balance"
+              :quota-remaining="quotaRemaining('COMPATIBILITY')"
+              :is-dev="isDev"
+              :loading="isUnlocking"
+              :disabled="!selected.data?.id"
+              @pay="unlockFromDiary"
+              @buy="selected = null; navigate?.('payment')"
+            >
+              <!-- Старая запись без id расклада — разблокировать нечего, ведём в раздел -->
+              <template #fallback>
+                <button
+                  class="modal-paywall-btn--nav haptic"
+                  @click="selected = null; navigate?.('compatibility')"
+                >
+                  Перейти к Совместимости →
+                </button>
+              </template>
+            </CompatibilityPaywall>
           </div>
         </template>
 
@@ -449,27 +445,56 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, inject } from 'vue'
-import { api, type DiaryEntryDto, type FeatureType } from '@/utils/api'
+import { api, type DiaryEntryDto, type FeatureType, type SpendMode } from '@/utils/api'
 import { useBalance } from '@/composables/useBalance'
 import { useDevMode } from '@/composables/useDevMode'
 import { useToast } from '@/composables/useToast'
+import { useFeatureCosts } from '@/composables/useFeatureCosts'
+import { useSpendConfirm } from '@/composables/useSpendConfirm'
+import { useMySubscription } from '@/composables/useMySubscription'
 import { hapticFeedback } from '@/utils/telegram'
 import { zodiacGlyph } from '@/utils/zodiac'
+import CompatibilityPaywall from '@/components/ui/CompatibilityPaywall.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
-const { hasCredits, refreshBalance } = useBalance()
+const { balance, refreshBalance } = useBalance()
 const { isDev } = useDevMode()
 const { addToast } = useToast()
+// Цена берётся с бэка, как на экране совместимости. Раньше здесь было захардкожено
+// «Открыть за 1 знак», хотя CompatibilityService списывал реальную цену (3) —
+// пользователю показывалась одна сумма, а списывалась другая.
+const { featureCosts, loadFeatureCosts } = useFeatureCosts()
+const UNLOCK_COST = computed(() => featureCosts.value.compatibilityUnlock)
+const { resolveSpendMode } = useSpendConfirm()
+const {
+  ensureLoaded: ensureSubscriptionLoaded,
+  refreshAfterQuotaSpend,
+  quotaRemaining,
+} = useMySubscription()
 
 const isUnlocking = ref(false)
 const unlockedIds = ref(new Set<number>())
 
-async function unlockFromDiary() {
+/**
+ * Разблокировка совместимости прямо из истории.
+ * @param preferred способ оплаты с кнопки пейвола. Раньше режим не передавался
+ *                  вовсе, поэтому api.unlockCompatibility всегда уходил с CREDITS
+ *                  и квота подписки из истории была недоступна.
+ */
+async function unlockFromDiary(preferred: SpendMode) {
   const id = selected.value?.data?.id
   if (!id || isUnlocking.value) return
+
+  let spendMode: SpendMode = 'CREDITS'
+  if (!isDev.value) {
+    const mode = await resolveSpendMode('COMPATIBILITY', preferred)
+    if (!mode) return
+    spendMode = mode
+  }
+
   isUnlocking.value = true
   try {
-    const res = await api.unlockCompatibility(id)
+    const res = await api.unlockCompatibility(id, spendMode)
     // Обновляем данные в открытой записи
     if (selected.value) {
       selected.value = {
@@ -483,9 +508,10 @@ async function unlockFromDiary() {
     }
     unlockedIds.value = new Set([...unlockedIds.value, id])
     await refreshBalance()
+    if (spendMode === 'QUOTA') await refreshAfterQuotaSpend()
     hapticFeedback.success()
   } catch {
-    addToast('Не удалось списать знак. Попробуйте ещё раз.')
+    addToast('Не удалось открыть анализ. Попробуйте ещё раз.')
   } finally {
     isUnlocking.value = false
   }
@@ -736,7 +762,12 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  loadAll()
+  // Цена разблокировки и остаток квоты нужны пейволу совместимости в модалке записи
+  loadFeatureCosts()
+  ensureSubscriptionLoaded()
+})
 </script>
 
 <style scoped>
@@ -953,28 +984,13 @@ onMounted(loadAll)
   pointer-events:none;
   user-select:none;
 }
-.modal-paywall-overlay {
-  position:absolute; inset:0;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:8px;
-  background:rgba(10,5,20,.55);
-  backdrop-filter:blur(2px);
-  border-radius:14px;
-  padding:24px 20px;
-}
-.modal-paywall-lock { font-size:28px; }
-.modal-paywall-title { font-size:18px; color:#F5ECFF; text-align:center; }
-.modal-paywall-sub { font-size:12px; color:rgba(255,255,255,.5); text-align:center; line-height:1.5; margin-bottom:4px; }
-.modal-paywall-btn {
-  padding:12px 24px; border-radius:14px;
-  background:linear-gradient(135deg, #b654ff, #e94aa8);
-  color:#fff; font-size:14px; font-weight:700;
-  font-family:'Manrope',sans-serif; border:none; cursor:pointer;
-  box-shadow:0 6px 20px rgba(182,84,255,.45);
-  margin-top:4px;
-}
-.modal-paywall-btn:disabled { opacity:.6; cursor:default; }
+/* Замок, заголовок и кнопки оплаты переехали в CompatibilityPaywall.vue.
+   Здесь остаётся обёртка с блюром и стиль кнопки из слота fallback
+   (контент слота компилируется в области видимости этого компонента). */
 .modal-paywall-btn--nav {
+  padding:12px 24px; border-radius:14px;
+  font-family:'Manrope',sans-serif; font-size:14px; font-weight:600;
+  cursor:pointer;
   background:rgba(255,255,255,.08);
   border:1px solid rgba(255,255,255,.15);
   color:#F5ECFF;
