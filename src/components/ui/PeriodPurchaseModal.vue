@@ -17,11 +17,18 @@
           </div>
         </div>
 
-        <div class="sheet-price">{{ cost }} {{ znakiWord(cost) }}</div>
+        <!-- Знаков не хватает, но есть квота — платим квотой, цену в знаках не показываем -->
+        <div v-if="payWithQuota" class="sheet-price">Квота: {{ quotaRemaining }}</div>
+        <div v-else class="sheet-price">
+          {{ cost }} {{ znakiWord(cost) }}
+          <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
+          <div v-if="quotaRemaining > 0" class="sheet-price-sub">или квота: {{ quotaRemaining }}</div>
+        </div>
 
         <div style="width:100%;display:flex;flex-direction:column;gap:10px">
           <button class="sheet-btn primary haptic" :disabled="loading" @click="$emit('confirm')">
             <span v-if="loading" class="btn-spinner"></span>
+            <span v-else-if="payWithQuota">Открыть по квоте</span>
             <span v-else>Оплатить {{ cost }} {{ znakiWord(cost) }}</span>
           </button>
           <button class="sheet-btn secondary haptic" :disabled="loading" @click="$emit('close')">
@@ -34,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   open: boolean
   title: string
   icon: string
@@ -42,7 +49,14 @@ defineProps<{
   features: string[]
   cost: number
   loading?: boolean
-}>()
+  /** Остаток квоты подписки на эту фичу (0 — квоты нет или подписки нет) */
+  quotaRemaining?: number
+  /** true — знаков не хватает, оплата возможна только квотой (единственный вариант) */
+  payWithQuota?: boolean
+}>(), {
+  quotaRemaining: 0,
+  payWithQuota: false,
+})
 
 defineEmits<{
   confirm: []
@@ -105,6 +119,12 @@ function znakiWord(n: number): string {
   font-family: 'Cormorant Garamond', serif;
   font-size: 28px; font-weight: 600; color: #ffc857;
   margin-bottom: 18px;
+  text-align: center;
+}
+.sheet-price-sub {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px; font-weight: 500; color: rgba(255,200,87,0.6);
+  margin-top: 2px;
 }
 
 .sheet-btn {

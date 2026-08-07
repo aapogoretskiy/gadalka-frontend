@@ -132,7 +132,8 @@
         <div v-if="monthErrorMsg" class="week-error">{{ monthErrorMsg }}</div>
 
         <button v-if="canAffordMonth" class="action-btn haptic" @click="showPurchaseModal = true">
-          🌙 Открыть за {{ MONTH_COST }} знаков
+          <template v-if="(balance ?? 0) >= MONTH_COST">🌙 Открыть за {{ MONTH_COST }} знаков</template>
+          <template v-else>🌙 Открыть по квоте</template>
         </button>
         <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
           Купить знаки →
@@ -155,6 +156,8 @@
       ]"
       :cost="MONTH_COST"
       :loading="monthLoading"
+      :quota-remaining="quotaRemaining('NUMEROLOGY_MONTH')"
+      :pay-with-quota="(balance ?? 0) < MONTH_COST"
       @confirm="confirmPurchase"
       @close="showPurchaseModal = false"
     />

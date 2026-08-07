@@ -125,7 +125,8 @@
         <div v-if="yearErrorMsg" class="week-error">{{ yearErrorMsg }}</div>
 
         <button v-if="canAffordYear" class="action-btn haptic" @click="showPurchaseModal = true">
-          ⭐ Открыть за {{ YEAR_COST }} знаков
+          <template v-if="(balance ?? 0) >= YEAR_COST">⭐ Открыть за {{ YEAR_COST }} знаков</template>
+          <template v-else>⭐ Открыть по квоте</template>
         </button>
         <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
           Купить знаки →
@@ -148,6 +149,8 @@
       ]"
       :cost="YEAR_COST"
       :loading="yearLoading"
+      :quota-remaining="quotaRemaining('NUMEROLOGY_YEAR')"
+      :pay-with-quota="(balance ?? 0) < YEAR_COST"
       @confirm="confirmPurchase"
       @close="showPurchaseModal = false"
     />
