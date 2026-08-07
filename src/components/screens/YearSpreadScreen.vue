@@ -124,10 +124,16 @@
 
         <div v-if="yearErrorMsg" class="week-error">{{ yearErrorMsg }}</div>
 
-        <button v-if="canAffordYear" class="action-btn haptic" @click="showPurchaseModal = true">
-          <template v-if="(balance ?? 0) >= YEAR_COST">⭐ Открыть за {{ YEAR_COST }} знаков</template>
-          <template v-else>⭐ Открыть по квоте</template>
-        </button>
+        <template v-if="canAffordYear">
+          <button class="action-btn haptic" @click="showPurchaseModal = true">
+            <template v-if="(balance ?? 0) >= YEAR_COST">⭐ Открыть за {{ YEAR_COST }} знаков</template>
+            <template v-else>⭐ Открыть по квоте</template>
+          </button>
+          <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
+          <div v-if="(balance ?? 0) >= YEAR_COST && quotaRemaining('NUMEROLOGY_YEAR') > 0" class="paywall-quota-hint">
+            или квота: {{ quotaRemaining('NUMEROLOGY_YEAR') }}
+          </div>
+        </template>
         <button v-else class="action-btn action-btn--buy haptic" @click="navigate?.('payment')">
           Купить знаки →
         </button>
@@ -434,6 +440,11 @@ function periodBadgeClass(badge: string): string {
   border: 1px solid rgba(255,200,87,0.4);
   color: #ffc857;
   box-shadow: none;
+}
+.paywall-quota-hint {
+  font-size: 11px;
+  color: rgba(255,200,87,.6);
+  margin-top: 6px;
 }
 
 /* Пейволл */
