@@ -193,8 +193,13 @@
 
             <!-- Хватает знаков — можно открыть -->
             <button v-if="canUnlock || isDev" class="paywall-btn haptic" @click="unlockPremium">
-              🔮 Открыть за {{ UNLOCK_COST }} знака
+              <template v-if="isDev || (balance ?? 0) >= UNLOCK_COST">🔮 Открыть за {{ UNLOCK_COST }} знака</template>
+              <template v-else>🔮 Открыть по квоте</template>
             </button>
+            <!-- Знаков хватает, но есть и квота — подсказываем альтернативу -->
+            <div v-if="!isDev && (balance ?? 0) >= UNLOCK_COST && quotaRemaining('COMPATIBILITY') > 0" class="paywall-quota-hint">
+              или квота: {{ quotaRemaining('COMPATIBILITY') }}
+            </div>
 
             <!-- Знаков не хватает — ведём на пополнение -->
             <button v-else class="paywall-btn paywall-btn--buy haptic" @click="navigate('payment')">
@@ -591,5 +596,10 @@ function reset() {
   color: rgba(112,224,168,.7);
   margin-top: 4px;
   letter-spacing: .04em;
+}
+.paywall-quota-hint {
+  font-size: 11px;
+  color: rgba(255,200,87,.6);
+  margin-top: 6px;
 }
 </style>
