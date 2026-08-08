@@ -188,7 +188,11 @@
             <div class="period-icon">🌱</div>
             <div class="period-title serif">Неделя</div>
             <div class="period-desc">Прогноз на 7 дней</div>
-            <div v-if="!weekOpened" class="period-price">{{ weekCost }} знака</div>
+            <div
+              v-if="!weekOpened"
+              class="period-price"
+              :class="{ 'period-price--quota': hasQuota('NUMEROLOGY_WEEK') }"
+            >{{ priceLabel('NUMEROLOGY_WEEK', weekCost) }}</div>
           </div>
           <div
             class="period-card haptic"
@@ -203,7 +207,11 @@
             <div class="period-icon">🌙</div>
             <div class="period-title serif">Месяц</div>
             <div class="period-desc">Детальный анализ</div>
-            <div v-if="!monthOpened" class="period-price">{{ monthCost }} знаков</div>
+            <div
+              v-if="!monthOpened"
+              class="period-price"
+              :class="{ 'period-price--quota': hasQuota('NUMEROLOGY_MONTH') }"
+            >{{ priceLabel('NUMEROLOGY_MONTH', monthCost) }}</div>
           </div>
           <div
             class="period-card haptic"
@@ -218,7 +226,11 @@
             <div class="period-icon">⭐</div>
             <div class="period-title serif">Год</div>
             <div class="period-desc">365 дней + код года</div>
-            <div v-if="!yearOpened" class="period-price">{{ yearCost }} знаков</div>
+            <div
+              v-if="!yearOpened"
+              class="period-price"
+              :class="{ 'period-price--quota': hasQuota('NUMEROLOGY_YEAR') }"
+            >{{ priceLabel('NUMEROLOGY_YEAR', yearCost) }}</div>
           </div>
         </div>
 
@@ -229,9 +241,11 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, onMounted } from 'vue'
-import { api, type NumerologyPortraitResponse } from '@/utils/api'
+import { api, type NumerologyPortraitResponse, type FeatureType } from '@/utils/api'
 import { useFeatureCosts } from '@/composables/useFeatureCosts'
 import { useFeatureBadges } from '@/composables/useFeatureBadges'
+import { useMySubscription } from '@/composables/useMySubscription'
+import { znakiWord } from '@/utils/plural'
 import LioraLoader from '@/components/ui/LioraLoader.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
@@ -251,6 +265,20 @@ const weekCost = computed(() => featureCosts.value.numerologyWeek)
 const monthCost = computed(() => featureCosts.value.numerologyMonth)
 const yearCost = computed(() => featureCosts.value.numerologyYear)
 
+// Квоты активной подписки — на карточках периодов показываем их ВМЕСТО цены в знаках.
+// Причина: расклады на месяц и год стоят дорого (10 и 18 знаков), и цена в знаках
+// рядом с уже оплаченной подпиской создаёт ложное впечатление, что за расклад
+// придётся платить отдельно.
+const { ensureLoaded: ensureSubscriptionLoaded, quotaRemaining } = useMySubscription()
+
+const hasQuota = (feature: FeatureType): boolean => quotaRemaining(feature) > 0
+
+/** Подпись под карточкой периода: остаток квоты, если он есть, иначе цена в знаках */
+function priceLabel(feature: FeatureType, cost: number): string {
+  const left = quotaRemaining(feature)
+  return left > 0 ? `✦ По подписке · ${left}` : `${cost} ${znakiWord(cost)}`
+}
+
 // Отметки «Новинка»/«Хит» — настраиваются админом на той же вкладке «Цены»,
 // см. useFeatureBadges.ts. Раньше «Хит» на карточке «Неделя» был захардкожен —
 // теперь это тоже управляется отсюда.
@@ -268,6 +296,8 @@ const yearOpened  = ref(false)
 onMounted(async () => {
   loadFeatureCosts()
   loadFeatureBadges()
+  // Остаток квоты — для подписи на карточках периодов вместо цены в знаках
+  ensureSubscriptionLoaded()
   api.getNumerologyWeekCurrent().then(() => { weekOpened.value = true }).catch(() => {})
   api.getNumerologyMonthCurrent().then(() => { monthOpened.value = true }).catch(() => {})
   api.getNumerologyYearCurrent().then(() => { yearOpened.value = true }).catch(() => {})
@@ -533,6 +563,12 @@ function barColor(pct: number): string {
 .period-price {
   font-size: 10px; font-weight: 700; color: #ffc857;
   margin-top: 2px;
+}
+/* Расклад покрыт подпиской — зелёный, как бейдж «Бесплатно»: знаки не спишутся */
+.period-price--quota {
+  color: #4ade80;
+  font-size: 9px;
+  letter-spacing: -.01em;
 }
 .period-badge--opened {
   background: rgba(74,222,128,.18); color: #4ade80;
