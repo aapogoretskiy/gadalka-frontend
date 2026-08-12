@@ -21,14 +21,15 @@
         :class="{ 'balance-card--new': subscriptionsBadge.isNew || subscriptionsBadge.isHot }"
         @click="navigate('payment')"
       >
+        <!-- Шильдик вынесен из потока и посажен на верхнюю границу карточки в правом
+             углу: внутри строки с заголовком он отнимал ширину и «Подписки и знаки»
+             ломались на две строки. -->
+        <span v-if="subscriptionsBadge.isNew || subscriptionsBadge.isHot" class="balance-badge">
+          {{ subscriptionsBadge.isNew ? 'Новинка' : 'Хит' }}
+        </span>
         <div class="balance-icon">🔮</div>
         <div class="balance-body">
-          <div class="balance-label-row">
-            <span class="balance-label">Подписки и знаки</span>
-            <span v-if="subscriptionsBadge.isNew || subscriptionsBadge.isHot" class="balance-badge">
-              {{ subscriptionsBadge.isNew ? 'Новинка' : 'Хит' }}
-            </span>
-          </div>
+          <div class="balance-label">Подписки и знаки</div>
           <div class="balance-val">
             <span v-if="balance > 0">{{ balance }} {{ balancePluralLabel }}</span>
             <span v-else class="balance-empty">Нет гаданий</span>
@@ -601,20 +602,25 @@ function shareReferralLink() {
 
 /* Balance card */
 .balance-card {
+  position: relative;   /* якорь для шильдика «Новинка»/«Хит» */
   display: flex; align-items: center; gap: 14px;
   padding: 16px 18px; margin-bottom: 14px; cursor: pointer;
 }
 .balance-icon { font-size: 28px; flex-shrink: 0; }
 .balance-body { flex: 1; }
-.balance-label-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
-.balance-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; }
-/* Шильдик «Новинка»/«Хит» — тот же стиль, что на карточках Сонника и Нумерологии */
+.balance-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; margin-bottom: 3px; }
+/* Шильдик «Новинка»/«Хит» — тот же стиль, что на карточках Сонника и Нумерологии,
+   но посажен на верхнюю границу карточки в правом углу */
 .balance-badge {
+  position: absolute;
+  top: -8px; right: 16px;
+  z-index: 1;
   background: #ffc857; color: #1a0529;
   font-size: 9px; font-weight: 700;
-  padding: 2px 6px; border-radius: 5px;
+  padding: 3px 8px; border-radius: 5px;
   letter-spacing: .03em; text-transform: uppercase;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
 }
 /* Подсветка рамки, пока отметка активна */
 .balance-card--new {
