@@ -1165,6 +1165,22 @@
             </div>
           </div>
 
+          <!-- Отметка на кнопке входа в оплату. Цены тут нет: это не платная функция,
+               а точка входа на экран с подписками и знаками (карточка в профиле). -->
+          <div v-if="featureBadges?.subscriptions" class="report-group">
+            <h3 class="report-group-title">💫 Подписки</h3>
+            <div class="prices-form">
+              <div class="price-field">
+                <label class="price-label">Кнопка «Подписки и знаки» в профиле</label>
+                <span class="price-no-cost">без стоимости — только отметка</span>
+                <div class="price-badges">
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.subscriptions.isNew" /> Новинка</label>
+                  <label class="price-badge-check"><input type="checkbox" v-model="featureBadges.subscriptions.isHot" /> Хит</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="report-group">
             <button
               class="btn-primary"
@@ -4686,6 +4702,14 @@ input[type="checkbox"] {
 .price-badges {
   display: flex;
   gap: 12px;
+}
+/* Заглушка вместо поля цены — чтобы блок «Подписки» встал в ту же сетку, что и платные функции */
+.price-no-cost {
+  display: block;
+  font-size: 12px;
+  color: rgba(255,255,255,.35);
+  font-style: italic;
+  padding: 8px 0;
 }
 .price-badge-check {
   display: flex;

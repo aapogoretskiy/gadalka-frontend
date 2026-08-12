@@ -38,7 +38,12 @@
     </button>
 
     <!-- Профиль -->
-    <button class="tab-btn tab-btn--profile" :class="{ active: activeTab === 'profile' }" @click="$emit('change', 'profile')">
+    <button class="tab-btn tab-btn--profile" :class="{ active: activeTab === 'profile' }" @click="onTabClick('profile')">
+      <!-- Жёлтая точка «Новинка» (сейчас — про «Подписки и знаки» в профиле) показывается
+           только когда нет непрочитанных сообщений: розовая точка входящих стоит почти
+           в том же месте, и вместе они бы наложились. Приоритет у входящих — они
+           персональные и требуют действия, новинка подождёт. -->
+      <span v-if="hasUnseenNew('profile') && unreadCount === 0" class="nav-new-dot"></span>
       <span class="tab-icon-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="8" r="4"/>

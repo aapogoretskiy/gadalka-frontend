@@ -148,6 +148,9 @@ export interface FeatureBadges {
   numerologyMonth: FeatureBadge
   numerologyYear: FeatureBadge
   dream: FeatureBadge
+  // Кнопка «Подписки и знаки» в профиле — не платная функция, а точка входа
+  // на экран оплаты. Цены у неё нет, только отметка «Новинка»/«Хит».
+  subscriptions: FeatureBadge
 }
 
 // Тоггл закрытого теста подписок: available=false — видят и могут купить только админы,

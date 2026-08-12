@@ -17,6 +17,7 @@ const DEFAULT_BADGES: FeatureBadgesResponse = {
   numerologyMonth: EMPTY_BADGE,
   numerologyYear: EMPTY_BADGE,
   dream: EMPTY_BADGE,
+  subscriptions: EMPTY_BADGE,
 }
 
 const featureBadges = ref<FeatureBadgesResponse>({ ...DEFAULT_BADGES })

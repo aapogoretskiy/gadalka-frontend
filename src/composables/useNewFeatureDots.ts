@@ -27,6 +27,8 @@ const STORAGE_KEY = 'liora_seen_new_features'
 const TAB_FEATURES: Partial<Record<string, (keyof FeatureBadgesResponse)[]>> = {
   numerology: ['numerologyWeek', 'numerologyMonth', 'numerologyYear', 'compatibilityUnlock'],
   astro: ['dream'],
+  // «Подписки и знаки» живут в профиле — точка гаснет, когда пользователь туда зайдёт
+  profile: ['subscriptions'],
 }
 
 type SeenMap = Partial<Record<keyof FeatureBadgesResponse, string>> // фича -> ISO-дата подтверждения

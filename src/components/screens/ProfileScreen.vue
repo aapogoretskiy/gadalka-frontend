@@ -12,17 +12,29 @@
         <div class="profile-date" v-if="userBirthdate">{{ userBirthdate }}</div>
       </div>
 
-      <!-- Balance card -->
-      <div class="balance-card glass haptic" @click="navigate('payment')">
+      <!-- Подписки и знаки — единая точка входа на экран оплаты (там две вкладки:
+           «Подписки» и «Знаки»). Раньше карточка называлась «Баланс гаданий» и про
+           подписки по ней было не догадаться. Отметка «Новинка»/«Хит» включается
+           админом (админка → «Цены»), без деплоя — см. useFeatureBadges.ts. -->
+      <div
+        class="balance-card glass haptic"
+        :class="{ 'balance-card--new': subscriptionsBadge.isNew || subscriptionsBadge.isHot }"
+        @click="navigate('payment')"
+      >
         <div class="balance-icon">🔮</div>
         <div class="balance-body">
-          <div class="balance-label">Баланс гаданий</div>
+          <div class="balance-label-row">
+            <span class="balance-label">Подписки и знаки</span>
+            <span v-if="subscriptionsBadge.isNew || subscriptionsBadge.isHot" class="balance-badge">
+              {{ subscriptionsBadge.isNew ? 'Новинка' : 'Хит' }}
+            </span>
+          </div>
           <div class="balance-val">
             <span v-if="balance > 0">{{ balance }} {{ balancePluralLabel }}</span>
             <span v-else class="balance-empty">Нет гаданий</span>
           </div>
         </div>
-        <div class="balance-action">{{ balance > 0 ? 'Пополнить' : 'Купить' }} →</div>
+        <div class="balance-action">Открыть →</div>
       </div>
 
       <!-- Моя подписка (показывается при активной ИЛИ приостановленной подписке) -->
@@ -270,6 +282,7 @@ import { useUser } from '@/composables/useUser'
 import { useBalance } from '@/composables/useBalance'
 import { useInbox } from '@/composables/useInbox'
 import { useMySubscription } from '@/composables/useMySubscription'
+import { useFeatureBadges } from '@/composables/useFeatureBadges'
 import { useToast } from '@/composables/useToast'
 import ComingSoonBadge from '@/components/ui/ComingSoonBadge.vue'
 import { showConfirm } from '@/utils/telegram'
@@ -284,6 +297,15 @@ const { unreadCount } = useInbox()
 // Активная подписка с остатками квот — блок «Моя подписка» под балансом
 const { mySubscription, refreshSubscription } = useMySubscription()
 const { addToast } = useToast()
+
+// Отметка «Новинка»/«Хит» на карточке «Подписки и знаки». Сами бейджи грузит
+// BottomNav при старте приложения (синглтон), здесь только читаем нужный ключ.
+// Фолбэк на выключенные флаги — на случай, если бэкенд ещё старой версии и в
+// ответе поля subscriptions нет: лучше не показать бейдж, чем упасть на undefined.
+const { featureBadges } = useFeatureBadges()
+const subscriptionsBadge = computed(
+  () => featureBadges.value.subscriptions ?? { isNew: false, isHot: false, newSince: null },
+)
 
 // SUSPENDED — списание за продление не прошло, идут автоматические ретраи (см.
 // SubscriptionRenewalScheduler на бэке, п. 6.13.2 соглашения): Лимиты недоступны,
@@ -584,7 +606,21 @@ function shareReferralLink() {
 }
 .balance-icon { font-size: 28px; flex-shrink: 0; }
 .balance-body { flex: 1; }
-.balance-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; margin-bottom: 3px; }
+.balance-label-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.balance-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); font-weight: 600; }
+/* Шильдик «Новинка»/«Хит» — тот же стиль, что на карточках Сонника и Нумерологии */
+.balance-badge {
+  background: #ffc857; color: #1a0529;
+  font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 5px;
+  letter-spacing: .03em; text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Подсветка рамки, пока отметка активна */
+.balance-card--new {
+  border-color: rgba(182,84,255,.7);
+  box-shadow: 0 0 0 1px rgba(182,84,255,.4), 0 0 18px rgba(182,84,255,.35);
+}
 .balance-val { font-size: 18px; font-weight: 700; color: #ffc857; }
 .balance-empty { color: rgba(255,255,255,.4); font-size: 16px; font-weight: 500; }
 .balance-action { font-size: 12px; color: #b654ff; font-weight: 600; white-space: nowrap; }
