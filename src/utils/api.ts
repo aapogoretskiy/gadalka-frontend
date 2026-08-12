@@ -636,6 +636,12 @@ export const api = {
   acceptTerms: (termsVersion: string) =>
     apiClient.post<{ accepted: boolean }>('/api/me/accept-terms', { termsVersion }),
 
+  // Подтверждение, что бот может писать пользователю (кнопка «Разрешить» в баннере).
+  // Бэкенд проверяет это реальной отправкой приветствия, поэтому allowed=false —
+  // валидный ответ: разрешение в мини-аппе есть, а диалога с ботом нет.
+  confirmNotificationsAllowed: () =>
+    apiClient.post<{ allowed: boolean }>('/api/me/notifications-allowed'),
+
   // Профиль пользователя
   getProfile: () =>
     apiClient.get<ProfileResponse>('/api/user-profiles', { skipGlobalError: true }),

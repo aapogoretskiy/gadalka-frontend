@@ -235,13 +235,33 @@ const onAllowNotifications = async () => {
   notifRequesting.value = true
   try {
     const allowed = await requestWriteAccess()
-    if (allowed) {
-      // Оптимистично обновляем локальное состояние — реальный флаг на бэке
-      // проставится чуть позже, когда боту придёт write_access_allowed
+    if (!allowed) {
+      dismissNotifBanner()
+      return
+    }
+
+    // На бэкенд полагаться нельзя: Telegram присылает боту служебное
+    // write_access_allowed только когда разрешение реально МЕНЯЕТСЯ. Если
+    // пользователь когда-то жал /start, право писать уже есть — requestWriteAccess
+    // вернёт true молча, бэкенд ничего не узнает, и после перезагрузки баннер
+    // выскочит снова. Поэтому сообщаем о разрешении сами, а бэкенд проверяет
+    // его реальной отправкой приветствия и отвечает, получилось или нет.
+    try {
+      const { data } = await api.confirmNotificationsAllowed()
+      if (data.allowed) {
+        if (telegramUser.value) telegramUser.value.notificationsAllowed = true
+        addToast('Отлично! Теперь бот сможет присылать уведомления 🔮', 'success')
+      } else {
+        // Разрешение в мини-аппе есть, а диалога с ботом нет — в приложении это
+        // не починить, поэтому прячем баннер на кулдаун и объясняем, что делать.
+        addToast('Открой @magicliora_bot и нажми «Старт» — тогда уведомления заработают', 'info')
+        dismissNotifBanner()
+      }
+    } catch {
+      // Сеть/бэкенд недоступны — не портим UX из-за этого. Флаг всё равно доедет
+      // при следующей авторизации: там бэкенд сам тихо проверяет достижимость.
       if (telegramUser.value) telegramUser.value.notificationsAllowed = true
       addToast('Отлично! Теперь бот сможет присылать уведомления 🔮', 'success')
-    } else {
-      dismissNotifBanner()
     }
   } finally {
     notifRequesting.value = false
