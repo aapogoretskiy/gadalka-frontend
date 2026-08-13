@@ -72,6 +72,12 @@
         :class="{ active: activeTab === 'subscriptions' }"
         @click="openSubscriptionsTab"
       >📦 Подписки</button>
+      <button
+        v-if="isAdmin"
+        class="tab"
+        :class="{ active: activeTab === 'subscribers' }"
+        @click="openSubscribersTab"
+      >👥 Подписчики<span v-if="subsStats && subsStats.zombies > 0" class="tab-badge tab-badge--warn">{{ subsStats.zombies }}</span></button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -1599,6 +1605,180 @@
     </template>
 
     <!-- ══════════════════════════════════════════════════════════
+         ВКЛАДКА: ПОДПИСЧИКИ (купленные подписки)
+    ══════════════════════════════════════════════════════════ -->
+    <template v-else-if="activeTab === 'subscribers'">
+      <div class="reports-wrap">
+
+        <!-- Счётчики -->
+        <div v-if="subsStats" class="subs-stats">
+          <div class="subs-stat">
+            <span class="subs-stat-value">{{ subsStats.active }}</span>
+            <span class="subs-stat-label">действующих</span>
+          </div>
+          <div class="subs-stat">
+            <span class="subs-stat-value">{{ subsStats.activeWithAutoRenew }}</span>
+            <span class="subs-stat-label">на автопродлении</span>
+          </div>
+          <div class="subs-stat">
+            <span class="subs-stat-value">{{ formatAmount(subsStats.autoRenewVolumeMinor, 'RUB') }}</span>
+            <span class="subs-stat-label">спишется за цикл</span>
+          </div>
+          <div class="subs-stat">
+            <span class="subs-stat-value">{{ subsStats.expiringInWeek }}</span>
+            <span class="subs-stat-label">истекают за 7 дней</span>
+          </div>
+          <div class="subs-stat" :class="{ 'subs-stat--warn': subsStats.suspended > 0 }">
+            <span class="subs-stat-value">{{ subsStats.suspended }}</span>
+            <span class="subs-stat-label">приостановлено</span>
+          </div>
+          <div
+            class="subs-stat"
+            :class="{ 'subs-stat--danger': subsStats.zombies > 0 }"
+            title="Автопродление включено, но фактически уже не сработает. В норме здесь 0"
+          >
+            <span class="subs-stat-value">{{ subsStats.zombies }}</span>
+            <span class="subs-stat-label">зомби-подписок</span>
+          </div>
+        </div>
+
+        <!-- Фильтры по статусу -->
+        <div class="reports-toolbar">
+          <div class="tickets-filter">
+            <button
+              class="filter-btn"
+              :class="{ active: subsStatusFilter === '' && !subsProblemsOnly }"
+              @click="setSubsStatus('')"
+            >Все</button>
+            <button
+              v-for="s in subsStatuses"
+              :key="s.value"
+              class="filter-btn"
+              :class="{ active: subsStatusFilter === s.value }"
+              @click="setSubsStatus(s.value)"
+            >{{ s.label }}</button>
+            <button
+              class="filter-btn"
+              :class="{ active: subsProblemsOnly }"
+              title="Ретраи списания, зависшие списания и «зомби» — всё, что требует внимания"
+              @click="toggleSubsProblems"
+            >⚠️ Проблемные</button>
+          </div>
+          <button class="btn-ghost" :disabled="subsLoading" @click="refreshSubscribers">
+            {{ subsLoading ? '⏳' : '🔄 Обновить' }}
+          </button>
+        </div>
+
+        <div class="range-toolbar">
+          <div class="range-inputs">
+            <div class="range-field">
+              <label class="range-label">План</label>
+              <select v-model="subsPlanFilter" class="source-select" @change="loadSubscribers(0)">
+                <option value="">Все планы</option>
+                <option v-for="plan in subPlans" :key="plan.id" :value="plan.id">{{ plan.name }}</option>
+              </select>
+            </div>
+            <div class="range-field">
+              <label class="range-label">Автопродление</label>
+              <select v-model="subsAutoRenewFilter" class="source-select" @change="loadSubscribers(0)">
+                <option value="">Не важно</option>
+                <option value="true">Только с автопродлением</option>
+                <option value="false">Только без</option>
+              </select>
+            </div>
+            <div class="range-field">
+              <label class="range-label">Пользователь</label>
+              <input
+                v-model="subsSearch"
+                type="text"
+                placeholder="Telegram ID или @username..."
+                class="range-date-input"
+                @input="onSubsSearchInput"
+              />
+            </div>
+            <button v-if="subsHasFilters" class="btn-reset-sort" @click="resetSubsFilters">↺ Сбросить фильтры</button>
+          </div>
+        </div>
+
+        <!-- Таблица -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Пользователь</th>
+                <th>План</th>
+                <th>Статус</th>
+                <th>Автопродление</th>
+                <th>Уведомление</th>
+                <th>Истекает</th>
+                <th>Осталось</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="subsLoading">
+                <td colspan="8" class="loading-row">Загрузка...</td>
+              </tr>
+              <tr v-else-if="subscribers.length === 0">
+                <td colspan="8" class="empty-row">Подписки не найдены</td>
+              </tr>
+              <tr v-for="s in subscribers" :key="s.id" class="user-row">
+                <td class="mono">#{{ s.id }}</td>
+                <td>
+                  {{ s.firstName || '—' }}
+                  <span v-if="s.username" class="referrer-username">@{{ s.username }}</span>
+                  <div v-if="s.telegramId" class="mono subs-tg-id">{{ s.telegramId }}</div>
+                </td>
+                <td>{{ s.planName || '—' }}</td>
+                <td>
+                  <span class="badge" :class="subsStatusClass(s.status)">{{ subsStatusLabel(s.status) }}</span>
+                  <span
+                    v-if="s.zombie"
+                    class="badge tx-badge--failed subs-zombie"
+                    title="Автопродление включено, но списание уже невозможно: подписка вне активных статусов или срок истёк"
+                  >⚠️ зомби</span>
+                </td>
+                <td>
+                  <span v-if="s.autoRenewEnabled" class="badge tx-badge--automatic">
+                    🔁 {{ s.lockedPriceMinor != null ? formatAmount(s.lockedPriceMinor, 'RUB') : 'вкл' }}
+                  </span>
+                  <span v-else class="tx-type-manual">выкл</span>
+                  <div v-if="s.retryDeadline" class="subs-hint" :title="'Повторные попытки списания идут до ' + formatDate(s.retryDeadline)">
+                    ретраи до {{ formatDate(s.retryDeadline) }}
+                  </div>
+                </td>
+                <td>
+                  <span v-if="!s.autoRenewEnabled" class="tx-type-manual">—</span>
+                  <span v-else-if="s.noticeDelivered" title="Уведомление доставлено — списание разрешено">
+                    ✅ {{ formatDate(s.renewalNoticeDeliveredAt || s.expiresAt) }}
+                  </span>
+                  <span
+                    v-else-if="s.renewalNoticeSentAt"
+                    class="subs-notice-failed"
+                    title="Попытка была, доставка не подтверждена — списания не будет"
+                  >⚠️ не доставлено</span>
+                  <span v-else class="tx-type-manual">не отправлялось</span>
+                </td>
+                <td>{{ formatDate(s.expiresAt) }}</td>
+                <td class="mono" :class="{ 'subs-expired': s.daysLeft < 0 }">
+                  {{ s.daysLeft < 0 ? 'истекла' : s.daysLeft + ' дн.' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Пагинация -->
+        <div class="pagination">
+          <button :disabled="subsPage === 0" @click="loadSubscribers(subsPage - 1)">← Назад</button>
+          <span>Страница {{ subsPage + 1 }} из {{ subsTotalPages }}</span>
+          <button :disabled="subsPage >= subsTotalPages - 1" @click="loadSubscribers(subsPage + 1)">Вперёд →</button>
+        </div>
+
+      </div>
+    </template>
+
+    <!-- ══════════════════════════════════════════════════════════
          ВКЛАДКА: ПОДПИСКИ (планы)
     ══════════════════════════════════════════════════════════ -->
     <template v-else-if="activeTab === 'subscriptions'">
@@ -2204,7 +2384,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type DetectionSource, type RiskLevel, type UserSensitivityProfileEntry, type SensitiveContentBackfillResult, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats, type AdminSubscriptionPlan, type AdminPlanQuota, type AdminQuotaFeature } from '@/utils/adminApi'
+import { adminApi, type AdminUserSummary, type AdminUserDetails, type AdminReports, type RangeReport, type ReferralStats, type TopReferrer, type InvitedUser, type AdminTicketSummary, type AdminTicketDetails, type UserAction, type FeatureCosts, type FeatureBadges, type AdminDreamSymbol, type SensitiveQueryLogEntry, type SensitiveCategory, type DetectionSource, type RiskLevel, type UserSensitivityProfileEntry, type SensitiveContentBackfillResult, type TransactionSummary, type TransactionDetails, type TransactionStatus, type TransactionProvider, type InboxMessageStats, type AdminSubscriptionPlan, type AdminPlanQuota, type AdminQuotaFeature, type AdminSubscriptionRow, type AdminSubscriptionStats, type SubscriptionStatus } from '@/utils/adminApi'
 
 const router = useRouter()
 
@@ -2215,7 +2395,7 @@ const userRole = ref<'ADMIN' | 'MODERATOR'>('ADMIN')
 const isAdmin = computed(() => userRole.value === 'ADMIN')
 
 // ── Вкладки ───────────────────────────────────────────────────────────────
-const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive' | 'payments' | 'subscriptions'>('users')
+const activeTab = ref<'users' | 'broadcast' | 'reports' | 'referrals' | 'tickets' | 'range' | 'prices' | 'sensitive' | 'payments' | 'subscriptions' | 'subscribers'>('users')
 
 // ── Список пользователей ──────────────────────────────────────────────────
 const users = ref<AdminUserSummary[]>([])
@@ -3244,6 +3424,116 @@ const resetTxFilters = () => {
 const openPaymentsTab = () => {
   activeTab.value = 'payments'
   if (transactions.value.length === 0) loadTransactions(0)
+}
+
+// ── Подписчики (купленные подписки) ───────────────────────────────────────
+
+const subscribers    = ref<AdminSubscriptionRow[]>([])
+const subsStats      = ref<AdminSubscriptionStats | null>(null)
+const subsLoading    = ref(false)
+const subsPage       = ref(0)
+const subsTotalPages = ref(1)
+
+const subsStatusFilter    = ref<SubscriptionStatus | ''>('')
+const subsPlanFilter      = ref<number | ''>('')
+// строка, а не boolean: <select> отдаёт строки, а «не важно» должно отличаться от false
+const subsAutoRenewFilter = ref<'' | 'true' | 'false'>('')
+const subsProblemsOnly    = ref(false)
+const subsSearch          = ref('')
+let subsSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+const subsStatuses: { value: SubscriptionStatus; label: string }[] = [
+  { value: 'ACTIVE',          label: '✅ Действует' },
+  { value: 'SUSPENDED',       label: '⏸ Приостановлена' },
+  { value: 'RENEWAL_PENDING', label: '⏳ Списание идёт' },
+  { value: 'EXHAUSTED',       label: '📭 Исчерпана' },
+  { value: 'EXPIRED',         label: '⌛ Истекла' },
+  { value: 'CANCELLED',       label: '🚫 Отменена' },
+  { value: 'RENEWED',         label: '🔁 Продлена' },
+]
+
+const subsHasFilters = computed(() =>
+  !!subsStatusFilter.value || !!subsPlanFilter.value || !!subsAutoRenewFilter.value
+  || subsProblemsOnly.value || !!subsSearch.value
+)
+
+const loadSubscribers = async (page = 0) => {
+  subsLoading.value = true
+  try {
+    const res = await adminApi.getSubscriptions(
+      page, 20,
+      subsStatusFilter.value || undefined,
+      subsPlanFilter.value ? Number(subsPlanFilter.value) : undefined,
+      subsAutoRenewFilter.value === '' ? undefined : subsAutoRenewFilter.value === 'true',
+      subsProblemsOnly.value || undefined,
+      subsSearch.value || undefined,
+    )
+    subscribers.value    = res.data.content
+    subsTotalPages.value = res.data.totalPages || 1
+    subsPage.value       = res.data.number
+  } catch {
+    subscribers.value = []
+  } finally {
+    subsLoading.value = false
+  }
+}
+
+const loadSubsStats = async () => {
+  try {
+    subsStats.value = (await adminApi.getSubscriptionStats()).data
+  } catch {
+    subsStats.value = null
+  }
+}
+
+const refreshSubscribers = () => {
+  loadSubscribers(0)
+  loadSubsStats()
+}
+
+// Статус и «только проблемные» — взаимоисключающие: проблемные собираются из нескольких
+// статусов сразу, комбинировать их с фильтром по одному статусу бессмысленно
+const setSubsStatus = (s: SubscriptionStatus | '') => {
+  subsStatusFilter.value = s
+  subsProblemsOnly.value = false
+  loadSubscribers(0)
+}
+
+const toggleSubsProblems = () => {
+  subsProblemsOnly.value = !subsProblemsOnly.value
+  if (subsProblemsOnly.value) subsStatusFilter.value = ''
+  loadSubscribers(0)
+}
+
+const onSubsSearchInput = () => {
+  if (subsSearchTimer) clearTimeout(subsSearchTimer)
+  subsSearchTimer = setTimeout(() => loadSubscribers(0), 400)
+}
+
+const resetSubsFilters = () => {
+  subsStatusFilter.value    = ''
+  subsPlanFilter.value      = ''
+  subsAutoRenewFilter.value = ''
+  subsProblemsOnly.value    = false
+  subsSearch.value          = ''
+  loadSubscribers(0)
+}
+
+const openSubscribersTab = () => {
+  activeTab.value = 'subscribers'
+  if (subscribers.value.length === 0) refreshSubscribers()
+  // планы нужны для фильтра по плану — переиспользуем загрузку соседней вкладки
+  if (subPlans.value.length === 0) loadSubscriptionPlans()
+}
+
+const subsStatusLabel = (s: SubscriptionStatus): string =>
+  subsStatuses.find(x => x.value === s)?.label ?? s
+
+const subsStatusClass = (s: SubscriptionStatus): string => {
+  if (s === 'ACTIVE' || s === 'RENEWED') return 'tx-badge--succeeded'
+  if (s === 'SUSPENDED') return 'tx-badge--failed'
+  if (s === 'RENEWAL_PENDING') return 'tx-badge--pending'
+  return 'tx-badge--cancelled'
 }
 
 // ── Планы подписки ─────────────────────────────────────────────────────────
@@ -4777,4 +5067,30 @@ input[type="checkbox"] {
   color: #64748b;
 }
 
+/* ── Вкладка «Подписчики» ── */
+.subs-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.subs-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  min-width: 130px;
+}
+.subs-stat--warn   { border-color: rgba(250, 204, 21, 0.35); }
+.subs-stat--danger { border-color: rgba(239, 68, 68, 0.45); background: rgba(239, 68, 68, 0.08); }
+.subs-stat-value { font-size: 18px; font-weight: 600; color: #e2e8f0; }
+.subs-stat-label { font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+.subs-tg-id { font-size: 11px; color: rgba(255, 255, 255, 0.35); }
+.subs-hint { font-size: 11px; color: rgba(250, 204, 21, 0.75); margin-top: 3px; }
+.subs-zombie { margin-left: 6px; }
+.subs-notice-failed { color: #fca5a5; font-size: 13px; }
+.subs-expired { color: #fca5a5; }
 </style>

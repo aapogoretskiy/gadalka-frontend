@@ -485,6 +485,35 @@ export const adminApi = {
   /** Детальная карточка транзакции + сопоставленный webhook-лог (если найден) */
   getTransaction: (id: number) =>
     adminAxios.get<TransactionDetails>(`/api/admin/payments/${id}`),
+
+  /**
+   * Список купленных подписок для вкладки «Подписчики».
+   * Не путать с getSubscriptionPlans — там справочник планов, здесь сами подписки людей.
+   * @param problemsOnly только требующие внимания (ретраи, зависшее списание, «зомби»)
+   * @param search telegram_id (точно) или подстрока username
+   */
+  getSubscriptions: (
+    page = 0, size = 20,
+    status?: SubscriptionStatus | '',
+    planId?: number,
+    autoRenew?: boolean,
+    problemsOnly?: boolean,
+    search?: string,
+  ) =>
+    adminAxios.get<AdminSubscriptionsPage>('/api/admin/subscriptions', {
+      params: {
+        page, size,
+        ...(status ? { status } : {}),
+        ...(planId ? { planId } : {}),
+        ...(autoRenew !== undefined ? { autoRenew } : {}),
+        ...(problemsOnly ? { problemsOnly } : {}),
+        ...(search ? { search } : {}),
+      },
+    }),
+
+  /** Счётчики над таблицей подписчиков */
+  getSubscriptionStats: () =>
+    adminAxios.get<AdminSubscriptionStats>('/api/admin/subscriptions/stats'),
 }
 
 // ── Типы заявок ───────────────────────────────────────────────────────────────
@@ -771,5 +800,67 @@ export interface TransactionDetails {
   payment: TransactionSummary
   /** null — связанный webhook не найден (или провайдер Telegram Stars, где webhook-лога нет в принципе) */
   webhook: WebhookInfo | null
+}
+
+// ── Подписчики (вкладка «Подписчики» в админке) ───────────────────────────────
+
+/**
+ * RENEWAL_PENDING — списание запущено, ждём вебхук; SUSPENDED — списание не удалось, идут ретраи;
+ * RENEWED — историческая запись, актуальный период уже в новой строке; EXHAUSTED — все квоты
+ * потрачены, подписка закрыта досрочно.
+ */
+export type SubscriptionStatus =
+  | 'ACTIVE' | 'SUSPENDED' | 'RENEWAL_PENDING' | 'RENEWED' | 'EXPIRED' | 'EXHAUSTED' | 'CANCELLED'
+
+export interface AdminSubscriptionRow {
+  id: number
+  userId: number
+  telegramId: number | null
+  username: string | null
+  firstName: string | null
+  planId: number | null
+  planName: string | null
+  status: SubscriptionStatus
+  provider: string | null
+  startedAt: string
+  expiresAt: string
+  /** Отрицательное — срок уже истёк, но статус этого ещё не отражает */
+  daysLeft: number
+  autoRenewEnabled: boolean
+  /** Цена, зафиксированная при согласии на автопродление, в КОПЕЙКАХ */
+  lockedPriceMinor: number | null
+  rootPaymentId: number | null
+  renewalNoticeSentAt: string | null
+  renewalNoticeDeliveredAt: string | null
+  /** false при заполненном renewalNoticeSentAt = уведомление не дошло, списания не будет */
+  noticeDelivered: boolean
+  lastRenewalAttemptAt: string | null
+  renewalFirstFailedAt: string | null
+  /** До какого момента идут повторные попытки списания (первая неудача + 7 дней) */
+  retryDeadline: string | null
+  /** Автопродление включено, но фактически уже невозможно — в норме таких строк нет */
+  zombie: boolean
+  cancelledAt: string | null
+  createdAt: string
+}
+
+export interface AdminSubscriptionsPage {
+  content: AdminSubscriptionRow[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+export interface AdminSubscriptionStats {
+  active: number
+  activeWithAutoRenew: number
+  suspended: number
+  renewalPending: number
+  expiringInWeek: number
+  /** В норме 0 — любое другое значение означает незакрытый сценарий отключения автопродления */
+  zombies: number
+  /** Сумма зафиксированных цен подписок на автопродлении, в КОПЕЙКАХ */
+  autoRenewVolumeMinor: number
 }
 
