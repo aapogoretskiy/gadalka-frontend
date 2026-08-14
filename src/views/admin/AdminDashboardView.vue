@@ -3447,6 +3447,7 @@ const subsStatuses: { value: SubscriptionStatus; label: string }[] = [
   { value: 'SUSPENDED',       label: '⏸ Приостановлена' },
   { value: 'RENEWAL_PENDING', label: '⏳ Списание идёт' },
   { value: 'EXHAUSTED',       label: '📭 Исчерпана' },
+  { value: 'REPLACED',        label: '♻️ Заменена' },
   { value: 'EXPIRED',         label: '⌛ Истекла' },
   { value: 'CANCELLED',       label: '🚫 Отменена' },
   { value: 'RENEWED',         label: '🔁 Продлена' },
@@ -3533,6 +3534,7 @@ const subsStatusClass = (s: SubscriptionStatus): string => {
   if (s === 'ACTIVE' || s === 'RENEWED') return 'tx-badge--succeeded'
   if (s === 'SUSPENDED') return 'tx-badge--failed'
   if (s === 'RENEWAL_PENDING') return 'tx-badge--pending'
+  if (s === 'REPLACED') return 'tx-badge--refunded'
   return 'tx-badge--cancelled'
 }
 

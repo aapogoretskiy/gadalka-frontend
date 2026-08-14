@@ -65,7 +65,11 @@
                 <span v-else class="quota-left">{{ q.remaining }} из {{ q.total }} · {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
               </div>
             </div>
-            <div class="my-sub-hint">Новую подписку можно оформить после окончания текущей</div>
+            <div v-if="mySubscription.quotasExhausted" class="my-sub-hint my-sub-hint--exhausted">
+              Лимиты этой подписки закончились и до конца срока не восстановятся.
+              Можно продолжить за знаки или оформить другую подписку — она заменит текущую.
+            </div>
+            <div v-else class="my-sub-hint">Новую подписку можно оформить после окончания текущей</div>
 
             <!-- Автопродление: статус + отключение (не трогает текущий оплаченный период) -->
             <div class="autorenew-status-row">
@@ -82,8 +86,20 @@
             </div>
           </div>
 
-          <!-- Каталог планов -->
-          <template v-else>
+          <!-- Каталог планов. Обычно скрыт при активной подписке, но если её Лимиты
+               исчерпаны — показываем: новая подписка заменит текущую. -->
+          <template v-if="!mySubscription || mySubscription.quotasExhausted">
+            <!-- Предупреждение о замене: пользователь должен понимать, что теряет
+                 оставшийся оплаченный срок (ст. 10 ЗоЗПП — право на информацию). -->
+            <div v-if="mySubscription" class="replace-warning glass">
+              <span class="replace-warning-icon">⚠️</span>
+              <div>
+                Новая подписка <b>прекратит текущую «{{ mySubscription.planName }}»</b> досрочно.
+                Оставшийся срок до {{ formatDate(mySubscription.expiresAt) }} не переносится
+                и не компенсируется.
+              </div>
+            </div>
+
             <div v-if="plans.length === 0" class="empty-plans glass">
               <div class="empty-plans-icon">🌙</div>
               <p>Подписки скоро появятся — загляните позже</p>
@@ -312,6 +328,7 @@ import {
 import { useBalance } from '@/composables/useBalance'
 import { useToast } from '@/composables/useToast'
 import { featureLabel, featureEmoji, quotaPeriodLabel } from '@/utils/featureLabels'
+import { showConfirm } from '@/utils/telegram'
 import TermsAgreementModal from '@/components/ui/TermsAgreementModal.vue'
 
 const navigate = inject<(r: string) => void>('navigate')
@@ -416,8 +433,22 @@ onMounted(async () => {
 })
 
 // ── Покупка подписки ─────────────────────────────────────────────────────────
+/**
+ * Замена действующей подписки — необратимое действие: оставшийся оплаченный срок сгорает.
+ * Спрашиваем подтверждение отдельно от самой оплаты, чтобы человек не узнал об этом
+ * постфактум. Возвращает false, если пользователь передумал.
+ */
+async function confirmReplaceIfNeeded(): Promise<boolean> {
+  if (!mySubscription.value?.quotasExhausted) return true
+  return showConfirm(
+    `Оформить новую подписку? Текущая «${mySubscription.value.planName}» будет прекращена — ` +
+    `оставшийся срок до ${formatDate(mySubscription.value.expiresAt)} сгорит без компенсации.`
+  )
+}
+
 async function paySubscriptionWithCard() {
   if (!selectedPlanId.value || isCreating.value) return
+  if (!await confirmReplaceIfNeeded()) return
   isCreating.value     = true
   activeProvider.value = 'robokassa'
 
@@ -461,6 +492,7 @@ async function handleDisableAutoRenew() {
 
 async function paySubscriptionWithStars() {
   if (!selectedPlanId.value || isCreating.value) return
+  if (!await confirmReplaceIfNeeded()) return
   isCreating.value     = true
   activeProvider.value = 'stars'
 
@@ -911,4 +943,21 @@ async function payWithStars() {
 /* Transition */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+.my-sub-hint--exhausted { color: #ffc857; }
+
+.replace-warning {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 200, 87, 0.35);
+  background: rgba(255, 200, 87, 0.08);
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+}
+.replace-warning-icon { flex-shrink: 0; font-size: 15px; }
+.replace-warning b { color: #ffc857; font-weight: 600; }
 </style>

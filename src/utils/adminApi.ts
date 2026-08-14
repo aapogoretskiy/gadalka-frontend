@@ -806,11 +806,12 @@ export interface TransactionDetails {
 
 /**
  * RENEWAL_PENDING — списание запущено, ждём вебхук; SUSPENDED — списание не удалось, идут ретраи;
- * RENEWED — историческая запись, актуальный период уже в новой строке; EXHAUSTED — все квоты
- * потрачены, подписка закрыта досрочно.
+ * RENEWED — историческая запись, актуальный период уже в новой строке; REPLACED — пользователь
+ * купил другую подписку взамен этой. EXHAUSTED — исторический статус: так помечались подписки
+ * с потраченными Лимитами, пока действовало досрочное закрытие (больше не проставляется).
  */
 export type SubscriptionStatus =
-  | 'ACTIVE' | 'SUSPENDED' | 'RENEWAL_PENDING' | 'RENEWED' | 'EXPIRED' | 'EXHAUSTED' | 'CANCELLED'
+  | 'ACTIVE' | 'SUSPENDED' | 'RENEWAL_PENDING' | 'RENEWED' | 'EXPIRED' | 'EXHAUSTED' | 'CANCELLED' | 'REPLACED'
 
 export interface AdminSubscriptionRow {
   id: number

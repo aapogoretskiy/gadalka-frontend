@@ -67,6 +67,16 @@
             <span v-else class="sub-quota-left">{{ q.remaining }}/{{ q.total }} {{ quotaPeriodLabel(q.quotaPeriod) }}</span>
           </div>
         </div>
+        <!-- Лимиты кончились, но подписка продолжает действовать — важно, чтобы человек
+             не решил, что деньги пропали. -->
+        <div v-if="mySubscription.quotasExhausted" class="sub-exhausted-hint">
+          Лимиты закончились.
+          {{ mySubscription.autoRenewEnabled
+              ? `Обновятся ${formatSubDate(mySubscription.expiresAt)} при автопродлении.`
+              : `Подписка действует до ${formatSubDate(mySubscription.expiresAt)}.` }}
+          Пока можно оплачивать разборы знаками.
+        </div>
+
         <!-- Автопродление: статус + отключение (не трогает текущий оплаченный период) -->
         <div class="sub-autorenew-row">
           <span v-if="mySubscription.autoRenewEnabled" class="sub-autorenew-badge sub-autorenew-badge--on">🔄 Автопродление включено</span>
@@ -825,5 +835,15 @@ function shareReferralLink() {
   background: linear-gradient(135deg,#b654ff,#e94aa8);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; color: #fff; font-weight: 700; flex-shrink: 0;
+}
+.sub-exhausted-hint {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: rgba(255, 200, 87, 0.08);
+  border: 1px solid rgba(255, 200, 87, 0.25);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
 }
 </style>

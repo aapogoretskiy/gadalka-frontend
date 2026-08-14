@@ -441,6 +441,10 @@ export interface MySubscriptionResponse {
   autoRenewEnabled: boolean
   status: 'ACTIVE' | 'SUSPENDED'
   retryDeadline: string | null   // только при status='SUSPENDED' — до какой даты идут ретраи
+  // Лимиты исчерпаны полностью и до конца периода не восстановятся (все квоты PER_PERIOD
+  // и все потрачены). Подписка при этом продолжает действовать — по флагу показываем
+  // каталог планов с предупреждением, что новая подписка заменит текущую.
+  quotasExhausted: boolean
   quotas: SubscriptionQuotaState[]
 }
 
