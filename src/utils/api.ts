@@ -9,10 +9,25 @@ declare module 'axios' {
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
+/**
+ * Таймаут для запросов, внутри которых работает нейросеть.
+ *
+ * Генерация занимает секунды (после перевода карточных интерпретаций на
+ * параллельные вызовы — обычно до 10с), но провайдер может тормозить, поэтому
+ * берём с запасом. Значение согласовано с остальными слоями: один вызов LLM
+ * на бэкенде ограничен 45с, здесь 90с, nginx рвёт соединение на 120с.
+ * Лесенка нужна, чтобы таймаут срабатывал там, где мы можем показать
+ * пользователю внятную ошибку, а не посреди передачи ответа.
+ */
+export const AI_TIMEOUT_MS = 90000
+
 // ── Axios instance ──────────────────────────────────────────────────────────
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  // Было 15000. Обычные запросы (профиль, баланс, история) укладываются в десятки
+  // миллисекунд, так что 30с — это уже «что-то сломалось». Всем запросам, которые
+  // ждут нейросеть, таймаут проставлен отдельно: AI_TIMEOUT_MS.
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -670,7 +685,7 @@ export const api = {
     apiClient.post<FortuneResponse>(
       '/api/fortune',
       { question, category: category || null, spreadType, spendMode },
-      { timeout: 60000 },
+      { timeout: AI_TIMEOUT_MS },
     ),
 
   // Онбординг: вопросы для подарочного расклада (кнопки)
@@ -679,11 +694,11 @@ export const api = {
 
   // Онбординг: подарочный первый расклад (без списания знаков, из предгенерированного пула)
   createOnboardingFortune: (question: string) =>
-    apiClient.post<FortuneResponse>('/api/fortune/onboarding', { question }),
+    apiClient.post<FortuneResponse>('/api/fortune/onboarding', { question }, { timeout: AI_TIMEOUT_MS }),
 
   // Совместимость
   getCompatibility: (data: CompatibilityRequest) =>
-    apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data),
+    apiClient.post<CompatibilityResponse>('/api/fortune/compatibility', data, { timeout: AI_TIMEOUT_MS }),
 
   // Разблокировать полный анализ совместимости (знаки или квота подписки)
   unlockCompatibility: (id: number, spendMode: SpendMode = 'CREDITS') =>
@@ -698,11 +713,11 @@ export const api = {
 
   // Нумерология дня
   getNumerologyToday: () =>
-    apiClient.get<NumerologyTodayResponse>('/api/numerology/today'),
+    apiClient.get<NumerologyTodayResponse>('/api/numerology/today', { timeout: AI_TIMEOUT_MS }),
 
   // Нумерологический портрет
   getNumerologyPortrait: () =>
-    apiClient.get<NumerologyPortraitResponse>('/api/numerology/portrait', { skipGlobalError: true }),
+    apiClient.get<NumerologyPortraitResponse>('/api/numerology/portrait', { timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Сохранить имя для портрета (пустая строка = сброс на TG-имя)
   saveNumerologyName: (name: string) =>
@@ -711,12 +726,12 @@ export const api = {
   // Гороскоп на день (бесплатно, по знаку зодиака из профиля)
   // skipGlobalError: true — 422 (нет даты рождения в профиле) обрабатываем сами в useHoroscope
   getDailyHoroscope: () =>
-    apiClient.get<DailyHoroscopeResponse>('/api/horoscope/daily', { skipGlobalError: true }),
+    apiClient.get<DailyHoroscopeResponse>('/api/horoscope/daily', { timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Нумерология недели (платно — 3 знака; повторный вызов в течение действующих 7 дней бесплатен)
   // skipGlobalError: true — 402 (мало знаков) и 422 (нет даты рождения) обрабатываем сами в виджете
   getNumerologyWeek: (spendMode: SpendMode = 'CREDITS') =>
-    apiClient.get<NumerologyWeekResponse>('/api/numerology/week', { params: { spendMode }, skipGlobalError: true }),
+    apiClient.get<NumerologyWeekResponse>('/api/numerology/week', { params: { spendMode }, timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Тихая проверка уже оплаченного расклада на неделю — НЕ создаёт новый и НЕ списывает знаки.
   // 404, если на эту неделю расклада ещё нет (нормальный случай, не показываем ошибку).
@@ -727,12 +742,12 @@ export const api = {
   // используется для перехода на одну из 4 недель внутри купленного месяца.
   // 404, если расклада с такой датой ещё нет.
   getNumerologyWeekByDate: (date: string) =>
-    apiClient.get<NumerologyWeekResponse>('/api/numerology/week/by-date', { params: { date }, skipGlobalError: true }),
+    apiClient.get<NumerologyWeekResponse>('/api/numerology/week/by-date', { params: { date }, timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Нумерология месяца (платно — 10 знаков; повторный вызов в течение действующего месяца бесплатен).
   // 4 недели внутри месяца включены в стоимость и создаются автоматически.
   getNumerologyMonth: (spendMode: SpendMode = 'CREDITS') =>
-    apiClient.get<NumerologyMonthResponse>('/api/numerology/month', { params: { spendMode }, skipGlobalError: true }),
+    apiClient.get<NumerologyMonthResponse>('/api/numerology/month', { params: { spendMode }, timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Тихая проверка уже оплаченного разбора на месяц — НЕ создаёт новый и НЕ списывает знаки.
   getNumerologyMonthCurrent: () =>
@@ -741,12 +756,12 @@ export const api = {
   // Открыть конкретный месяц (любой из 12) внутри уже купленного годового разбора — бесплатно,
   // создаётся по клику. 402, если год на этот год ещё не куплен; 422 без даты рождения.
   getNumerologyMonthByDate: (date: string) =>
-    apiClient.get<NumerologyMonthResponse>('/api/numerology/month/by-date', { params: { date }, skipGlobalError: true }),
+    apiClient.get<NumerologyMonthResponse>('/api/numerology/month/by-date', { params: { date }, timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Нумерология года (платно — 18 знаков; повторный вызов в течение действующего года бесплатен).
   // 12 месяцев показаны как лёгкие превью и открываются бесплатно по клику (см. getNumerologyMonthByDate).
   getNumerologyYear: (spendMode: SpendMode = 'CREDITS') =>
-    apiClient.get<NumerologyYearResponse>('/api/numerology/year', { params: { spendMode }, skipGlobalError: true }),
+    apiClient.get<NumerologyYearResponse>('/api/numerology/year', { params: { spendMode }, timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Тихая проверка уже оплаченного разбора на год — НЕ создаёт новый и НЕ списывает знаки.
   getNumerologyYearCurrent: () =>
@@ -851,7 +866,7 @@ export const api = {
   // 422 чувствительная тема/нет даты рождения) показываем внутри экрана, а не тостом.
   // Таймаут выше глобального: генерация JSON-разбора занимает до ~30с.
   analyzeDream: (data: DreamRequest) =>
-    apiClient.post<DreamResponse>('/api/dreams', data, { timeout: 60000, skipGlobalError: true }),
+    apiClient.post<DreamResponse>('/api/dreams', data, { timeout: AI_TIMEOUT_MS, skipGlobalError: true }),
 
   // Недавние сны (последние 5) для экрана Сонника
   getRecentDreams: () =>
