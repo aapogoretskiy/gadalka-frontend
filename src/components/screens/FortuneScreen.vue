@@ -101,23 +101,27 @@
               <div class="spread-desc">{{ s.desc }}</div>
             </div>
             <div class="spread-right">
-              <template v-if="isDev || canAfford(s.type, s.cost)">
-                <!-- Если знаков не хватает, но есть квота — показываем её вместо цены -->
-                <div v-if="(balance ?? 0) < s.cost && quotaRemaining(s.type) > 0" class="spread-price" style="color:#70e0a8">
-                  По подписке: {{ quotaRemaining(s.type) }}
-                </div>
-                <template v-else>
-                  <div class="spread-price" style="color:#70e0a8">
-                    {{ s.cost }} {{ znakiWord(s.cost) }}
-                  </div>
-                  <!-- Знаков хватает, но есть и квота — сообщаем, что можно потратить её вместо знаков -->
-                  <div v-if="quotaRemaining(s.type) > 0" class="spread-price-sub">
-                    ✦ или по подписке: {{ quotaRemaining(s.type) }}
-                  </div>
-                </template>
-              </template>
+              <!-- Есть квота подписки и знаков не хватает — показываем квоту вместо цены -->
+              <div v-if="(balance ?? 0) < s.cost && quotaRemaining(s.type) > 0" class="spread-price" style="color:#70e0a8">
+                По подписке: {{ quotaRemaining(s.type) }}
+              </div>
               <template v-else>
-                <div class="spread-price" style="color:#ffc857">Купить →</div>
+                <!-- Цена показывается ВСЕГДА, в том числе когда знаков не хватает: иначе
+                     пользователь не видит стоимость и не понимает, сколько нужно докупить -->
+                <div
+                  class="spread-price"
+                  :style="{ color: isDev || canAfford(s.type, s.cost) ? '#70e0a8' : 'rgba(255,255,255,0.55)' }"
+                >
+                  {{ s.cost }} {{ znakiWord(s.cost) }}
+                </div>
+                <!-- Знаков хватает, но есть и квота — сообщаем, что можно потратить её вместо знаков -->
+                <div v-if="quotaRemaining(s.type) > 0" class="spread-price-sub">
+                  ✦ или по подписке: {{ quotaRemaining(s.type) }}
+                </div>
+                <!-- Знаков не хватает и квоты нет — призыв докупить (цвет задан в .spread-price-sub) -->
+                <div v-else-if="!isDev && !canAfford(s.type, s.cost)" class="spread-price-sub">
+                  Купить →
+                </div>
               </template>
             </div>
           </div>
@@ -359,13 +363,29 @@
               <div class="spread-desc">{{ deeperSpread.desc }}</div>
             </div>
             <div class="spread-right">
-              <template v-if="isDev || (balance ?? 0) >= deeperSpread.cost">
-                <div class="spread-price" style="color:#70e0a8">
+              <!-- Квота подписки учитывается так же, как на шаге выбора расклада:
+                   подписчик с нулевым балансом видит остаток квоты, а не «Купить →» -->
+              <div
+                v-if="(balance ?? 0) < deeperSpread.cost && quotaRemaining(deeperSpread.type) > 0"
+                class="spread-price"
+                style="color:#70e0a8"
+              >
+                По подписке: {{ quotaRemaining(deeperSpread.type) }}
+              </div>
+              <template v-else>
+                <!-- Цена видна всегда, даже если знаков не хватает -->
+                <div
+                  class="spread-price"
+                  :style="{ color: isDev || canAfford(deeperSpread.type, deeperSpread.cost) ? '#70e0a8' : 'rgba(255,255,255,0.55)' }"
+                >
                   {{ deeperSpread.cost }} {{ znakiWord(deeperSpread.cost) }}
                 </div>
-              </template>
-              <template v-else>
-                <div class="spread-price" style="color:#ffc857">Купить →</div>
+                <div
+                  v-if="!isDev && !canAfford(deeperSpread.type, deeperSpread.cost)"
+                  class="spread-price-sub"
+                >
+                  Купить →
+                </div>
               </template>
             </div>
           </div>
