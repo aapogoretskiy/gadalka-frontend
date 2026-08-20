@@ -1315,15 +1315,16 @@
                   <th>Пользователь</th>
                   <th>Категория</th>
                   <th>Источник</th>
+                  <th>Исход</th>
                   <th>Вопрос</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="sensitiveLoading">
-                  <td colspan="5" class="td-loading">⏳ Загрузка...</td>
+                  <td colspan="6" class="td-loading">⏳ Загрузка...</td>
                 </tr>
                 <tr v-else-if="sensitiveEntries.length === 0">
-                  <td colspan="5" class="td-empty">Нет заблокированных запросов</td>
+                  <td colspan="6" class="td-empty">Нет записей</td>
                 </tr>
                 <template v-for="entry in sensitiveEntries" :key="entry.id">
                   <tr>
@@ -1345,6 +1346,11 @@
                       </span>
                     </td>
                     <td>
+                      <span class="blocked-badge" :class="entry.blocked ? 'blocked-badge--yes' : 'blocked-badge--no'">
+                        {{ entry.blocked ? 'Заблокирован' : 'Ответ выдан' }}
+                      </span>
+                    </td>
+                    <td>
                       <span
                         class="sensitive-question"
                         :class="{ expanded: expandedSensitiveId === entry.id }"
@@ -1353,11 +1359,22 @@
                     </td>
                   </tr>
                   <tr v-if="expandedSensitiveId === entry.id" class="sensitive-explanation-row">
-                    <td colspan="5">
+                    <td colspan="6">
                       <div class="sensitive-explanation">
                         <template v-if="entry.category === 'CLASSIFICATION_FAILED'">
                           <strong>Сбой формата ответа LLM после всех попыток.</strong> Сырой ответ модели:
                           <code>{{ entry.rawClassificationOutput || '—' }}</code>
+                        </template>
+                        <template v-else-if="!entry.blocked">
+                          <strong>Блокировки не было.</strong> Генерирующая модель отказалась отвечать,
+                          но классификатор не подтвердил запрещённую тему — вопрос перегенерирован,
+                          пользователь получил ответ. Запись нужна для настройки промптов.
+                          <template v-if="entry.explanation"><br />{{ entry.explanation }}</template>
+                        </template>
+                        <template v-else-if="entry.category === 'LLM_REFUSED'">
+                          <strong>Причина не установлена.</strong> Модель отказалась отвечать и после
+                          повторной попытки, но классификатор не подтвердил ни одну запрещённую тему.
+                          Кандидат в ложные срабатывания — стоит проверить вручную.
                         </template>
                         <template v-else-if="entry.explanation">
                           <strong>Почему заблокировано:</strong> {{ entry.explanation }}
@@ -4495,6 +4512,16 @@ input[type="checkbox"] {
 .source-badge--legacy_unknown    { background: #1e293b; color: #475569; }
 
 /* ── Разворот "почему заблокировано" ── */
+.blocked-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.blocked-badge--yes { background: rgba(220, 53, 69, 0.15); color: #dc3545; }
+.blocked-badge--no  { background: rgba(40, 167, 69, 0.15); color: #28a745; }
+
 .sensitive-explanation-row td { padding-top: 0; }
 .sensitive-explanation {
   background: #0f172a;

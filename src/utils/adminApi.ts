@@ -709,6 +709,13 @@ export interface SensitiveQueryLogEntry {
   explanation: string | null
   /** Заполнено только при category = CLASSIFICATION_FAILED — сырой ответ модели для отладки промпта */
   rawClassificationOutput: string | null
+  /**
+   * Была ли реально заблокирована выдача пользователю.
+   * false — случай зафиксирован для разбора, но человек получил ответ: так логируются
+   * отказы генерирующей модели, которые классификатор не подтвердил реальной темой,
+   * и вся разметка бэкафилла.
+   */
+  blocked: boolean
   detectedAt: string
 }
 
